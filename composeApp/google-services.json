@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "411691527155",
+    "firebase_url": "https://moneytrackerpro-8ff64-default-rtdb.firebaseio.com",
+    "project_id": "moneytrackerpro-8ff64",
+    "storage_bucket": "moneytrackerpro-8ff64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:411691527155:android:9b50274960cf35a6c58086",
+        "android_client_info": {
+          "package_name": "com.fxalways.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "411691527155-r4ggl4fpreg29a3beme8p640knm0eqqm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fxalways.app",
+            "certificate_hash": "3bae0f562e92b3d736ed23dfe97907d02c7e2fe4"
+          }
+        },
+        {
+          "client_id": "411691527155-1r6cha8vvj3c44t03tupb30q0cvh20li.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEslfjSQPKv3ylWx7IaIGjrLRT7Px7G9g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "411691527155-1r6cha8vvj3c44t03tupb30q0cvh20li.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,14 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+
+**/build/
+
+functions/lib/
+functions/node_modules/
+functions/.runtimeconfig.json
+
+*.iml
+.idea/
+.DS_Store

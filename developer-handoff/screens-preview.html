@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>FX/ — screen reference</title>
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  html, body { margin: 0; background: #1a1a17; font-family: 'Geist', system-ui, sans-serif; }
+  .grid {
+    display: grid; grid-template-columns: repeat(2, max-content);
+    gap: 28px 24px; padding: 40px; justify-content: center;
+  }
+  .label {
+    font-family: 'Geist Mono', monospace; font-size: 11px;
+    letter-spacing: 0.1em; color: rgba(244,240,232,0.5);
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .pair { display: flex; flex-direction: column; align-items: center; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="../ios-frame.jsx"></script>
+<script type="text/babel" src="../android-frame.jsx"></script>
+<script type="text/babel" src="../components.jsx"></script>
+<script type="text/babel" src="../screens-core.jsx"></script>
+<script type="text/babel" src="../screens-detail.jsx"></script>
+<script type="text/babel" src="../screens-extras.jsx"></script>
+
+<script type="text/babel">
+  const IOS_W = 402, IOS_H = 874;
+  const AND_W = 412, AND_H = 892;
+  const IOS = 58;
+  const AND = 8;
+
+  function Pair({ label, ios, and }) {
+    return (
+      <div className="pair">
+        <div className="label">{label}</div>
+        {ios && (
+          <IOSDevice width={IOS_W} height={IOS_H} dark>{ios}</IOSDevice>
+        )}
+        {and && (
+          <div style={{ marginTop: 18 }}>
+            <AndroidDevice width={AND_W} height={AND_H} dark>{and}</AndroidDevice>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function Single({ label, content }) {
+    return (
+      <div className="pair">
+        <div className="label">{label}</div>
+        <IOSDevice width={IOS_W} height={IOS_H} dark>{content}</IOSDevice>
+      </div>
+    );
+  }
+
+  function App() {
+    return (
+      <div className="grid">
+        <Single label="01 · Onboarding · iOS" content={<OnboardingScreen step={1} topInset={IOS} />} />
+        <Pair label="02 · Dashboard"
+          ios={<DashboardScreen topInset={IOS} />}
+          and={<DashboardScreen topInset={AND} />} />
+        <Pair label="03 · Converter"
+          ios={<ConverterScreen topInset={IOS} />}
+          and={<ConverterScreen topInset={AND} />} />
+        <Pair label="04 · Detail (EUR)"
+          ios={<DetailScreen code="EUR" topInset={IOS} />}
+          and={<DetailScreen code="EUR" topInset={AND} />} />
+        <Pair label="05 · Compare"
+          ios={<CompareScreen topInset={IOS} />}
+          and={<CompareScreen topInset={AND} />} />
+        <Pair label="06 · Traveler"
+          ios={<TravelerScreen topInset={IOS} />}
+          and={<TravelerScreen topInset={AND} />} />
+        <Pair label="07 · News"
+          ios={<NewsScreen topInset={IOS} />}
+          and={<NewsScreen topInset={AND} />} />
+        <Single label="08 · Paywall · iOS only" content={<PaywallScreen topInset={IOS} />} />
+        <Pair label="09 · Offline"
+          ios={<OfflineScreen topInset={IOS} />}
+          and={<OfflineScreen topInset={AND} />} />
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
