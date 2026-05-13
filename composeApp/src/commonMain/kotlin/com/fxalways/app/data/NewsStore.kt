@@ -5,6 +5,7 @@ import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.domain.NewsFeedDto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,8 +17,8 @@ data class NewsUiState(
     val provider: String = "loading",
     val region: String = DeviceLocale.region,
     val language: String = DeviceLocale.language,
-    val selectedCurrency: String = "USD",
-    val trackedCurrencies: List<String> = listOf("USD", "EUR", "JPY", "GBP", "BTC"),
+    val selectedCurrency: String = DeviceLocale.currencyCode,
+    val trackedCurrencies: List<String> = defaultCurrencies(DeviceLocale.currencyCode),
     val bullish: Int = 46,
     val neutral: Int = 20,
     val bearish: Int = 34,
@@ -31,6 +32,7 @@ class NewsStore(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(NewsUiState())
     val state: StateFlow<NewsUiState> = _state
+    private var refreshJob: Job? = null
 
     init {
         refresh()
@@ -41,8 +43,10 @@ class NewsStore(
         region: String = _state.value.region.takeIf { it.isNotBlank() } ?: DeviceLocale.region,
         currencies: List<String> = _state.value.trackedCurrencies.ifEmpty { defaultCurrencies(_state.value.selectedCurrency) },
     ) {
-        scope.launch {
+        refreshJob?.cancel()
+        refreshJob = scope.launch {
             val selectedCurrency = currencies.firstOrNull().orEmpty().ifBlank { _state.value.selectedCurrency }
+            val normalizedCurrencies = currencies.map { code -> code.uppercase() }.distinct()
             _state.update {
                 it.copy(
                     isLoading = true,
@@ -50,15 +54,15 @@ class NewsStore(
                     language = language,
                     region = region.uppercase(),
                     selectedCurrency = selectedCurrency.uppercase(),
-                    trackedCurrencies = currencies.map { code -> code.uppercase() }.distinct(),
+                    trackedCurrencies = normalizedCurrencies,
                 )
             }
             runCatching {
-                api.newsFeed(language, region, currencies)
+                api.newsFeed(language, region, normalizedCurrencies)
             }.onSuccess { feed ->
                 _state.value = feed.toUiState(
                     selectedCurrency = selectedCurrency,
-                    trackedCurrencies = currencies,
+                    trackedCurrencies = normalizedCurrencies,
                 )
             }.onFailure { throwable ->
                 _state.update {
@@ -109,6 +113,6 @@ private fun NewsFeedDto.toUiState(
     )
 
 private fun defaultCurrencies(primary: String): List<String> =
-    listOf(primary, "USD", "EUR", "JPY", "GBP", "BTC")
+    listOf(primary.ifBlank { DeviceLocale.currencyCode }, "USD", "EUR", "JPY", "GBP", "BTC")
         .map { it.uppercase() }
         .distinct()

@@ -148,6 +148,7 @@ fun FxAppShell() {
     var selectedTab by remember { mutableStateOf(FxTab.Rates) }
     var moreRoute by remember { mutableStateOf(MoreRoute.Menu) }
     var detailRate by remember { mutableStateOf<FxRate?>(null) }
+    var detailNewsStory by remember { mutableStateOf<NewsStory?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
     var themeMode by remember { mutableStateOf(AppSettingsPrefs.themeMode()) }
     var baseCurrency by remember { mutableStateOf(AppSettingsPrefs.baseCurrency()) }
@@ -165,6 +166,7 @@ fun FxAppShell() {
     var backupState by remember { mutableStateOf(UserBackupState()) }
     var backupReady by remember { mutableStateOf(false) }
     var backupSyncing by remember { mutableStateOf(false) }
+    var startupReady by remember { mutableStateOf(false) }
     var lastSyncedAtMillis by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
     val liveState by liveStore.state.collectAsState()
@@ -175,6 +177,7 @@ fun FxAppShell() {
     fun selectTab(tab: FxTab) {
         showPaywall = false
         detailRate = null
+        detailNewsStory = null
         selectedTab = tab
         if (tab != FxTab.More) {
             moreRoute = MoreRoute.Menu
@@ -182,6 +185,11 @@ fun FxAppShell() {
     }
     LaunchedEffect(liveStore) {
         liveStore.startAutoRefresh()
+    }
+    LaunchedEffect(startupReady, baseCurrency) {
+        if (startupReady) {
+            newsStore.setCurrency(baseCurrency)
+        }
     }
     LaunchedEffect(Unit) {
         subscriptionState = subscriptionGateway.currentState()
@@ -213,6 +221,7 @@ fun FxAppShell() {
             }
         }
         backupReady = backupState.isAvailable
+        startupReady = true
     }
     LaunchedEffect(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState, backupReady) {
         if (backupReady) {
@@ -226,9 +235,10 @@ fun FxAppShell() {
             }
         }
     }
-    PlatformBackHandler(enabled = showPaywall || detailRate != null || selectedTab == FxTab.More && moreRoute != MoreRoute.Menu) {
+    PlatformBackHandler(enabled = showPaywall || detailNewsStory != null || detailRate != null || selectedTab == FxTab.More && moreRoute != MoreRoute.Menu) {
         when {
             showPaywall -> showPaywall = false
+            detailNewsStory != null -> detailNewsStory = null
             detailRate != null -> detailRate = null
             selectedTab == FxTab.More && moreRoute != MoreRoute.Menu -> moreRoute = MoreRoute.Menu
         }
@@ -247,7 +257,9 @@ fun FxAppShell() {
                 .safeContentPadding(),
         ) {
             Box(Modifier.weight(1f)) {
-                if (showPaywall) {
+                if (!startupReady) {
+                    StartupLoadingScreen(baseCurrency)
+                } else if (showPaywall) {
                     PaywallScreen(
                         subscriptionState = subscriptionState,
                         onClose = { showPaywall = false },
@@ -268,6 +280,12 @@ fun FxAppShell() {
                             }
                         },
                     )
+                } else if (detailNewsStory != null) {
+                    NewsDetailScreen(
+                        story = detailNewsStory,
+                        onBack = { detailNewsStory = null },
+                        onOpenUrl = ExternalUrlOpener::open,
+                    )
                 } else if (detailRate != null) {
                     DetailScreen(
                         liveState = liveState,
@@ -281,6 +299,7 @@ fun FxAppShell() {
                         onOpenPaywall = { showPaywall = true },
                         onLoadHistory = detailStore::load,
                         onOpenUrl = ExternalUrlOpener::open,
+                        onOpenStory = { detailNewsStory = it },
                         onCreateAlert = { rate ->
                             if (canCreateAlert(subscriptionState, alertsState.alerts.size)) {
                                 alertsStore.addQuickAlert(liveState.baseCurrency, rate)
@@ -321,7 +340,7 @@ fun FxAppShell() {
                             onRefresh = newsStore::refresh,
                             onRegionSelected = newsStore::setRegion,
                             onCurrencySelected = newsStore::setCurrency,
-                            onOpenUrl = ExternalUrlOpener::open,
+                            onOpenStory = { detailNewsStory = it },
                             onOpenPaywall = { showPaywall = true },
                         )
                         FxTab.More -> when (moreRoute) {
@@ -494,13 +513,32 @@ fun FxAppShell() {
                     }
                 }
             }
-            FxBottomBar(
-                tabs = FxTab.entries.map { it.label },
-                selectedIndex = selectedTab.ordinal,
-                onSelect = {
-                    selectTab(FxTab.entries[it])
-                },
-            )
+            if (startupReady) {
+                FxBottomBar(
+                    tabs = FxTab.entries.map { it.label },
+                    selectedIndex = selectedTab.ordinal,
+                    onSelect = {
+                        selectTab(FxTab.entries[it])
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StartupLoadingScreen(baseCurrency: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        GridBg(Modifier.matchParentSize().alpha(0.18f))
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            LiveDot(Modifier.size(10.dp))
+            Text("Preparing $baseCurrency rates", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Text("Syncing preferences", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
         }
     }
 }
@@ -704,6 +742,7 @@ fun DetailScreen(
     onOpenPaywall: () -> Unit = {},
     onLoadHistory: (String, String, Period, List<Float>) -> Unit = { _, _, _, _ -> },
     onOpenUrl: (String) -> Unit = {},
+    onOpenStory: (NewsStory) -> Unit = {},
     onCreateAlert: (FxRate) -> Unit = {},
 ) {
     var period by remember { mutableStateOf(Period.OneMonth) }
@@ -829,7 +868,7 @@ fun DetailScreen(
             )
         } else {
             relatedStories.take(if (effectivePremium) relatedStories.size else 2).forEach { story ->
-                StoryCard(story, onClick = { story.sourceUrl.takeIf { it.isNotBlank() }?.let(onOpenUrl) })
+                StoryCard(story, onClick = { onOpenStory(story) })
             }
         }
         SectionLabel("EVENTS · ANNOTATED", right = if (effectivePremium) "Derived" else "Preview")
@@ -1981,7 +2020,7 @@ fun NewsScreen(
     onRefresh: () -> Unit = {},
     onRegionSelected: (String) -> Unit = {},
     onCurrencySelected: (String) -> Unit = {},
-    onOpenUrl: (String) -> Unit = {},
+    onOpenStory: (NewsStory) -> Unit = {},
     onOpenPaywall: () -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
@@ -2066,7 +2105,7 @@ fun NewsScreen(
             }
         }
         visibleStories.forEach { story ->
-            StoryCard(story, onClick = { story.sourceUrl.takeIf { it.isNotBlank() }?.let(onOpenUrl) })
+            StoryCard(story, onClick = { onOpenStory(story) })
         }
         if (!access.canUseAdvancedNews || visibleStories.size < filteredStories.size) {
             ProUpsellCard(
@@ -2078,6 +2117,67 @@ fun NewsScreen(
                 },
                 onClick = onOpenPaywall,
             )
+        }
+    }
+}
+
+@Composable
+fun NewsDetailScreen(
+    story: NewsStory?,
+    onBack: () -> Unit = {},
+    onOpenUrl: (String) -> Unit = {},
+) {
+    val selected = story ?: NewsStory(
+        tag = "FX",
+        impact = "MED",
+        age = "Now",
+        title = "Market update",
+        summary = "Latest currency market context.",
+        moves = emptyList(),
+        source = "FX Always",
+        sourceUrl = "",
+    )
+    val impactColor = if (selected.impact.startsWith("HIGH")) FxTheme.colors.down else FxTheme.colors.accent
+    ScreenScaffold {
+        BackNavButton(label = "News", onClick = onBack)
+        ScreenHeader(
+            "News detail",
+            sub = "${selected.tag} · ${selected.impact}",
+            subtitle = "${selected.source.ifBlank { "Market source" }} · ${selected.age}",
+        )
+        BentoCard(padding = 14.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Pill(selected.tag, variant = PillVariant.Accent)
+                    Eyebrow(selected.impact, color = impactColor)
+                }
+                Text(selected.title, style = FxTheme.typography.titleL, color = FxTheme.colors.text)
+                Text(selected.summary, style = FxTheme.typography.body, color = FxTheme.colors.textDim)
+            }
+        }
+        SectionLabel("MARKET MOVES")
+        BentoCard(padding = 12.dp) {
+            if (selected.moves.isEmpty()) {
+                Text("No direct currency move was detected for this story.", style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    selected.moves.forEach { (code, change) ->
+                        KeyValueRow(code, formatChange(change))
+                    }
+                }
+            }
+        }
+        SectionLabel("SOURCE")
+        BentoCard(padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                KeyValueRow("Publisher", selected.source.ifBlank { "Market source" })
+                KeyValueRow("Published", selected.age)
+                if (selected.sourceUrl.isNotBlank()) {
+                    GhostButton("Open original source", onClick = { onOpenUrl(selected.sourceUrl) })
+                } else {
+                    Text("This item is generated from the fallback market brief, so there is no external article link.", style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+                }
+            }
         }
     }
 }
@@ -2732,7 +2832,7 @@ private fun BackNavButton(label: String?, onClick: () -> Unit) {
 private fun StoryCard(story: NewsStory, onClick: () -> Unit = {}) {
     BentoCard(
         padding = 12.dp,
-        modifier = Modifier.clickable(enabled = story.sourceUrl.isNotBlank(), onClick = onClick),
+        modifier = Modifier.clickable(onClick = onClick),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -2746,7 +2846,7 @@ private fun StoryCard(story: NewsStory, onClick: () -> Unit = {}) {
             Text(story.summary, style = FxTheme.typography.body, color = FxTheme.colors.textDim)
             if (story.source.isNotBlank()) {
                 Text(
-                    if (story.sourceUrl.isNotBlank()) "${story.source} · open source" else story.source,
+                    if (story.sourceUrl.isNotBlank()) "${story.source} · tap for details" else story.source,
                     style = FxTheme.typography.captionMono,
                     color = if (story.sourceUrl.isNotBlank()) FxTheme.colors.accent else FxTheme.colors.textFaint,
                 )

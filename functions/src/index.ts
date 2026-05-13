@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { defineSecret } from "firebase-functions/params";
 import { onRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 
@@ -9,7 +10,7 @@ const db = getFirestore();
 const region = "us-central1";
 const frankfurterBaseUrl = process.env.FRANKFURTER_BASE_URL ?? "https://api.frankfurter.dev/v2";
 const exchangeRateApiKey = process.env.EXCHANGE_RATE_API_KEY ?? "";
-const marketauxApiKey = process.env.MARKETAUX_API_KEY ?? "";
+const marketauxApiKey = defineSecret("MARKETAUX_API_KEY");
 const supportedBases = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD"];
 const warmPairs = [
   ["USD", "EUR"],
@@ -348,7 +349,7 @@ export const historicalRates = onRequest({ region, cors: true }, async (request,
   }
 });
 
-export const newsFeed = onRequest({ region, cors: true }, async (request, response) => {
+export const newsFeed = onRequest({ region, cors: true, secrets: [marketauxApiKey] }, async (request, response) => {
   try {
     const language = normalizeLanguage(request.query.language);
     const regionCode = normalizeRegion(request.query.region);
@@ -377,6 +378,7 @@ export const refreshNewsCache = onSchedule(
     region,
     schedule: "every 15 minutes",
     timeZone: "Etc/UTC",
+    secrets: [marketauxApiKey],
   },
   async () => {
     await Promise.all([
@@ -539,7 +541,7 @@ async function getNewsFeed(
   currencies: string[],
   forceRefresh = false,
 ): Promise<NewsFeedResponse> {
-  const feedKey = `${language}_${regionCode}_${currencies.join("-")}`;
+  const feedKey = `v2_${language}_${regionCode}_${currencies.join("-")}`;
   const ref = db.collection("fx_news_feeds").doc(feedKey);
   const cached = await ref.get();
   const cachedData = cached.data() as (NewsFeedResponse & { expiresAt?: Timestamp }) | undefined;
@@ -550,7 +552,7 @@ async function getNewsFeed(
 
   let payload: NewsFeedResponse;
   try {
-    payload = marketauxApiKey
+    payload = marketauxApiKeyValue()
       ? await fetchMarketauxNews(language, regionCode, currencies, feedKey)
       : await fetchGdeltNews(language, regionCode, currencies, feedKey);
   } catch (error) {
@@ -573,15 +575,14 @@ async function fetchMarketauxNews(
   feedKey: string,
 ): Promise<NewsFeedResponse> {
   const url = new URL("https://api.marketaux.com/v1/news/all");
-  url.searchParams.set("api_token", marketauxApiKey);
+  url.searchParams.set("api_token", marketauxApiKeyValue());
   url.searchParams.set("language", language);
-  url.searchParams.set("countries", regionCode.toLowerCase());
-  url.searchParams.set("symbols", currencies.join(","));
-  url.searchParams.set("filter_entities", "true");
-  url.searchParams.set("limit", "10");
+  url.searchParams.set("search", marketauxSearchQuery(currencies));
+  url.searchParams.set("group_similar", "true");
+  url.searchParams.set("limit", "3");
 
   const upstream = await fetchJson<MarketauxResponse>(url);
-  const items = (upstream.data ?? []).slice(0, 8).map((article, index) => {
+  const items = (upstream.data ?? []).slice(0, 3).map((article, index) => {
     const entitySentiment = article.entities?.find((entity) => typeof entity.sentiment_score === "number")?.sentiment_score ?? 0;
     const detectedCurrencies = detectCurrencies(`${article.title ?? ""} ${article.description ?? ""}`, currencies);
     return buildNewsItem({
@@ -598,7 +599,28 @@ async function fetchMarketauxNews(
     });
   });
 
+  if (items.length === 0) {
+    throw new Error("Marketaux returned no FX stories");
+  }
+
   return assembleNewsFeed(feedKey, language, regionCode, currencies, "Marketaux", items);
+}
+
+function marketauxApiKeyValue(): string {
+  return marketauxApiKey.value() || process.env.MARKETAUX_API_KEY || "";
+}
+
+function marketauxSearchQuery(currencies: string[]): string {
+  const currencyTerms = currencies
+    .flatMap((code) => currencyNewsTerms(code).slice(0, 2))
+    .slice(0, 10);
+  return Array.from(new Set([
+    ...currencyTerms,
+    "\"foreign exchange\"",
+    "\"central bank\"",
+    "inflation",
+    "rates",
+  ])).join(" | ");
 }
 
 async function fetchGdeltNews(
