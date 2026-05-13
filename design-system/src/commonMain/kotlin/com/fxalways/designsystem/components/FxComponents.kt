@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -445,19 +446,31 @@ fun FxBottomBar(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val dividerColor = FxTheme.colors.border.copy(alpha = 0.55f)
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(FxTheme.colors.bg2)
-            .border(1.dp, FxTheme.colors.border)
-            .padding(vertical = 8.dp),
+            .drawBehind {
+                drawLine(
+                    color = dividerColor,
+                    start = Offset(0f, 0f),
+                    end = Offset(size.width, 0f),
+                    strokeWidth = 1.dp.toPx(),
+                )
+            }
+            .padding(horizontal = 4.dp, vertical = 6.dp),
     ) {
         tabs.forEachIndexed { index, label ->
             val selected = index == selectedIndex
             Column(
-                modifier = Modifier.weight(1f).clickable { onSelect(index) }.padding(vertical = 8.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(FxTheme.shapes.field)
+                    .background(if (selected) FxTheme.colors.surface1 else Color.Transparent)
+                    .clickable { onSelect(index) }
+                    .padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 BottomTabIcon(label, if (selected) FxTheme.colors.accent else FxTheme.colors.textFaint)
                 Text(label.uppercase(), style = FxTheme.typography.tab, color = if (selected) FxTheme.colors.accent else FxTheme.colors.textFaint)

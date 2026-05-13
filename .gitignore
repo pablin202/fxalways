@@ -11,4 +11,5 @@ functions/.runtimeconfig.json
 
 *.iml
 .idea/
+**/xcuserdata/
 .DS_Store

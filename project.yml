@@ -15,7 +15,7 @@ targets:
     sources:
       - path: iosApp/iosApp
     dependencies:
-      - framework: composeApp/build/bin/iosSimulatorArm64/debugFramework/ComposeApp.framework
+      - framework: composeApp/build/bin/iosArm64/debugFramework/ComposeApp.framework
       - package: purchases-hybrid-common
         product: PurchasesHybridCommon
     postBuildScripts:
@@ -37,10 +37,11 @@ targets:
         MARKETING_VERSION: "1.0.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: WG3H7G372D
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
         FRAMEWORK_SEARCH_PATHS:
           - $(inherited)
-          - $(PROJECT_DIR)/composeApp/build/bin/iosSimulatorArm64/debugFramework
+          - $(PROJECT_DIR)/composeApp/build/bin/iosArm64/debugFramework
     info:
       path: iosApp/iosApp/Info.plist
       properties:
