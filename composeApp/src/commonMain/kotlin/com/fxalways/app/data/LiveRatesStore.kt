@@ -5,6 +5,7 @@ import com.fxalways.app.data.mock.ConverterRates
 import com.fxalways.app.data.mock.CryptoRates
 import com.fxalways.app.data.mock.DetailSeries
 import com.fxalways.app.data.mock.FavoriteRates
+import com.fxalways.app.domain.CurrencyInfo
 import com.fxalways.app.domain.HistoricalPoint
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
@@ -35,6 +36,7 @@ data class LiveRatesState(
     val crypto: List<FxRate> = CryptoRates,
     val converter: List<FxRate> = ConverterRates,
     val compare: List<FxRate> = CompareRates,
+    val allFiat: List<FxRate> = SettingsBaseCurrencies,
     val detailSeries: List<Float> = DetailSeries,
 )
 
@@ -79,9 +81,12 @@ class LiveRatesStore(
             }
             runCatching {
                 val base = _state.value.baseCurrency
-                val targets = targetDefinitions(base)
+                val catalog = runCatching { api.supportedCurrencies().currencies }.getOrElse { fallbackCurrencyCatalog }
                 val latest = api.latest(base)
-                val histories = targets.map { definition ->
+                val rateByCode = latest.rates.associateBy { it.code }
+                val targets = targetDefinitions(base, catalog, rateByCode.keys)
+                val historyTargets = targets.filter { it.code in historyCodes }.take(8)
+                val histories = historyTargets.map { definition ->
                     async {
                         val history = api.history(base, definition.code, days = 45)
                         definition to history.points
@@ -89,8 +94,8 @@ class LiveRatesStore(
                 }.awaitAll().toMap()
 
                 val liveRates = targets.map { definition ->
-                    val history = histories.getValue(definition)
-                    val rate = latest.rates.firstOrNull { it.code == definition.code }?.value ?: history.lastOrNull()?.value ?: definition.fallbackRate
+                    val history = histories[definition].orEmpty()
+                    val rate = rateByCode[definition.code]?.value ?: history.lastOrNull()?.value ?: definition.fallbackRate
                     val change = history.dailyChangePct() ?: definition.fallbackChange
                     FxRate(
                         code = definition.code,
@@ -103,13 +108,24 @@ class LiveRatesStore(
                         caption = "1 $base = ${formatCaptionRate(rate)} ${definition.code}",
                     )
                 }
+                val baseRate = currencyDefinition(base, catalog)?.let { definition ->
+                    FxRate(
+                        code = base,
+                        name = definition.name,
+                        glyph = definition.glyph,
+                        kind = CurrencyKind.Fiat,
+                        rate = 1.0,
+                        change24h = 0.0,
+                        sparkline = listOf(1f, 1f),
+                        caption = "1 $base = 1.0000 $base",
+                    )
+                }
+                val allFiatRates = (listOfNotNull(baseRate) + liveRates).distinctBy { it.code }
 
-                val favoriteRates = basePriority(base, favoriteCodes).mapNotNull { code -> liveRates.firstOrNull { it.code == code } }.take(5)
+                val favoriteRates = basePriority(base, favoriteCodes, liveRates).take(5)
                 val converterRates = buildList {
-                    currencyDefinition(base)?.let { definition ->
-                        add(FxRate(base, definition.name, definition.glyph, CurrencyKind.Fiat, 1.0, 0.0, listOf(1f, 1f), "1 $base = 1.0000 $base"))
-                    }
-                    basePriority(base, converterCodes).mapNotNull { code -> liveRates.firstOrNull { it.code == code } }.forEach(::add)
+                    baseRate?.let(::add)
+                    basePriority(base, converterCodes, liveRates).forEach(::add)
                     addAll(CryptoRates.take(1))
                 }
 
@@ -122,7 +138,8 @@ class LiveRatesStore(
                         autoRefreshLabel = "Auto-refresh every ${AUTO_REFRESH_INTERVAL_MILLIS / 60_000} min",
                         favorites = favoriteRates,
                         converter = converterRates,
-                        compare = basePriority(base, compareCodes).mapNotNull { code -> liveRates.firstOrNull { it.code == code } }.take(8),
+                        compare = basePriority(base, compareCodes, liveRates).take(8),
+                        allFiat = allFiatRates,
                         detailSeries = histories.values.firstOrNull()?.toSparkline(DetailSeries) ?: DetailSeries,
                     )
                 }
@@ -150,11 +167,13 @@ private data class LiveRateDefinition(
     val fallbackRate: Double,
     val fallbackChange: Double,
     val fallbackSparkline: List<Float>,
+    val isPopular: Boolean = false,
 )
 
 private val favoriteCodes = listOf("EUR", "GBP", "JPY", "CHF", "MXN", "USD")
 private val converterCodes = listOf("EUR", "GBP", "JPY", "USD")
 private val compareCodes = listOf("EUR", "GBP", "JPY", "CHF", "MXN", "BRL", "CAD", "AUD", "USD")
+private val historyCodes = (favoriteCodes + compareCodes).distinct()
 
 private val liveDefinitions = listOf(
     LiveRateDefinition("USD", "US Dollar", "🇺🇸", 1.0, 0.0, listOf(1f, 1f)),
@@ -172,14 +191,51 @@ val SettingsBaseCurrencies: List<FxRate> = liveDefinitions.map {
     FxRate(it.code, it.name, it.glyph, CurrencyKind.Fiat, it.fallbackRate, it.fallbackChange, it.fallbackSparkline)
 }
 
-private fun targetDefinitions(base: String): List<LiveRateDefinition> =
-    liveDefinitions.filterNot { it.code == base }
+private val fallbackCurrencyCatalog: List<CurrencyInfo> = liveDefinitions.map {
+    CurrencyInfo(
+        code = it.code,
+        name = it.name,
+        flag = it.glyph,
+        isPopular = it.code in favoriteCodes || it.code in compareCodes,
+    )
+}
 
-private fun currencyDefinition(code: String): LiveRateDefinition? =
-    liveDefinitions.firstOrNull { it.code == code }
+private fun targetDefinitions(base: String, catalog: List<CurrencyInfo>, availableCodes: Set<String>): List<LiveRateDefinition> {
+    val knownDefinitions = liveDefinitions.associateBy { it.code }
+    return catalog
+        .asSequence()
+        .filter { it.code != base && it.code in availableCodes }
+        .map { info ->
+            val known = knownDefinitions[info.code]
+            LiveRateDefinition(
+                code = info.code,
+                name = info.name.ifBlank { known?.name ?: info.code },
+                glyph = info.flag.ifBlank { known?.glyph ?: "◆" },
+                fallbackRate = known?.fallbackRate ?: 0.0,
+                fallbackChange = known?.fallbackChange ?: 0.0,
+                fallbackSparkline = known?.fallbackSparkline ?: listOf(1f, 1f),
+                isPopular = info.isPopular || info.code in favoriteCodes || info.code in compareCodes,
+            )
+        }
+        .sortedWith(compareByDescending<LiveRateDefinition> { it.isPopular }.thenBy { it.code })
+        .toList()
+}
 
-private fun basePriority(base: String, codes: List<String>): List<String> =
-    codes.filterNot { it == base } + liveDefinitions.map { it.code }.filterNot { it == base || it in codes }
+private fun currencyDefinition(code: String, catalog: List<CurrencyInfo>): LiveRateDefinition? {
+    val known = liveDefinitions.firstOrNull { it.code == code }
+    val info = catalog.firstOrNull { it.code == code }
+    return when {
+        known != null -> known
+        info != null -> LiveRateDefinition(info.code, info.name, info.flag.ifBlank { "◆" }, 1.0, 0.0, listOf(1f, 1f), info.isPopular)
+        else -> null
+    }
+}
+
+private fun basePriority(base: String, codes: List<String>, rates: List<FxRate>): List<FxRate> {
+    val byCode = rates.associateBy { it.code }
+    return (codes.filterNot { it == base }.mapNotNull { byCode[it] } +
+        rates.filterNot { it.code == base || it.code in codes }).distinctBy { it.code }
+}
 
 private fun formatCaptionRate(rate: Double): String =
     when {

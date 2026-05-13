@@ -18,6 +18,24 @@ data class LatestRates(
 )
 
 @Serializable
+data class CurrencyInfo(
+    val code: String,
+    val name: String,
+    val symbol: String = "",
+    val flag: String = "◆",
+    val country: String = "",
+    val region: String = "",
+    val isPopular: Boolean = false,
+)
+
+@Serializable
+data class SupportedCurrenciesResponse(
+    val provider: String,
+    val refreshedAt: String,
+    val currencies: List<CurrencyInfo>,
+)
+
+@Serializable
 data class HistoricalPoint(
     val date: String,
     val value: Double,

@@ -8,6 +8,7 @@ initializeApp();
 const db = getFirestore();
 const region = "us-central1";
 const frankfurterBaseUrl = process.env.FRANKFURTER_BASE_URL ?? "https://api.frankfurter.dev/v2";
+const exchangeRateApiKey = process.env.EXCHANGE_RATE_API_KEY ?? "";
 const marketauxApiKey = process.env.MARKETAUX_API_KEY ?? "";
 const supportedBases = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD"];
 const warmPairs = [
@@ -32,6 +33,22 @@ type LatestRatesResponse = {
   rates: Array<{ code: string; value: number }>;
   provider: string;
   refreshedAt: string;
+};
+
+type CurrencyInfo = {
+  code: string;
+  name: string;
+  symbol: string;
+  flag: string;
+  country: string;
+  region: string;
+  isPopular: boolean;
+};
+
+type SupportedCurrenciesResponse = {
+  provider: string;
+  refreshedAt: string;
+  currencies: CurrencyInfo[];
 };
 
 type HistoricalResponse = {
@@ -111,10 +128,208 @@ type MarketauxResponse = {
   data?: MarketauxArticle[];
 };
 
+type ExchangeRateApiLatestResponse = {
+  result?: string;
+  base_code?: string;
+  time_last_update_utc?: string;
+  conversion_rates?: Record<string, number>;
+  "error-type"?: string;
+};
+
+function currency(
+  code: string,
+  name: string,
+  symbol = "",
+  flag = "◆",
+  country = "",
+  region = "",
+  isPopular = false,
+): CurrencyInfo {
+  return { code, name, symbol, flag, country, region, isPopular };
+}
+
+const currencyCatalog: CurrencyInfo[] = [
+  currency("USD", "US Dollar", "$", "🇺🇸", "United States", "North America", true),
+  currency("EUR", "Euro", "€", "🇪🇺", "Eurozone", "Europe", true),
+  currency("GBP", "British Pound", "£", "🇬🇧", "United Kingdom", "Europe", true),
+  currency("JPY", "Japanese Yen", "¥", "🇯🇵", "Japan", "Asia", true),
+  currency("AUD", "Australian Dollar", "A$", "🇦🇺", "Australia", "Oceania", true),
+  currency("CAD", "Canadian Dollar", "C$", "🇨🇦", "Canada", "North America", true),
+  currency("CHF", "Swiss Franc", "Fr", "🇨🇭", "Switzerland", "Europe", true),
+  currency("CNY", "Chinese Yuan", "¥", "🇨🇳", "China", "Asia", true),
+  currency("BRL", "Brazilian Real", "R$", "🇧🇷", "Brazil", "South America", true),
+  currency("MXN", "Mexican Peso", "$", "🇲🇽", "Mexico", "North America", true),
+  currency("NZD", "New Zealand Dollar", "NZ$", "🇳🇿", "New Zealand", "Oceania", true),
+  currency("SGD", "Singapore Dollar", "S$", "🇸🇬", "Singapore", "Asia", true),
+  currency("AED", "UAE Dirham", "د.إ", "🇦🇪", "United Arab Emirates", "Middle East"),
+  currency("AFN", "Afghan Afghani", "؋", "🇦🇫", "Afghanistan", "Asia"),
+  currency("ALL", "Albanian Lek", "L", "🇦🇱", "Albania", "Europe"),
+  currency("AMD", "Armenian Dram", "֏", "🇦🇲", "Armenia", "Asia"),
+  currency("ANG", "Netherlands Antillean Guilder", "ƒ", "🇨🇼", "Curacao", "Caribbean"),
+  currency("AOA", "Angolan Kwanza", "Kz", "🇦🇴", "Angola", "Africa"),
+  currency("ARS", "Argentine Peso", "$", "🇦🇷", "Argentina", "South America"),
+  currency("AWG", "Aruban Florin", "ƒ", "🇦🇼", "Aruba", "Caribbean"),
+  currency("AZN", "Azerbaijani Manat", "₼", "🇦🇿", "Azerbaijan", "Asia"),
+  currency("BAM", "Bosnia-Herzegovina Convertible Mark", "KM", "🇧🇦", "Bosnia and Herzegovina", "Europe"),
+  currency("BBD", "Barbadian Dollar", "$", "🇧🇧", "Barbados", "Caribbean"),
+  currency("BDT", "Bangladeshi Taka", "৳", "🇧🇩", "Bangladesh", "Asia"),
+  currency("BGN", "Bulgarian Lev", "лв", "🇧🇬", "Bulgaria", "Europe"),
+  currency("BHD", "Bahraini Dinar", ".د.ب", "🇧🇭", "Bahrain", "Middle East"),
+  currency("BIF", "Burundian Franc", "FBu", "🇧🇮", "Burundi", "Africa"),
+  currency("BMD", "Bermudian Dollar", "$", "🇧🇲", "Bermuda", "Atlantic"),
+  currency("BND", "Brunei Dollar", "B$", "🇧🇳", "Brunei", "Asia"),
+  currency("BOB", "Bolivian Boliviano", "Bs", "🇧🇴", "Bolivia", "South America"),
+  currency("BSD", "Bahamian Dollar", "$", "🇧🇸", "Bahamas", "Caribbean"),
+  currency("BTN", "Bhutanese Ngultrum", "Nu.", "🇧🇹", "Bhutan", "Asia"),
+  currency("BWP", "Botswana Pula", "P", "🇧🇼", "Botswana", "Africa"),
+  currency("BYN", "Belarusian Ruble", "Br", "🇧🇾", "Belarus", "Europe"),
+  currency("BZD", "Belize Dollar", "BZ$", "🇧🇿", "Belize", "Central America"),
+  currency("CDF", "Congolese Franc", "FC", "🇨🇩", "Democratic Republic of the Congo", "Africa"),
+  currency("CLP", "Chilean Peso", "$", "🇨🇱", "Chile", "South America"),
+  currency("COP", "Colombian Peso", "$", "🇨🇴", "Colombia", "South America"),
+  currency("CRC", "Costa Rican Colon", "₡", "🇨🇷", "Costa Rica", "Central America"),
+  currency("CUP", "Cuban Peso", "$", "🇨🇺", "Cuba", "Caribbean"),
+  currency("CVE", "Cape Verdean Escudo", "$", "🇨🇻", "Cape Verde", "Africa"),
+  currency("CZK", "Czech Koruna", "Kč", "🇨🇿", "Czechia", "Europe"),
+  currency("DJF", "Djiboutian Franc", "Fdj", "🇩🇯", "Djibouti", "Africa"),
+  currency("DKK", "Danish Krone", "kr", "🇩🇰", "Denmark", "Europe"),
+  currency("DOP", "Dominican Peso", "RD$", "🇩🇴", "Dominican Republic", "Caribbean"),
+  currency("DZD", "Algerian Dinar", "دج", "🇩🇿", "Algeria", "Africa"),
+  currency("EGP", "Egyptian Pound", "£", "🇪🇬", "Egypt", "Africa"),
+  currency("ERN", "Eritrean Nakfa", "Nfk", "🇪🇷", "Eritrea", "Africa"),
+  currency("ETB", "Ethiopian Birr", "Br", "🇪🇹", "Ethiopia", "Africa"),
+  currency("FJD", "Fijian Dollar", "FJ$", "🇫🇯", "Fiji", "Oceania"),
+  currency("FKP", "Falkland Islands Pound", "£", "🇫🇰", "Falkland Islands", "Atlantic"),
+  currency("FOK", "Faroese Krona", "kr", "🇫🇴", "Faroe Islands", "Europe"),
+  currency("GEL", "Georgian Lari", "₾", "🇬🇪", "Georgia", "Asia"),
+  currency("GGP", "Guernsey Pound", "£", "🇬🇬", "Guernsey", "Europe"),
+  currency("GHS", "Ghanaian Cedi", "₵", "🇬🇭", "Ghana", "Africa"),
+  currency("GIP", "Gibraltar Pound", "£", "🇬🇮", "Gibraltar", "Europe"),
+  currency("GMD", "Gambian Dalasi", "D", "🇬🇲", "Gambia", "Africa"),
+  currency("GNF", "Guinean Franc", "FG", "🇬🇳", "Guinea", "Africa"),
+  currency("GTQ", "Guatemalan Quetzal", "Q", "🇬🇹", "Guatemala", "Central America"),
+  currency("GYD", "Guyanese Dollar", "$", "🇬🇾", "Guyana", "South America"),
+  currency("HKD", "Hong Kong Dollar", "HK$", "🇭🇰", "Hong Kong", "Asia"),
+  currency("HNL", "Honduran Lempira", "L", "🇭🇳", "Honduras", "Central America"),
+  currency("HRK", "Croatian Kuna", "kn", "🇭🇷", "Croatia", "Europe"),
+  currency("HTG", "Haitian Gourde", "G", "🇭🇹", "Haiti", "Caribbean"),
+  currency("HUF", "Hungarian Forint", "Ft", "🇭🇺", "Hungary", "Europe"),
+  currency("IDR", "Indonesian Rupiah", "Rp", "🇮🇩", "Indonesia", "Asia"),
+  currency("ILS", "Israeli New Shekel", "₪", "🇮🇱", "Israel", "Middle East"),
+  currency("IMP", "Isle of Man Pound", "£", "🇮🇲", "Isle of Man", "Europe"),
+  currency("INR", "Indian Rupee", "₹", "🇮🇳", "India", "Asia"),
+  currency("IQD", "Iraqi Dinar", "ع.د", "🇮🇶", "Iraq", "Middle East"),
+  currency("IRR", "Iranian Rial", "﷼", "🇮🇷", "Iran", "Middle East"),
+  currency("ISK", "Icelandic Krona", "kr", "🇮🇸", "Iceland", "Europe"),
+  currency("JEP", "Jersey Pound", "£", "🇯🇪", "Jersey", "Europe"),
+  currency("JMD", "Jamaican Dollar", "J$", "🇯🇲", "Jamaica", "Caribbean"),
+  currency("JOD", "Jordanian Dinar", "د.ا", "🇯🇴", "Jordan", "Middle East"),
+  currency("KES", "Kenyan Shilling", "KSh", "🇰🇪", "Kenya", "Africa"),
+  currency("KGS", "Kyrgyzstani Som", "с", "🇰🇬", "Kyrgyzstan", "Asia"),
+  currency("KHR", "Cambodian Riel", "៛", "🇰🇭", "Cambodia", "Asia"),
+  currency("KID", "Kiribati Dollar", "$", "🇰🇮", "Kiribati", "Oceania"),
+  currency("KMF", "Comorian Franc", "CF", "🇰🇲", "Comoros", "Africa"),
+  currency("KRW", "South Korean Won", "₩", "🇰🇷", "South Korea", "Asia"),
+  currency("KWD", "Kuwaiti Dinar", "د.ك", "🇰🇼", "Kuwait", "Middle East"),
+  currency("KYD", "Cayman Islands Dollar", "$", "🇰🇾", "Cayman Islands", "Caribbean"),
+  currency("KZT", "Kazakhstani Tenge", "₸", "🇰🇿", "Kazakhstan", "Asia"),
+  currency("LAK", "Lao Kip", "₭", "🇱🇦", "Laos", "Asia"),
+  currency("LBP", "Lebanese Pound", "ل.ل", "🇱🇧", "Lebanon", "Middle East"),
+  currency("LKR", "Sri Lankan Rupee", "Rs", "🇱🇰", "Sri Lanka", "Asia"),
+  currency("LRD", "Liberian Dollar", "$", "🇱🇷", "Liberia", "Africa"),
+  currency("LSL", "Lesotho Loti", "L", "🇱🇸", "Lesotho", "Africa"),
+  currency("LYD", "Libyan Dinar", "ل.د", "🇱🇾", "Libya", "Africa"),
+  currency("MAD", "Moroccan Dirham", "د.م.", "🇲🇦", "Morocco", "Africa"),
+  currency("MDL", "Moldovan Leu", "L", "🇲🇩", "Moldova", "Europe"),
+  currency("MGA", "Malagasy Ariary", "Ar", "🇲🇬", "Madagascar", "Africa"),
+  currency("MKD", "Macedonian Denar", "ден", "🇲🇰", "North Macedonia", "Europe"),
+  currency("MMK", "Myanmar Kyat", "Ks", "🇲🇲", "Myanmar", "Asia"),
+  currency("MNT", "Mongolian Tugrik", "₮", "🇲🇳", "Mongolia", "Asia"),
+  currency("MOP", "Macanese Pataca", "MOP$", "🇲🇴", "Macau", "Asia"),
+  currency("MRU", "Mauritanian Ouguiya", "UM", "🇲🇷", "Mauritania", "Africa"),
+  currency("MUR", "Mauritian Rupee", "₨", "🇲🇺", "Mauritius", "Africa"),
+  currency("MVR", "Maldivian Rufiyaa", "Rf", "🇲🇻", "Maldives", "Asia"),
+  currency("MWK", "Malawian Kwacha", "MK", "🇲🇼", "Malawi", "Africa"),
+  currency("MYR", "Malaysian Ringgit", "RM", "🇲🇾", "Malaysia", "Asia"),
+  currency("MZN", "Mozambican Metical", "MT", "🇲🇿", "Mozambique", "Africa"),
+  currency("NAD", "Namibian Dollar", "N$", "🇳🇦", "Namibia", "Africa"),
+  currency("NGN", "Nigerian Naira", "₦", "🇳🇬", "Nigeria", "Africa"),
+  currency("NIO", "Nicaraguan Cordoba", "C$", "🇳🇮", "Nicaragua", "Central America"),
+  currency("NOK", "Norwegian Krone", "kr", "🇳🇴", "Norway", "Europe"),
+  currency("NPR", "Nepalese Rupee", "₨", "🇳🇵", "Nepal", "Asia"),
+  currency("OMR", "Omani Rial", "ر.ع.", "🇴🇲", "Oman", "Middle East"),
+  currency("PAB", "Panamanian Balboa", "B/.", "🇵🇦", "Panama", "Central America"),
+  currency("PEN", "Peruvian Sol", "S/", "🇵🇪", "Peru", "South America"),
+  currency("PGK", "Papua New Guinean Kina", "K", "🇵🇬", "Papua New Guinea", "Oceania"),
+  currency("PHP", "Philippine Peso", "₱", "🇵🇭", "Philippines", "Asia"),
+  currency("PKR", "Pakistani Rupee", "₨", "🇵🇰", "Pakistan", "Asia"),
+  currency("PLN", "Polish Zloty", "zł", "🇵🇱", "Poland", "Europe"),
+  currency("PYG", "Paraguayan Guarani", "₲", "🇵🇾", "Paraguay", "South America"),
+  currency("QAR", "Qatari Riyal", "ر.ق", "🇶🇦", "Qatar", "Middle East"),
+  currency("RON", "Romanian Leu", "lei", "🇷🇴", "Romania", "Europe"),
+  currency("RSD", "Serbian Dinar", "дин", "🇷🇸", "Serbia", "Europe"),
+  currency("RUB", "Russian Ruble", "₽", "🇷🇺", "Russia", "Europe"),
+  currency("RWF", "Rwandan Franc", "FRw", "🇷🇼", "Rwanda", "Africa"),
+  currency("SAR", "Saudi Riyal", "﷼", "🇸🇦", "Saudi Arabia", "Middle East"),
+  currency("SBD", "Solomon Islands Dollar", "SI$", "🇸🇧", "Solomon Islands", "Oceania"),
+  currency("SCR", "Seychellois Rupee", "₨", "🇸🇨", "Seychelles", "Africa"),
+  currency("SDG", "Sudanese Pound", "ج.س.", "🇸🇩", "Sudan", "Africa"),
+  currency("SEK", "Swedish Krona", "kr", "🇸🇪", "Sweden", "Europe"),
+  currency("SHP", "Saint Helena Pound", "£", "🇸🇭", "Saint Helena", "Atlantic"),
+  currency("SLE", "Sierra Leonean Leone", "Le", "🇸🇱", "Sierra Leone", "Africa"),
+  currency("SLL", "Sierra Leonean Leone", "Le", "🇸🇱", "Sierra Leone", "Africa"),
+  currency("SOS", "Somali Shilling", "Sh", "🇸🇴", "Somalia", "Africa"),
+  currency("SRD", "Surinamese Dollar", "$", "🇸🇷", "Suriname", "South America"),
+  currency("SSP", "South Sudanese Pound", "£", "🇸🇸", "South Sudan", "Africa"),
+  currency("STN", "Sao Tome and Principe Dobra", "Db", "🇸🇹", "Sao Tome and Principe", "Africa"),
+  currency("SYP", "Syrian Pound", "£", "🇸🇾", "Syria", "Middle East"),
+  currency("SZL", "Eswatini Lilangeni", "L", "🇸🇿", "Eswatini", "Africa"),
+  currency("THB", "Thai Baht", "฿", "🇹🇭", "Thailand", "Asia"),
+  currency("TJS", "Tajikistani Somoni", "ЅМ", "🇹🇯", "Tajikistan", "Asia"),
+  currency("TMT", "Turkmenistani Manat", "m", "🇹🇲", "Turkmenistan", "Asia"),
+  currency("TND", "Tunisian Dinar", "د.ت", "🇹🇳", "Tunisia", "Africa"),
+  currency("TOP", "Tongan Pa'anga", "T$", "🇹🇴", "Tonga", "Oceania"),
+  currency("TRY", "Turkish Lira", "₺", "🇹🇷", "Turkey", "Europe"),
+  currency("TTD", "Trinidad and Tobago Dollar", "TT$", "🇹🇹", "Trinidad and Tobago", "Caribbean"),
+  currency("TVD", "Tuvaluan Dollar", "$", "🇹🇻", "Tuvalu", "Oceania"),
+  currency("TWD", "New Taiwan Dollar", "NT$", "🇹🇼", "Taiwan", "Asia"),
+  currency("TZS", "Tanzanian Shilling", "TSh", "🇹🇿", "Tanzania", "Africa"),
+  currency("UAH", "Ukrainian Hryvnia", "₴", "🇺🇦", "Ukraine", "Europe"),
+  currency("UGX", "Ugandan Shilling", "USh", "🇺🇬", "Uganda", "Africa"),
+  currency("UYU", "Uruguayan Peso", "$U", "🇺🇾", "Uruguay", "South America"),
+  currency("UZS", "Uzbekistani Som", "so'm", "🇺🇿", "Uzbekistan", "Asia"),
+  currency("VES", "Venezuelan Bolivar", "Bs.", "🇻🇪", "Venezuela", "South America"),
+  currency("VND", "Vietnamese Dong", "₫", "🇻🇳", "Vietnam", "Asia"),
+  currency("VUV", "Vanuatu Vatu", "VT", "🇻🇺", "Vanuatu", "Oceania"),
+  currency("WST", "Samoan Tala", "T", "🇼🇸", "Samoa", "Oceania"),
+  currency("XAF", "Central African CFA Franc", "FCFA", "🌍", "CEMAC", "Africa"),
+  currency("XCD", "East Caribbean Dollar", "EC$", "🌎", "Eastern Caribbean", "Caribbean"),
+  currency("XCG", "Caribbean Guilder", "Cg", "🌎", "Caribbean", "Caribbean"),
+  currency("XDR", "Special Drawing Rights", "SDR", "🌐", "IMF", "Global"),
+  currency("XOF", "West African CFA Franc", "CFA", "🌍", "UEMOA", "Africa"),
+  currency("XPF", "CFP Franc", "₣", "🇵🇫", "French Pacific", "Oceania"),
+  currency("YER", "Yemeni Rial", "﷼", "🇾🇪", "Yemen", "Middle East"),
+  currency("ZAR", "South African Rand", "R", "🇿🇦", "South Africa", "Africa"),
+  currency("ZMW", "Zambian Kwacha", "ZK", "🇿🇲", "Zambia", "Africa"),
+  currency("ZWL", "Zimbabwean Dollar", "Z$", "🇿🇼", "Zimbabwe", "Africa"),
+  currency("BTC", "Bitcoin", "₿", "₿", "Bitcoin", "Crypto"),
+  currency("ETH", "Ethereum", "Ξ", "Ξ", "Ethereum", "Crypto"),
+  currency("SOL", "Solana", "◎", "◎", "Solana", "Crypto"),
+];
+
 export const latestRates = onRequest({ region, cors: true }, async (request, response) => {
   try {
     const base = normalizeCurrency(request.query.base, "USD");
     const payload = await getLatestRates(base);
+    response.status(200).json(payload);
+  } catch (error) {
+    response.status(500).json({ message: errorMessage(error) });
+  }
+});
+
+export const supportedCurrencies = onRequest({ region, cors: true }, async (_request, response) => {
+  try {
+    const payload = await getSupportedCurrencies();
     response.status(200).json(payload);
   } catch (error) {
     response.status(500).json({ message: errorMessage(error) });
@@ -181,6 +396,15 @@ async function getLatestRates(base: string, forceRefresh = false): Promise<Lates
     return stripExpiry(cachedData);
   }
 
+  if (exchangeRateApiKey) {
+    const exchangeRatePayload = await getExchangeRateApiLatest(base);
+    await ref.set({
+      ...exchangeRatePayload,
+      expiresAt: Timestamp.fromMillis(Date.now() + 55 * 60 * 1000),
+    });
+    return exchangeRatePayload;
+  }
+
   const url = new URL(`${frankfurterBaseUrl}/rates`);
   url.searchParams.set("base", base);
 
@@ -199,6 +423,49 @@ async function getLatestRates(base: string, forceRefresh = false): Promise<Lates
   await ref.set({
     ...payload,
     expiresAt: Timestamp.fromMillis(Date.now() + 55 * 60 * 1000),
+  });
+
+  return payload;
+}
+
+async function getExchangeRateApiLatest(base: string): Promise<LatestRatesResponse> {
+  const url = new URL(`https://v6.exchangerate-api.com/v6/${exchangeRateApiKey}/latest/${base}`);
+  const upstream = await fetchJson<ExchangeRateApiLatestResponse>(url);
+  if (upstream.result && upstream.result !== "success") {
+    throw new Error(`ExchangeRate-API error: ${upstream["error-type"] ?? upstream.result}`);
+  }
+  const rates = Object.entries(upstream.conversion_rates ?? {})
+    .filter(([code, value]) => code !== base && typeof value === "number" && Number.isFinite(value))
+    .map(([code, value]) => ({ code, value }))
+    .sort((left, right) => left.code.localeCompare(right.code));
+
+  return {
+    base: upstream.base_code ?? base,
+    date: formatDate(new Date()),
+    rates,
+    provider: "ExchangeRate-API",
+    refreshedAt: new Date().toISOString(),
+  };
+}
+
+async function getSupportedCurrencies(): Promise<SupportedCurrenciesResponse> {
+  const ref = db.collection("fx_meta").doc("supported_currencies");
+  const cached = await ref.get();
+  const cachedData = cached.data() as (SupportedCurrenciesResponse & { expiresAt?: Timestamp }) | undefined;
+
+  if (cachedData?.expiresAt && cachedData.expiresAt.toMillis() > Date.now()) {
+    return stripExpiry(cachedData);
+  }
+
+  const payload: SupportedCurrenciesResponse = {
+    provider: exchangeRateApiKey ? "ExchangeRate-API catalog" : "FX Always catalog",
+    refreshedAt: new Date().toISOString(),
+    currencies: currencyCatalog,
+  };
+
+  await ref.set({
+    ...payload,
+    expiresAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
   });
 
   return payload;

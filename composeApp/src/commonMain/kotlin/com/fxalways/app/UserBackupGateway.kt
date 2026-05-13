@@ -9,6 +9,8 @@ import kotlinx.serialization.Serializable
 data class BackupSettings(
     val themeMode: String = ThemeMode.System.name,
     val baseCurrency: String = "USD",
+    val travelerCurrency: String = "JPY",
+    val travelerBudgetBase: Double = 100.0,
 )
 
 @Serializable
@@ -36,9 +38,15 @@ data class AccountLinkResult(
 )
 
 fun UserBackupSnapshot.isDefaultLocalBackup(): Boolean =
-    settings == BackupSettings() &&
+    settings.isDefaultLocalSettings() &&
         alerts.isEmpty() &&
         watchlist == Watchlist()
+
+private fun BackupSettings.isDefaultLocalSettings(): Boolean =
+    themeMode == ThemeMode.System.name &&
+        baseCurrency in setOf("USD", DeviceLocale.currencyCode) &&
+        travelerCurrency == "JPY" &&
+        travelerBudgetBase == 100.0
 
 expect object UserBackupGateway {
     suspend fun ensureUser(): UserBackupState

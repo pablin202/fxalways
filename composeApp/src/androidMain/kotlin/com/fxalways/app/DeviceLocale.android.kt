@@ -1,6 +1,7 @@
 package com.fxalways.app
 
 import java.util.Locale
+import java.util.Currency
 
 actual object DeviceLocale {
     actual val language: String
@@ -8,4 +9,9 @@ actual object DeviceLocale {
 
     actual val region: String
         get() = Locale.getDefault().country.takeIf { it.length == 2 } ?: "US"
+
+    actual val currencyCode: String
+        get() = runCatching {
+            Currency.getInstance(Locale("", region)).currencyCode
+        }.getOrNull()?.takeIf { it.length == 3 } ?: fallbackCurrencyForRegion(region)
 }

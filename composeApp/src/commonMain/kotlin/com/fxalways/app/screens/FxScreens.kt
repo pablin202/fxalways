@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
@@ -29,6 +30,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
@@ -123,7 +126,6 @@ import com.fxalways.designsystem.components.formatRate
 import com.fxalways.designsystem.theme.FxTheme
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import kotlin.math.roundToInt
 
 enum class FxTab(val label: String) {
     Rates("Rates"),
@@ -149,6 +151,8 @@ fun FxAppShell() {
     var showPaywall by remember { mutableStateOf(false) }
     var themeMode by remember { mutableStateOf(AppSettingsPrefs.themeMode()) }
     var baseCurrency by remember { mutableStateOf(AppSettingsPrefs.baseCurrency()) }
+    var travelerCurrency by remember { mutableStateOf(AppSettingsPrefs.travelerCurrency()) }
+    var travelerBudgetBase by remember { mutableStateOf(AppSettingsPrefs.travelerBudgetBase()) }
     val liveStore = remember { LiveRatesStore(initialBaseCurrency = baseCurrency) }
     val newsStore = remember { NewsStore() }
     val alertsStore = remember { AlertsStore() }
@@ -186,7 +190,7 @@ fun FxAppShell() {
         backupState = UserBackupGateway.ensureUser()
         if (backupState.isAvailable) {
             runCatching {
-                val localSnapshot = buildUserBackupSnapshot(themeMode, baseCurrency, alertsState, watchlistState)
+                val localSnapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
                 val remoteSnapshot = UserBackupGateway.pullSnapshot()
                 if (remoteSnapshot != null && localSnapshot.isDefaultLocalBackup()) {
                     themeMode = applyUserBackupSnapshot(
@@ -194,6 +198,8 @@ fun FxAppShell() {
                         alertsStore = alertsStore,
                         watchlistStore = watchlistStore,
                         liveStore = liveStore,
+                        onTravelerCurrency = { travelerCurrency = it },
+                        onTravelerBudgetBase = { travelerBudgetBase = it },
                     )
                     baseCurrency = remoteSnapshot.settings.baseCurrency
                 } else if (remoteSnapshot == null) {
@@ -208,10 +214,10 @@ fun FxAppShell() {
         }
         backupReady = backupState.isAvailable
     }
-    LaunchedEffect(themeMode, baseCurrency, alertsState, watchlistState, backupReady) {
+    LaunchedEffect(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState, backupReady) {
         if (backupReady) {
             runCatching {
-                val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, alertsState, watchlistState)
+                val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
                 UserBackupGateway.pushSnapshot(snapshot)
                 lastSyncedAtMillis = snapshot.updatedAtMillis
             }.onFailure { error ->
@@ -376,12 +382,23 @@ fun FxAppShell() {
                             MoreRoute.Traveler -> TravelerScreen(
                                 liveState = liveState,
                                 subscriptionState = subscriptionState,
+                                selectedCurrency = travelerCurrency,
+                                budgetBase = travelerBudgetBase,
                                 onBack = { moreRoute = MoreRoute.Menu },
+                                onCurrencySelected = { code ->
+                                    travelerCurrency = code
+                                    AppSettingsPrefs.setTravelerCurrency(code)
+                                },
+                                onBudgetChange = { amount ->
+                                    travelerBudgetBase = amount
+                                    AppSettingsPrefs.setTravelerBudgetBase(amount)
+                                },
                                 onOpenPaywall = { showPaywall = true },
                             )
                             MoreRoute.Settings -> SettingsScreen(
                                 themeMode = themeMode,
                                 baseCurrency = baseCurrency,
+                                availableBaseCurrencies = liveState.allFiat,
                                 backupState = backupState,
                                 backupSyncing = backupSyncing,
                                 lastSyncedAtMillis = lastSyncedAtMillis,
@@ -399,7 +416,7 @@ fun FxAppShell() {
                                     scope.launch {
                                         backupSyncing = true
                                         runCatching {
-                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, alertsState, watchlistState)
+                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
                                             UserBackupGateway.pushSnapshot(snapshot)
                                             backupState = UserBackupGateway.ensureUser()
                                             lastSyncedAtMillis = snapshot.updatedAtMillis
@@ -414,7 +431,7 @@ fun FxAppShell() {
                                         backupSyncing = true
                                         backupReady = false
                                         runCatching {
-                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, alertsState, watchlistState)
+                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
                                             val result = when (PlatformConfig.platform) {
                                                 Platform.Android -> UserBackupGateway.linkWithGoogle(snapshot)
                                                 Platform.Ios -> UserBackupGateway.linkWithApple(snapshot)
@@ -425,6 +442,8 @@ fun FxAppShell() {
                                                 alertsStore = alertsStore,
                                                 watchlistStore = watchlistStore,
                                                 liveStore = liveStore,
+                                                onTravelerCurrency = { travelerCurrency = it },
+                                                onTravelerBudgetBase = { travelerBudgetBase = it },
                                             )
                                             themeMode = appliedTheme
                                             baseCurrency = result.snapshot.settings.baseCurrency
@@ -442,7 +461,7 @@ fun FxAppShell() {
                                         backupSyncing = true
                                         backupReady = false
                                         runCatching {
-                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, alertsState, watchlistState)
+                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
                                             val result = UserBackupGateway.signOutToAnonymous(snapshot)
                                             backupState = result.state
                                             lastSyncedAtMillis = result.snapshot.updatedAtMillis
@@ -986,17 +1005,53 @@ private fun CompareTile(rate: FxRate, baseCurrency: String, onOpenDetail: (FxRat
 fun TravelerScreen(
     liveState: LiveRatesState,
     subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
+    selectedCurrency: String = "JPY",
+    budgetBase: Double = 100.0,
     onBack: (() -> Unit)? = null,
+    onCurrencySelected: (String) -> Unit = {},
+    onBudgetChange: (Double) -> Unit = {},
     onOpenPaywall: () -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
-    val jpy = liveState.favorites.firstOrNull { it.code == "JPY" }?.rate ?: 156.42
-    val baseDefinition = SettingsBaseCurrencies.firstOrNull { it.code == liveState.baseCurrency }
+    val travelRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat) {
+        liveState.portfolioRates().filterNot { it.code == liveState.baseCurrency }
+    }
+    val destinationLimit = if (access.canUseAdvancedTraveler) 12 else 8
+    val visibleDestinations = remember(travelRates, selectedCurrency, destinationLimit) {
+        compactCurrencyChoices(travelRates, selectedCurrency, destinationLimit)
+    }
+    val selectedRate = travelRates.firstOrNull { it.code == selectedCurrency }
+        ?: visibleDestinations.firstOrNull()
+        ?: FavoriteRates.first()
+    val destination = travelerDestination(selectedRate.code)
+    val budgetLocal = budgetBase * selectedRate.rate
+    val cheatAmounts = listOf(1, 5, 10, 20, 50, 100, 250, 500).take(access.travelerCheatSheetLimit.cap(8))
+    val baseDefinition = liveState.allFiat.firstOrNull { it.code == liveState.baseCurrency }
+        ?: SettingsBaseCurrencies.firstOrNull { it.code == liveState.baseCurrency }
+    var budgetText by remember { mutableStateOf(if (budgetBase > 0.0) formatMoneyValue(budgetBase) else "") }
+    var showDestinationPicker by remember { mutableStateOf(false) }
+    if (showDestinationPicker) {
+        CurrencyPickerSheet(
+            title = "Choose destination",
+            subtitle = "${travelRates.size} live currencies · ${liveState.baseCurrency} base",
+            currencies = travelRates,
+            selectedCode = selectedRate.code,
+            onDismiss = { showDestinationPicker = false },
+            onSelect = { code ->
+                showDestinationPicker = false
+                onCurrencySelected(code)
+            },
+        )
+    }
     ScreenScaffold {
         if (onBack != null) {
             BackNavButton(label = "More", onClick = onBack)
         }
-        ScreenHeader("Traveler", sub = "TOKYO · JPY", subtitle = "Local currency detected")
+        ScreenHeader(
+            "Traveler",
+            sub = "${destination.city.uppercase()} · ${selectedRate.code}",
+            subtitle = if (liveState.isLive) "Live ${liveState.baseCurrency} rates · ${liveState.updatedLabel}" else "Offline snapshot · ${liveState.baseCurrency} base",
+        )
         BentoCard(Modifier.fillMaxWidth().height(156.dp), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.18f))
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
@@ -1004,18 +1059,82 @@ fun TravelerScreen(
                     FlagDot(baseDefinition?.glyph ?: "◆", size = 28.dp)
                     Text("1 ${liveState.baseCurrency}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                     Text("→", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.textFaint)
-                    Text("JPY", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                    FlagDot("🇯🇵", size = 28.dp)
+                    Text(selectedRate.code, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    FlagDot(destination.flag, size = 28.dp)
                 }
-                BigValueText("¥${formatRate(jpy)}")
-                Text("+0.68% today · mid-market", style = FxTheme.typography.captionMono, color = FxTheme.colors.up)
+                BigValueText("${destination.symbol}${formatRate(selectedRate.rate)}")
+                Text("${formatChange(selectedRate.change24h)} today · mid-market", style = FxTheme.typography.captionMono, color = if (selectedRate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down)
             }
         }
+
+        SectionLabel("DESTINATION")
+        BentoCard(padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                visibleDestinations.chunked(4).forEach { rowRates ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowRates.forEach { rate ->
+                            val item = travelerDestination(rate.code)
+                            Pill(
+                                "${item.flag} ${rate.code}",
+                                variant = if (rate.code == selectedRate.code) PillVariant.Accent else PillVariant.Ghost,
+                                modifier = Modifier.clickable { onCurrencySelected(rate.code) },
+                            )
+                        }
+                    }
+                }
+                SettingChoiceRow(
+                    title = "More destinations",
+                    subtitle = if (access.canUseAdvancedTraveler) {
+                        "Search ${travelRates.size} supported live currencies"
+                    } else {
+                        "Free shows ${visibleDestinations.size}; Pro unlocks every supported currency"
+                    },
+                    selected = false,
+                    actionLabel = "more +",
+                    onClick = {
+                        if (access.canUseAdvancedTraveler) showDestinationPicker = true else onOpenPaywall()
+                    },
+                )
+                if (!access.canUseAdvancedTraveler && travelRates.size > visibleDestinations.size) {
+                    Text("Free keeps the destination picker focused on the most common travel currencies.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                }
+            }
+        }
+
+        SectionLabel("TRIP BUDGET")
+        BentoCard(padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Eyebrow("BUDGET · ${liveState.baseCurrency}")
+                        BasicTextField(
+                            value = budgetText,
+                            onValueChange = { raw ->
+                                val next = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)
+                                budgetText = next
+                                onBudgetChange(next.replace(",", "").toDoubleOrNull() ?: 0.0)
+                            },
+                            singleLine = true,
+                            textStyle = FxTheme.typography.numberL.copy(color = FxTheme.colors.text),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                        Eyebrow("LOCAL")
+                        Text("${destination.symbol}${formatMoneyValue(budgetLocal)}", style = FxTheme.typography.numberL, color = FxTheme.colors.text)
+                    }
+                }
+                KeyValueRow("Daily range", "${destination.symbol}${formatMoneyValue(budgetLocal / 3.0)} · 3 days")
+                KeyValueRow("Cash buffer", "${destination.symbol}${formatMoneyValue(budgetLocal * destination.cashBufferPct)}")
+            }
+        }
+
         SectionLabel("CHEAT SHEET")
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                listOf(1, 5, 10, 20, 50, 100).take(access.travelerCheatSheetLimit.cap(6)).forEach { amount ->
-                    KeyValueRow("$amount ${liveState.baseCurrency}", "¥${(amount * jpy).roundToInt()}")
+                cheatAmounts.forEach { amount ->
+                    KeyValueRow("$amount ${liveState.baseCurrency}", "${destination.symbol}${formatMoneyValue(amount * selectedRate.rate)}")
                 }
             }
         }
@@ -1028,8 +1147,8 @@ fun TravelerScreen(
         }
         SectionLabel("LOCAL ETIQUETTE")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricTile("TIPPING · RESTAURANT", "0%", "not customary · can offend", Modifier.weight(1f))
-            MetricTile("TAX · INCLUDED", "10%", "consumption tax", Modifier.weight(1f))
+            MetricTile("TIPPING", destination.tipping, destination.tippingNote, Modifier.weight(1f))
+            MetricTile("TAX", destination.tax, destination.taxNote, Modifier.weight(1f))
         }
         BentoTile(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -1037,16 +1156,218 @@ fun TravelerScreen(
                     Eyebrow("CARDS ACCEPTED")
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Pill("Visa")
-                        Pill("Mastercard")
-                        Pill("Suica")
+                        destination.paymentRails.forEach { Pill(it) }
                     }
                 }
-                Text("cash preferred", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                Text(destination.cashNote, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            }
+        }
+        SectionLabel("LOCAL PRICE GUIDE", right = "Estimates")
+        BentoCard(padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                destination.priceGuide.forEach { item ->
+                    val basePrice = item.localAmount / selectedRate.rate
+                    KeyValueRow(item.label, "${destination.symbol}${formatMoneyValue(item.localAmount)} · ${liveState.baseCurrency} ${formatMoneyValue(basePrice)}")
+                }
             }
         }
     }
 }
+
+private data class TravelerDestination(
+    val code: String,
+    val city: String,
+    val flag: String,
+    val symbol: String,
+    val tipping: String,
+    val tippingNote: String,
+    val tax: String,
+    val taxNote: String,
+    val cashNote: String,
+    val cashBufferPct: Double,
+    val paymentRails: List<String>,
+    val priceGuide: List<TravelerPriceGuide>,
+)
+
+private data class TravelerPriceGuide(
+    val label: String,
+    val localAmount: Double,
+)
+
+private fun travelerDestination(code: String): TravelerDestination =
+    travelerDestinations[code] ?: TravelerDestination(
+        code = code,
+        city = code,
+        flag = "◆",
+        symbol = "$code ",
+        tipping = "Check",
+        tippingNote = "varies by city",
+        tax = "Varies",
+        taxNote = "verify locally",
+        cashNote = "mixed payments",
+        cashBufferPct = 0.20,
+        paymentRails = listOf("Visa", "Mastercard"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 4.0),
+            TravelerPriceGuide("Casual meal", 18.0),
+            TravelerPriceGuide("Taxi start", 8.0),
+        ),
+    )
+
+private val travelerDestinations = mapOf(
+    "JPY" to TravelerDestination(
+        code = "JPY",
+        city = "Tokyo",
+        flag = "🇯🇵",
+        symbol = "¥",
+        tipping = "0%",
+        tippingNote = "not customary",
+        tax = "10%",
+        taxNote = "often included",
+        cashNote = "cash useful",
+        cashBufferPct = 0.25,
+        paymentRails = listOf("Visa", "Mastercard", "Suica"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 450.0),
+            TravelerPriceGuide("Ramen", 1_100.0),
+            TravelerPriceGuide("Metro ride", 220.0),
+            TravelerPriceGuide("Taxi start", 500.0),
+        ),
+    ),
+    "EUR" to TravelerDestination(
+        code = "EUR",
+        city = "Eurozone",
+        flag = "🇪🇺",
+        symbol = "€",
+        tipping = "5-10%",
+        tippingNote = "service dependent",
+        tax = "Included",
+        taxNote = "VAT in price",
+        cashNote = "cards common",
+        cashBufferPct = 0.15,
+        paymentRails = listOf("Visa", "Mastercard", "SEPA"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 3.5),
+            TravelerPriceGuide("Casual meal", 18.0),
+            TravelerPriceGuide("Transit ticket", 2.5),
+            TravelerPriceGuide("Taxi start", 5.0),
+        ),
+    ),
+    "GBP" to TravelerDestination(
+        code = "GBP",
+        city = "London",
+        flag = "🇬🇧",
+        symbol = "£",
+        tipping = "10-12.5%",
+        tippingNote = "often optional",
+        tax = "Included",
+        taxNote = "VAT in price",
+        cashNote = "contactless first",
+        cashBufferPct = 0.10,
+        paymentRails = listOf("Visa", "Mastercard", "Oyster"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 3.8),
+            TravelerPriceGuide("Pub meal", 18.0),
+            TravelerPriceGuide("Tube ride", 2.8),
+            TravelerPriceGuide("Taxi start", 4.2),
+        ),
+    ),
+    "MXN" to TravelerDestination(
+        code = "MXN",
+        city = "Mexico City",
+        flag = "🇲🇽",
+        symbol = "$",
+        tipping = "10-15%",
+        tippingNote = "restaurants",
+        tax = "16%",
+        taxNote = "usually included",
+        cashNote = "carry cash",
+        cashBufferPct = 0.30,
+        paymentRails = listOf("Visa", "Mastercard", "Cash"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 55.0),
+            TravelerPriceGuide("Tacos", 120.0),
+            TravelerPriceGuide("Metro ride", 5.0),
+            TravelerPriceGuide("Taxi start", 50.0),
+        ),
+    ),
+    "BRL" to TravelerDestination(
+        code = "BRL",
+        city = "Sao Paulo",
+        flag = "🇧🇷",
+        symbol = "R$",
+        tipping = "10%",
+        tippingNote = "often service charge",
+        tax = "Included",
+        taxNote = "varies by item",
+        cashNote = "cards common",
+        cashBufferPct = 0.20,
+        paymentRails = listOf("Visa", "Mastercard", "Pix"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 9.0),
+            TravelerPriceGuide("Lunch", 45.0),
+            TravelerPriceGuide("Metro ride", 5.0),
+            TravelerPriceGuide("Taxi start", 6.0),
+        ),
+    ),
+    "AUD" to TravelerDestination(
+        code = "AUD",
+        city = "Sydney",
+        flag = "🇦🇺",
+        symbol = "A$",
+        tipping = "0-10%",
+        tippingNote = "optional",
+        tax = "10%",
+        taxNote = "GST included",
+        cashNote = "cards common",
+        cashBufferPct = 0.10,
+        paymentRails = listOf("Visa", "Mastercard", "Opal"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 5.0),
+            TravelerPriceGuide("Casual meal", 24.0),
+            TravelerPriceGuide("Transit ride", 4.5),
+            TravelerPriceGuide("Taxi start", 6.5),
+        ),
+    ),
+    "CAD" to TravelerDestination(
+        code = "CAD",
+        city = "Toronto",
+        flag = "🇨🇦",
+        symbol = "C$",
+        tipping = "15-20%",
+        tippingNote = "restaurants",
+        tax = "+ tax",
+        taxNote = "often added",
+        cashNote = "cards common",
+        cashBufferPct = 0.10,
+        paymentRails = listOf("Visa", "Mastercard", "Interac"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 4.5),
+            TravelerPriceGuide("Casual meal", 22.0),
+            TravelerPriceGuide("Transit fare", 3.4),
+            TravelerPriceGuide("Taxi start", 4.5),
+        ),
+    ),
+    "CHF" to TravelerDestination(
+        code = "CHF",
+        city = "Zurich",
+        flag = "🇨🇭",
+        symbol = "Fr ",
+        tipping = "0-10%",
+        tippingNote = "round up",
+        tax = "Included",
+        taxNote = "VAT in price",
+        cashNote = "cards common",
+        cashBufferPct = 0.10,
+        paymentRails = listOf("Visa", "Mastercard", "Twint"),
+        priceGuide = listOf(
+            TravelerPriceGuide("Coffee", 5.0),
+            TravelerPriceGuide("Casual meal", 28.0),
+            TravelerPriceGuide("Transit ticket", 4.4),
+            TravelerPriceGuide("Taxi start", 8.0),
+        ),
+    ),
+)
 
 @Composable
 fun MoreScreen(
@@ -1765,6 +2086,7 @@ fun NewsScreen(
 fun SettingsScreen(
     themeMode: ThemeMode,
     baseCurrency: String,
+    availableBaseCurrencies: List<FxRate> = SettingsBaseCurrencies,
     backupState: UserBackupState,
     backupSyncing: Boolean,
     lastSyncedAtMillis: Long?,
@@ -1780,7 +2102,26 @@ fun SettingsScreen(
     onBaseCurrencyChange: (String) -> Unit,
 ) {
     val access = subscriptionState.featureAccess()
-    val baseCurrencies = SettingsBaseCurrencies.take(access.baseCurrencyLimit.cap(SettingsBaseCurrencies.size))
+    val fullBaseCurrencies = availableBaseCurrencies.ifEmpty { SettingsBaseCurrencies }
+    val canUseAllBaseCurrencies = access.baseCurrencyLimit == Int.MAX_VALUE
+    val baseCurrencyLimit = if (canUseAllBaseCurrencies) 12 else access.baseCurrencyLimit.cap(fullBaseCurrencies.size)
+    val baseCurrencies = remember(fullBaseCurrencies, baseCurrency, baseCurrencyLimit) {
+        compactCurrencyChoices(fullBaseCurrencies, baseCurrency, baseCurrencyLimit)
+    }
+    var showBaseCurrencyPicker by remember { mutableStateOf(false) }
+    if (showBaseCurrencyPicker) {
+        CurrencyPickerSheet(
+            title = "Choose base currency",
+            subtitle = "${fullBaseCurrencies.size} supported live currencies",
+            currencies = fullBaseCurrencies,
+            selectedCode = baseCurrency,
+            onDismiss = { showBaseCurrencyPicker = false },
+            onSelect = { code ->
+                showBaseCurrencyPicker = false
+                onBaseCurrencyChange(code)
+            },
+        )
+    }
     ScreenScaffold {
         if (onBack != null) {
             BackNavButton(label = "More", onClick = onBack)
@@ -1876,12 +2217,25 @@ fun SettingsScreen(
                         onClick = { onBaseCurrencyChange(currency.code) },
                     )
                 }
+                SettingChoiceRow(
+                    title = "More currencies",
+                    subtitle = if (canUseAllBaseCurrencies) {
+                        "Search ${fullBaseCurrencies.size} supported base currencies"
+                    } else {
+                        "Free includes ${baseCurrencies.size}; Pro unlocks ${fullBaseCurrencies.size}"
+                    },
+                    selected = false,
+                    actionLabel = "more +",
+                    onClick = {
+                        if (canUseAllBaseCurrencies) showBaseCurrencyPicker = true else onOpenPaywall()
+                    },
+                )
             }
         }
-        if (baseCurrencies.size < SettingsBaseCurrencies.size) {
+        if (!canUseAllBaseCurrencies && baseCurrencies.size < fullBaseCurrencies.size) {
             ProUpsellCard(
                 title = "Unlock all base currencies",
-                subtitle = "Free includes ${baseCurrencies.size}; Pro unlocks every supported base currency.",
+                subtitle = "Free includes ${baseCurrencies.size}; Pro unlocks ${fullBaseCurrencies.size} supported base currencies.",
                 onClick = onOpenPaywall,
             )
         }
@@ -1993,6 +2347,98 @@ private fun SettingChoiceRow(
         }
         Pill(actionLabel, variant = if (selected) PillVariant.Accent else PillVariant.Ghost)
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CurrencyPickerSheet(
+    title: String,
+    subtitle: String,
+    currencies: List<FxRate>,
+    selectedCode: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val rows = remember(currencies, query) {
+        val term = query.trim()
+        currencies
+            .distinctBy { it.code }
+            .filter { currency ->
+                term.isBlank() ||
+                    currency.code.contains(term, ignoreCase = true) ||
+                    currency.name.contains(term, ignoreCase = true)
+            }
+            .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.name })
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = FxTheme.colors.surface1,
+        contentColor = FxTheme.colors.text,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 620.dp)
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(title, style = FxTheme.typography.titleL, color = FxTheme.colors.text)
+                Text(subtitle, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+            }
+            BentoCard(padding = 12.dp) {
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it.take(24) },
+                    singleLine = true,
+                    textStyle = FxTheme.typography.body.copy(color = FxTheme.colors.text),
+                    modifier = Modifier.fillMaxWidth(),
+                    decorationBox = { innerTextField ->
+                        if (query.isBlank()) {
+                            Text("Search currency", style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
+                        }
+                        innerTextField()
+                    },
+                )
+            }
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                rows.forEach { currency ->
+                    SettingChoiceRow(
+                        title = "${currency.glyph}  ${currency.code}",
+                        subtitle = currency.name,
+                        selected = currency.code == selectedCode,
+                        onClick = { onSelect(currency.code) },
+                    )
+                }
+                if (rows.isEmpty()) {
+                    Text("No currencies found", style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+private val PopularCurrencyCodes = listOf("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD")
+
+private fun compactCurrencyChoices(
+    currencies: List<FxRate>,
+    selectedCode: String,
+    limit: Int,
+): List<FxRate> {
+    val distinct = currencies.distinctBy { it.code }
+    val byCode = distinct.associateBy { it.code }
+    val selected = byCode[selectedCode]
+    val popular = PopularCurrencyCodes.mapNotNull { byCode[it] }
+    return (listOfNotNull(selected) + popular.filterNot { it.code == selectedCode })
+        .take(limit)
+        .ifEmpty { distinct.take(limit) }
 }
 
 private val ThemeMode.label: String
@@ -2127,16 +2573,15 @@ private fun shortAgeLabel(millis: Long): String {
 }
 
 private fun LiveRatesState.alertRates(): List<FxRate> =
-    (favorites + compare + converter)
+    (favorites + compare + converter + allFiat)
         .filterNot { it.code == baseCurrency }
         .distinctBy { it.code }
-        .take(10)
+        .take(24)
 
 private fun LiveRatesState.portfolioRates(): List<FxRate> =
-    (converter + favorites + compare)
+    (converter + favorites + compare + allFiat)
         .distinctBy { it.code }
         .sortedWith(compareByDescending<FxRate> { it.code == baseCurrency }.thenBy { it.code })
-        .take(10)
 
 private data class PortfolioHolding(
     val rate: FxRate,
@@ -2176,12 +2621,19 @@ private fun formatMoneyValue(value: Double): String =
 private fun buildUserBackupSnapshot(
     themeMode: ThemeMode,
     baseCurrency: String,
+    travelerCurrency: String,
+    travelerBudgetBase: Double,
     alertsState: AlertsState,
     watchlistState: WatchlistState,
 ): UserBackupSnapshot =
     UserBackupSnapshot(
         updatedAtMillis = Clock.System.now().toEpochMilliseconds(),
-        settings = BackupSettings(themeMode = themeMode.name, baseCurrency = baseCurrency),
+        settings = BackupSettings(
+            themeMode = themeMode.name,
+            baseCurrency = baseCurrency,
+            travelerCurrency = travelerCurrency,
+            travelerBudgetBase = travelerBudgetBase,
+        ),
         alerts = alertsState.alerts,
         watchlist = watchlistState.watchlist,
     )
@@ -2191,11 +2643,17 @@ private fun applyUserBackupSnapshot(
     alertsStore: AlertsStore,
     watchlistStore: WatchlistStore,
     liveStore: LiveRatesStore,
+    onTravelerCurrency: (String) -> Unit,
+    onTravelerBudgetBase: (Double) -> Unit,
 ): ThemeMode {
     val theme = ThemeMode.entries.firstOrNull { it.name == snapshot.settings.themeMode } ?: ThemeMode.System
     AppSettingsPrefs.setThemeMode(theme)
     AppSettingsPrefs.setBaseCurrency(snapshot.settings.baseCurrency)
+    AppSettingsPrefs.setTravelerCurrency(snapshot.settings.travelerCurrency)
+    AppSettingsPrefs.setTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     liveStore.setBaseCurrency(snapshot.settings.baseCurrency)
+    onTravelerCurrency(snapshot.settings.travelerCurrency)
+    onTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     alertsStore.replaceAll(snapshot.alerts)
     watchlistStore.replaceFromBackup(snapshot.watchlist)
     return theme

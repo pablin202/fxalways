@@ -4,6 +4,8 @@ actual object AppSettingsPrefs {
     private const val NAME = "fx_always_prefs"
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_BASE_CURRENCY = "base_currency"
+    private const val KEY_TRAVELER_CURRENCY = "traveler_currency"
+    private const val KEY_TRAVELER_BUDGET_BASE = "traveler_budget_base"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
 
     actual fun themeMode(): ThemeMode {
@@ -16,10 +18,24 @@ actual object AppSettingsPrefs {
     }
 
     actual fun baseCurrency(): String =
-        prefs().getString(KEY_BASE_CURRENCY, "USD") ?: "USD"
+        prefs().getString(KEY_BASE_CURRENCY, null) ?: DeviceLocale.currencyCode
 
     actual fun setBaseCurrency(code: String) {
         prefs().edit().putString(KEY_BASE_CURRENCY, code).apply()
+    }
+
+    actual fun travelerCurrency(): String =
+        prefs().getString(KEY_TRAVELER_CURRENCY, "JPY") ?: "JPY"
+
+    actual fun setTravelerCurrency(code: String) {
+        prefs().edit().putString(KEY_TRAVELER_CURRENCY, code).apply()
+    }
+
+    actual fun travelerBudgetBase(): Double =
+        prefs().getFloat(KEY_TRAVELER_BUDGET_BASE, 100.0f).toDouble()
+
+    actual fun setTravelerBudgetBase(amount: Double) {
+        prefs().edit().putFloat(KEY_TRAVELER_BUDGET_BASE, amount.toFloat()).apply()
     }
 
     actual fun cachedPremium(): Boolean? =
