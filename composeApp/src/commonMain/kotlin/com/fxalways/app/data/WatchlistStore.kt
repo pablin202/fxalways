@@ -34,7 +34,8 @@ class WatchlistStore {
             if (!canAdd) return false
             current.codes + code
         }
-        replace(current.copy(codes = nextCodes))
+        val nextHoldings = current.holdings.filterKeys { it in nextCodes }
+        replace(current.copy(codes = nextCodes, holdings = nextHoldings))
         return true
     }
 
@@ -45,7 +46,7 @@ class WatchlistStore {
         } else {
             current.holdings + (code to amount)
         }
-        val nextCodes = if (code in current.codes) current.codes else current.codes + code
+        val nextCodes = if (code in current.codes) current.codes else (current.codes + code).distinct()
         replace(current.copy(codes = nextCodes, holdings = nextHoldings))
     }
 

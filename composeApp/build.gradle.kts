@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -9,6 +10,18 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.googleServices)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun projectPropertyOrLocal(name: String, defaultValue: String): String =
+    providers.gradleProperty(name).orNull
+        ?: localProperties.getProperty(name)
+        ?: defaultValue
 
 kotlin {
     androidTarget {
@@ -41,6 +54,9 @@ kotlin {
             implementation(libs.firebase.firestore)
             implementation(libs.google.play.services.auth)
         }
+        matching { it.name.lowercase().startsWith("ios") }.configureEach {
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+        }
         commonMain.dependencies {
             implementation(project(":design-system"))
             implementation(compose.runtime)
@@ -54,6 +70,7 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.purchases.core)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -81,9 +98,9 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        val backendUrl = providers.gradleProperty("FX_BACKEND_URL").orElse("https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net")
-        val revenueCatKey = providers.gradleProperty("REVENUECAT_ANDROID_KEY").orElse("")
-        buildConfigField("String", "FX_BACKEND_URL", "\"${backendUrl.get()}\"")
-        buildConfigField("String", "REVENUECAT_ANDROID_KEY", "\"${revenueCatKey.get()}\"")
+        val backendUrl = projectPropertyOrLocal("FX_BACKEND_URL", "https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net")
+        val revenueCatKey = projectPropertyOrLocal("REVENUECAT_API_KEY", projectPropertyOrLocal("REVENUECAT_ANDROID_KEY", ""))
+        buildConfigField("String", "FX_BACKEND_URL", "\"$backendUrl\"")
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"$revenueCatKey\"")
     }
 }

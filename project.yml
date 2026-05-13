@@ -1,0 +1,51 @@
+name: FXAlways
+options:
+  bundleIdPrefix: com.fxalways
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  purchases-hybrid-common:
+    url: https://github.com/RevenueCat/purchases-hybrid-common.git
+    exactVersion: 17.55.1
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: iosApp/iosApp
+    dependencies:
+      - framework: composeApp/build/bin/iosSimulatorArm64/debugFramework/ComposeApp.framework
+      - package: purchases-hybrid-common
+        product: PurchasesHybridCommon
+    postBuildScripts:
+      - name: Copy Compose resources
+        script: |
+          set -e
+          RESOURCES_SRC="$PROJECT_DIR/composeApp/build/intermediates/assets/debug/mergeDebugAssets/composeResources"
+          RESOURCES_DST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/compose-resources/composeResources"
+          if [ -d "$RESOURCES_SRC" ]; then
+            rm -rf "$RESOURCES_DST"
+            mkdir -p "$(dirname "$RESOURCES_DST")"
+            rsync -a "$RESOURCES_SRC/" "$RESOURCES_DST/"
+          fi
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fxalways.app.ios
+        PRODUCT_NAME: FX Always
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        FRAMEWORK_SEARCH_PATHS:
+          - $(inherited)
+          - $(PROJECT_DIR)/composeApp/build/bin/iosSimulatorArm64/debugFramework
+    info:
+      path: iosApp/iosApp/Info.plist
+      properties:
+        CADisableMinimumFrameDurationOnPhone: true
+        CFBundleDisplayName: FX Always
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}

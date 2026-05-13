@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import com.fxalways.app.AppSettingsPrefs
 import com.fxalways.app.AlertTestNotifier
 import com.fxalways.app.BackupSettings
+import com.fxalways.app.Platform
 import com.fxalways.app.PlatformConfig
 import com.fxalways.app.ThemeMode
 import com.fxalways.app.PlatformBackHandler
@@ -88,9 +90,11 @@ import com.fxalways.app.data.PriceAlert
 import com.fxalways.app.data.SettingsBaseCurrencies
 import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.data.WatchlistStore
-import com.fxalways.app.subscription.PlaceholderSubscriptionGateway
+import com.fxalways.app.subscription.SubscriptionPlan
+import com.fxalways.app.subscription.SubscriptionPlanKind
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.app.subscription.cap
+import com.fxalways.app.subscription.createSubscriptionGateway
 import com.fxalways.app.subscription.featureAccess
 import com.fxalways.designsystem.components.BentoCard
 import com.fxalways.designsystem.components.BentoTile
@@ -148,7 +152,7 @@ fun FxAppShell() {
     val newsStore = remember { NewsStore() }
     val alertsStore = remember { AlertsStore() }
     val watchlistStore = remember { WatchlistStore() }
-    val subscriptionGateway = remember { PlaceholderSubscriptionGateway() }
+    val subscriptionGateway = remember { createSubscriptionGateway() }
     var subscriptionState by remember { mutableStateOf(SubscriptionState(isPremium = false)) }
     var backupState by remember { mutableStateOf(UserBackupState()) }
     var backupReady by remember { mutableStateOf(false) }
@@ -159,6 +163,9 @@ fun FxAppShell() {
     val newsState by newsStore.state.collectAsState()
     val alertsState by alertsStore.state.collectAsState()
     val watchlistState by watchlistStore.state.collectAsState()
+    LaunchedEffect(liveStore) {
+        liveStore.startAutoRefresh()
+    }
     LaunchedEffect(Unit) {
         subscriptionState = subscriptionGateway.currentState()
         backupState = UserBackupGateway.ensureUser()
@@ -223,16 +230,16 @@ fun FxAppShell() {
                     PaywallScreen(
                         subscriptionState = subscriptionState,
                         onClose = { showPaywall = false },
-                        onStart = {
+                        onStart = { planKind ->
                             scope.launch {
-                                subscriptionState = subscriptionGateway.purchaseMonthly()
-                                showPaywall = false
+                                subscriptionState = subscriptionGateway.purchasePlan(planKind)
+                                showPaywall = !subscriptionState.isPremium
                             }
                         },
                         onRestore = {
                             scope.launch {
                                 subscriptionState = subscriptionGateway.restore()
-                                showPaywall = false
+                                showPaywall = !subscriptionState.isPremium
                             }
                         },
                     )
@@ -281,6 +288,8 @@ fun FxAppShell() {
                             newsState = newsState,
                             subscriptionState = subscriptionState,
                             onRefresh = newsStore::refresh,
+                            onRegionSelected = newsStore::setRegion,
+                            onCurrencySelected = newsStore::setCurrency,
                             onOpenPaywall = { showPaywall = true },
                         )
                         FxTab.More -> when (moreRoute) {
@@ -315,6 +324,7 @@ fun FxAppShell() {
                                         showPaywall = true
                                     }
                                 },
+                                onResumeAlert = alertsStore::resumeAlert,
                                 onToggleAlert = alertsStore::toggleAlert,
                                 onDeleteAlert = alertsStore::deleteAlert,
                                 onTestAlert = AlertTestNotifier::show,
@@ -376,9 +386,11 @@ fun FxAppShell() {
                                         backupSyncing = true
                                         backupReady = false
                                         runCatching {
-                                            val result = UserBackupGateway.linkWithGoogle(
-                                                buildUserBackupSnapshot(themeMode, baseCurrency, alertsState, watchlistState),
-                                            )
+                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, alertsState, watchlistState)
+                                            val result = when (PlatformConfig.platform) {
+                                                Platform.Android -> UserBackupGateway.linkWithGoogle(snapshot)
+                                                Platform.Ios -> UserBackupGateway.linkWithApple(snapshot)
+                                            }
                                             backupState = result.state
                                             val appliedTheme = applyUserBackupSnapshot(
                                                 snapshot = result.snapshot,
@@ -477,7 +489,7 @@ fun DashboardScreen(
         }
         ScreenHeader(
             title = "Rates",
-            subtitle = "base · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} favorites · ${access.historyLabel}",
+            subtitle = "base · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} favorites · ${liveState.autoRefreshLabel}",
             right = { Text("↻", style = FxTheme.typography.numberL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onRefresh)) },
         )
         if (liveState.errorMessage != null) {
@@ -891,7 +903,7 @@ fun MoreScreen(
                 MoreRow(
                     glyph = "∞",
                     title = if (subscriptionState.isPremium) "FX/ Pro active" else "Upgrade to Pro",
-                    subtitle = if (subscriptionState.isPremium) "Entitlement ${subscriptionState.entitlementId} is active" else "Alerts, extended history and unlimited watchlists",
+                    subtitle = subscriptionState.proStatusLabel(),
                     onClick = onOpenPaywall,
                 )
             }
@@ -913,6 +925,7 @@ fun AlertsScreen(
     onOpenPaywall: () -> Unit = {},
     onCreateAlert: (FxRate) -> Unit = {},
     onCreateManualAlert: (FxRate, AlertDirection, Double) -> Unit = { _, _, _ -> },
+    onResumeAlert: (String) -> Unit = {},
     onToggleAlert: (String) -> Unit = {},
     onDeleteAlert: (String) -> Unit = {},
     onTestAlert: (PriceAlert) -> Unit = {},
@@ -921,6 +934,9 @@ fun AlertsScreen(
     val canCreate = canCreateAlert(subscriptionState, alertsState.alerts.size)
     val limitLabel = if (access.hasUnlimitedAlerts) "Unlimited" else "${alertsState.alerts.size}/${access.alertLimit}"
     val alertRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter) { liveState.alertRates() }
+    val currentRatesByCode = remember(liveState.baseCurrency, alertRates) {
+        alertRates.associateBy { it.code }
+    }
     var selectedRateCode by remember(liveState.baseCurrency) { mutableStateOf(alertRates.firstOrNull()?.code ?: "EUR") }
     val selectedRate = alertRates.firstOrNull { it.code == selectedRateCode } ?: alertRates.firstOrNull() ?: FavoriteRates.first()
     var selectedDirection by remember { mutableStateOf(AlertDirection.Above) }
@@ -943,7 +959,7 @@ fun AlertsScreen(
                     Pill("${alertsState.activeCount} active", variant = if (alertsState.activeCount > 0) PillVariant.Up else PillVariant.Ghost)
                 }
                 Text("Watch breakouts without watching charts.", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                Text("Quick alerts trigger at 1% above the current mid-market rate.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                Text("Checks run on-device every 15 min when network is available.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
             }
         }
 
@@ -1022,11 +1038,25 @@ fun AlertsScreen(
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 liveState.favorites.take(4).forEach { rate ->
+                    val quickAlert = alertsState.alerts.findQuickAlert(liveState.baseCurrency, rate)
+                    val canCreateQuick = quickAlert != null || canCreate
                     AlertQuickRow(
                         baseCurrency = liveState.baseCurrency,
                         rate = rate,
-                        enabled = canCreate,
-                        onCreate = { onCreateAlert(rate) },
+                        state = when {
+                            quickAlert?.enabled == true -> QuickAlertState.Active
+                            quickAlert != null -> QuickAlertState.Paused
+                            canCreate -> QuickAlertState.Create
+                            else -> QuickAlertState.Locked
+                        },
+                        enabled = canCreateQuick,
+                        onCreate = {
+                            if (quickAlert != null) {
+                                onResumeAlert(quickAlert.id)
+                            } else {
+                                onCreateAlert(rate)
+                            }
+                        },
                         onLocked = onOpenPaywall,
                     )
                 }
@@ -1052,7 +1082,14 @@ fun AlertsScreen(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 alertsState.alerts.forEach { alert ->
-                    AlertCard(alert = alert, onToggle = onToggleAlert, onDelete = onDeleteAlert, onTest = onTestAlert)
+                    val currentRate = currentRatesByCode[alert.quote]?.rate.takeIf { alert.base == liveState.baseCurrency }
+                    AlertCard(
+                        alert = alert,
+                        currentRate = currentRate,
+                        onToggle = onToggleAlert,
+                        onDelete = onDeleteAlert,
+                        onTest = onTestAlert,
+                    )
                 }
             }
         }
@@ -1072,12 +1109,20 @@ fun WatchlistScreen(
 ) {
     val access = subscriptionState.featureAccess()
     val allRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter) { liveState.portfolioRates() }
-    val selectedRates = watchlistState.watchlist.codes.mapNotNull { code -> allRates.firstOrNull { it.code == code } }
     val limitLabel = if (access.hasUnlimitedWatchlistCurrencies) "Unlimited" else "${watchlistState.watchlist.codes.size}/${access.watchlistCurrencyLimit}"
-    val portfolioValue = selectedRates.sumOf { rate ->
-        val amount = watchlistState.watchlist.holdings[rate.code] ?: 0.0
-        amountInBase(rate, amount)
+    val holdings = remember(liveState.baseCurrency, allRates, watchlistState.watchlist) {
+        watchlistState.watchlist.codes.mapNotNull { code ->
+            val rate = allRates.firstOrNull { it.code == code } ?: return@mapNotNull null
+            PortfolioHolding(
+                rate = rate,
+                amount = watchlistState.watchlist.holdings[rate.code] ?: 0.0,
+            )
+        }.sortedWith(compareByDescending<PortfolioHolding> { it.baseValue }.thenBy { it.rate.code })
     }
+    val valuedHoldings = holdings.filter { it.amount > 0.0 }
+    val portfolioValue = valuedHoldings.sumOf { it.baseValue }
+    val portfolioDailyChange = valuedHoldings.sumOf { it.dailyChangeInBase }
+    val nonZeroHoldings = holdings.count { it.amount > 0.0 }
     ScreenScaffold {
         if (onBack != null) {
             BackNavButton(label = "More", onClick = onBack)
@@ -1089,29 +1134,54 @@ fun WatchlistScreen(
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Eyebrow(if (subscriptionState.isPremium) "FX/ PRO" else "FX/ FREE")
-                    Pill("${selectedRates.size} tracked", variant = if (selectedRates.isNotEmpty()) PillVariant.Accent else PillVariant.Ghost)
+                    Pill("${holdings.size} tracked", variant = if (holdings.isNotEmpty()) PillVariant.Accent else PillVariant.Ghost)
                 }
-                Text(watchlistState.watchlist.name, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                BigValueText("${liveState.baseCurrency} ${formatRate(portfolioValue)}")
-                Text("Estimated value from holdings in tracked currencies.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                Text("Tracked currencies", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                if (nonZeroHoldings == 0) {
+                    BigValueText("${holdings.size}", " tracked")
+                    Text(
+                        "Add amounts below to turn this into a portfolio value.",
+                        style = FxTheme.typography.caption,
+                        color = FxTheme.colors.textDim,
+                    )
+                } else {
+                    BigValueText("${liveState.baseCurrency} ${formatMoneyValue(portfolioValue)}")
+                    Text(
+                        "${formatPortfolioChange(portfolioDailyChange, liveState.baseCurrency)} today · $nonZeroHoldings holdings valued",
+                        style = FxTheme.typography.caption,
+                        color = if (portfolioDailyChange >= 0.0) FxTheme.colors.up else FxTheme.colors.down,
+                    )
+                }
             }
         }
 
-        SectionLabel("PORTFOLIO")
-        if (selectedRates.isEmpty()) {
+        SectionLabel("PORTFOLIO HOLDINGS")
+        if (holdings.isEmpty()) {
             BentoCard(padding = 14.dp) {
                 Text("Choose currencies below to start tracking.", style = FxTheme.typography.body, color = FxTheme.colors.textDim)
             }
         } else {
+            if (nonZeroHoldings == 0) {
+                BentoCard(padding = 12.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Eyebrow("HOW IT WORKS")
+                        Text(
+                            "Watchlist follows rates. Portfolio value appears after you enter how much you hold.",
+                            style = FxTheme.typography.caption,
+                            color = FxTheme.colors.textDim,
+                        )
+                    }
+                }
+            }
             BentoCard(padding = 8.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    selectedRates.forEach { rate ->
+                    holdings.forEach { holding ->
                         PortfolioHoldingRow(
                             baseCurrency = liveState.baseCurrency,
-                            rate = rate,
-                            amount = watchlistState.watchlist.holdings[rate.code] ?: 0.0,
-                            onAmountChange = { amount -> onSetHolding(rate.code, amount) },
-                            onOpenDetail = { onOpenDetail(rate) },
+                            holding = holding,
+                            portfolioValue = portfolioValue,
+                            onAmountChange = { amount -> onSetHolding(holding.rate.code, amount) },
+                            onOpenDetail = { onOpenDetail(holding.rate) },
                         )
                     }
                 }
@@ -1128,6 +1198,7 @@ fun WatchlistScreen(
                         locked = rate.code !in watchlistState.watchlist.codes &&
                             !access.hasUnlimitedWatchlistCurrencies &&
                             watchlistState.watchlist.codes.size >= access.watchlistCurrencyLimit,
+                        amount = watchlistState.watchlist.holdings[rate.code] ?: 0.0,
                         onToggle = { onToggleCurrency(rate.code) },
                     )
                 }
@@ -1147,13 +1218,14 @@ fun WatchlistScreen(
 @Composable
 private fun PortfolioHoldingRow(
     baseCurrency: String,
-    rate: FxRate,
-    amount: Double,
+    holding: PortfolioHolding,
+    portfolioValue: Double,
     onAmountChange: (Double) -> Unit,
     onOpenDetail: () -> Unit,
 ) {
+    val rate = holding.rate
+    val amount = holding.amount
     var amountText by remember(rate.code, amount) { mutableStateOf(if (amount > 0.0) formatRate(amount) else "") }
-    val baseValue = amountInBase(rate, amount)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1166,7 +1238,16 @@ private fun PortfolioHoldingRow(
         FlagDot(rate.glyph, rate.kind, 28.dp, modifier = Modifier.clickable(onClick = onOpenDetail))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text("${rate.code} holding", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, modifier = Modifier.clickable(onClick = onOpenDetail))
-            Text("$baseCurrency ${formatRate(baseValue)} · ${formatChange(rate.change24h)} today", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            val holdingSubtitle = if (amount <= 0.0) {
+                "Tracking live rate ${formatRate(rate.rate)} · enter amount held"
+            } else {
+                "$baseCurrency ${formatMoneyValue(holding.baseValue)} · ${holding.weightLabel(portfolioValue)} · ${holding.dailyChangeLabel(baseCurrency)}"
+            }
+            Text(
+                holdingSubtitle,
+                style = FxTheme.typography.captionMono,
+                color = if (amount <= 0.0) FxTheme.colors.textFaint else if (holding.dailyChangeInBase >= 0.0) FxTheme.colors.up else FxTheme.colors.down,
+            )
         }
         BasicTextField(
             value = amountText,
@@ -1181,7 +1262,7 @@ private fun PortfolioHoldingRow(
             modifier = Modifier.width(92.dp),
             decorationBox = { innerTextField ->
                 if (amountText.isBlank()) {
-                    Text("0.00", style = FxTheme.typography.numberBody, color = FxTheme.colors.textGhost, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
+                    Text("amount", style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
                 }
                 innerTextField()
             },
@@ -1194,6 +1275,7 @@ private fun WatchlistCurrencyRow(
     rate: FxRate,
     selected: Boolean,
     locked: Boolean,
+    amount: Double,
     onToggle: () -> Unit,
 ) {
     Row(
@@ -1209,7 +1291,11 @@ private fun WatchlistCurrencyRow(
         FlagDot(rate.glyph, rate.kind, 28.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(rate.code, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-            Text(rate.name, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+            Text(
+                if (amount > 0.0) "${formatRate(amount)} held · ${rate.name}" else rate.name,
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textFaint,
+            )
         }
         Text(formatRate(rate.rate), style = FxTheme.typography.numberBody, color = FxTheme.colors.textDim)
         Pill(
@@ -1260,6 +1346,7 @@ private fun AlertTargetField(
 private fun AlertQuickRow(
     baseCurrency: String,
     rate: FxRate,
+    state: QuickAlertState,
     enabled: Boolean,
     onCreate: () -> Unit,
     onLocked: () -> Unit,
@@ -1278,38 +1365,63 @@ private fun AlertQuickRow(
             Text("$baseCurrency / ${rate.code}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
             Text("Above ${formatRate(rate.rate * 1.01)} · current ${formatRate(rate.rate)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
         }
-        Pill(if (enabled) "create" else "pro", variant = if (enabled) PillVariant.Ghost else PillVariant.Accent)
+        Pill(state.label, variant = state.variant)
     }
 }
 
 @Composable
 private fun AlertCard(
     alert: PriceAlert,
+    currentRate: Double?,
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit,
     onTest: (PriceAlert) -> Unit,
 ) {
     BentoCard(padding = 12.dp) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            FlagDot("🔔", CurrencyKind.Fiat, 32.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("${alert.base} / ${alert.quote}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                Text("${alert.direction.label} ${formatRate(alert.target)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                FlagDot("🔔", CurrencyKind.Fiat, 32.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("${alert.base} / ${alert.quote}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    Text(
+                        "${alert.direction.label} ${formatRate(alert.target)} · ${alert.statusLabel(currentRate)}",
+                        style = FxTheme.typography.captionMono,
+                        color = if (alert.isHit(currentRate)) FxTheme.colors.up else FxTheme.colors.textFaint,
+                    )
+                }
+                Pill(if (alert.enabled) "on" else "paused", variant = if (alert.enabled) PillVariant.Up else PillVariant.Ghost)
             }
-            Pill(if (alert.enabled) "on" else "paused", variant = if (alert.enabled) PillVariant.Up else PillVariant.Ghost)
-            Text(
-                if (alert.enabled) "pause" else "resume",
-                style = FxTheme.typography.captionMono,
-                color = FxTheme.colors.textDim,
-                modifier = Modifier.clickable { onToggle(alert.id) },
-            )
-            Text(
-                "test",
-                style = FxTheme.typography.captionMono,
-                color = FxTheme.colors.accent,
-                modifier = Modifier.clickable { onTest(alert) },
-            )
-            Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textFaint, modifier = Modifier.clickable { onDelete(alert.id) })
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                MetricTile(
+                    "CURRENT",
+                    currentRate?.let(::formatRate) ?: "--",
+                    alert.distanceLabel(currentRate),
+                    Modifier.weight(1f).height(72.dp),
+                )
+                MetricTile(
+                    "LAST HIT",
+                    alert.lastTriggeredAtMillis?.let(::shortAgeLabel) ?: "Never",
+                    if (alert.enabled) "monitoring" else "paused",
+                    Modifier.weight(1f).height(72.dp),
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (alert.enabled) "pause" else "resume",
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.textDim,
+                    modifier = Modifier.clickable { onToggle(alert.id) },
+                )
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    "test",
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.accent,
+                    modifier = Modifier.clickable { onTest(alert) },
+                )
+                Spacer(Modifier.width(14.dp))
+                Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textFaint, modifier = Modifier.clickable { onDelete(alert.id) })
+            }
         }
     }
 }
@@ -1352,37 +1464,100 @@ fun NewsScreen(
     newsState: NewsUiState = NewsUiState(),
     subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
     onRefresh: () -> Unit = {},
+    onRegionSelected: (String) -> Unit = {},
+    onCurrencySelected: (String) -> Unit = {},
     onOpenPaywall: () -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
-    val visibleStories = newsState.stories.take(access.newsStoryLimit.cap(newsState.stories.size))
+    var query by remember { mutableStateOf("") }
+    val filteredStories = remember(newsState.stories, query, newsState.selectedCurrency) {
+        newsState.stories.filter { story ->
+            val normalizedQuery = query.trim()
+            val matchesQuery = normalizedQuery.isBlank() ||
+                story.title.contains(normalizedQuery, ignoreCase = true) ||
+                story.summary.contains(normalizedQuery, ignoreCase = true) ||
+                story.tag.contains(normalizedQuery, ignoreCase = true) ||
+                story.moves.any { it.first.contains(normalizedQuery, ignoreCase = true) }
+            val matchesCurrency = newsState.selectedCurrency.isBlank() ||
+                newsState.selectedCurrency == "USD" ||
+                story.moves.any { it.first == newsState.selectedCurrency } ||
+                story.tag == newsState.selectedCurrency
+            matchesQuery && matchesCurrency
+        }.ifEmpty {
+            if (query.isBlank()) newsState.stories else emptyList()
+        }
+    }
+    val visibleStories = filteredStories.take(access.newsStoryLimit.cap(filteredStories.size))
+    val regionOptions = listOf("US", "AU", "GB", "EU", "BR", "MX", "JP")
+    val currencyOptions = (newsState.trackedCurrencies + listOf("USD", "EUR", "GBP", "JPY", "AUD", "BTC")).distinct()
     ScreenScaffold {
         ScreenHeader(
             "News",
             sub = if (access.canUseAdvancedNews) "MARKET STREAM" else "MARKET PREVIEW",
-            subtitle = "${newsState.provider} · ${newsState.region} · ${newsState.language}",
+            subtitle = "${newsState.provider} · ${newsState.region} · ${newsState.selectedCurrency} focus",
             right = { Text("↻", style = FxTheme.typography.numberL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onRefresh)) },
         )
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Eyebrow("SENTIMENT")
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Eyebrow("SENTIMENT")
+                    if (newsState.isLoading) {
+                        Eyebrow("REFRESHING", color = FxTheme.colors.accent)
+                    }
+                }
                 SentimentBar(newsState.bullish, newsState.neutral, newsState.bearish)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     LegendDot("BULLISH ${newsState.bullish}%", FxTheme.colors.up)
                     LegendDot("NEUTRAL ${newsState.neutral}%", FxTheme.colors.textGhost)
                     LegendDot("BEARISH ${newsState.bearish}%", FxTheme.colors.down)
                 }
+                KeyValueRow("Feed", "${newsState.language.uppercase()} · ${newsState.trackedCurrencies.joinToString(", ")}")
             }
         }
-        SectionLabel("RECENT LINES")
+        BentoCard(padding = 10.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                NewsSearchField(query = query, onQueryChange = { query = it })
+                NewsFilterRow(
+                    label = "REGION",
+                    options = regionOptions,
+                    selected = newsState.region,
+                    enabled = access.canUseAdvancedNews,
+                    onSelect = { region ->
+                        if (access.canUseAdvancedNews) onRegionSelected(region) else onOpenPaywall()
+                    },
+                )
+                NewsFilterRow(
+                    label = "CURRENCY",
+                    options = currencyOptions,
+                    selected = newsState.selectedCurrency,
+                    enabled = access.canUseAdvancedNews,
+                    onSelect = { code ->
+                        if (access.canUseAdvancedNews) onCurrencySelected(code) else onOpenPaywall()
+                    },
+                )
+            }
+        }
+        SectionLabel("RECENT LINES · ${filteredStories.size}")
         if (newsState.errorMessage != null) {
             Text("News backend unavailable · showing cached market lines", style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
         }
+        if (visibleStories.isEmpty()) {
+            BentoCard(padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("No matching stories", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    Text("Try a different currency, region or search term.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                }
+            }
+        }
         visibleStories.forEach { StoryCard(it) }
-        if (!access.canUseAdvancedNews) {
+        if (!access.canUseAdvancedNews || visibleStories.size < filteredStories.size) {
             ProUpsellCard(
                 title = "Personalize the market stream",
-                subtitle = "Pro unlocks more stories and filters by region, currencies and topics.",
+                subtitle = if (visibleStories.size < filteredStories.size) {
+                    "Showing ${visibleStories.size}/${filteredStories.size} stories. Pro unlocks the full regional stream."
+                } else {
+                    "Pro unlocks more stories and filters by region, currencies and topics."
+                },
                 onClick = onOpenPaywall,
             )
         }
@@ -1432,9 +1607,17 @@ fun SettingsScreen(
                     onClick = onSyncNow,
                 )
                 if (backupState.isAnonymous) {
+                    val providerLabel = when (PlatformConfig.platform) {
+                        Platform.Android -> "Google"
+                        Platform.Ios -> "Apple"
+                    }
+                    val deviceLabel = when (PlatformConfig.platform) {
+                        Platform.Android -> "Android phone"
+                        Platform.Ios -> "iPhone"
+                    }
                     SettingChoiceRow(
-                        title = "Sign in with Google",
-                        subtitle = "Keep the same backup and restore it on a new Android phone",
+                        title = "Sign in with $providerLabel",
+                        subtitle = "Keep the same backup and restore it on a new $deviceLabel",
                         selected = false,
                         actionLabel = "connect",
                         onClick = onLinkGoogle,
@@ -1456,9 +1639,9 @@ fun SettingsScreen(
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SettingChoiceRow(
                     title = if (subscriptionState.isPremium) "FX/ Pro active" else "FX/ Free",
-                    subtitle = if (subscriptionState.isPremium) "Entitlement ${subscriptionState.entitlementId}" else "Upgrade for extended history, alerts and unlimited lists",
+                    subtitle = subscriptionState.statusMessage ?: subscriptionState.proStatusLabel(),
                     selected = subscriptionState.isPremium,
-                    actionLabel = if (subscriptionState.isPremium) "manage" else "upgrade",
+                    actionLabel = if (subscriptionState.isPremium) "view" else "upgrade",
                     onClick = onOpenPaywall,
                 )
                 SettingChoiceRow(
@@ -1639,6 +1822,7 @@ private val UserBackupState.title: String
 private fun UserBackupState.subtitle(lastSyncedAtMillis: Long?): String {
     val syncLabel = lastSyncedAtMillis?.let { " · ${formatLastSynced(it)}" }.orEmpty()
     val base = when {
+        isAvailable && uid?.startsWith("ios-anon-") == true && isAnonymous -> "Local iOS guest ${uid.takeLast(8)}"
         isAvailable && uid != null && isAnonymous -> "Firebase guest ${uid.take(8)}"
         isAvailable && uid != null -> "Restores on any signed-in device"
         isAvailable -> "Preferences, alerts and watchlist sync to Firebase"
@@ -1670,6 +1854,16 @@ private val AlertDirection.label: String
         AlertDirection.Below -> "Below"
     }
 
+private enum class QuickAlertState(
+    val label: String,
+    val variant: PillVariant,
+) {
+    Create("create", PillVariant.Ghost),
+    Active("active", PillVariant.Up),
+    Paused("resume", PillVariant.Ghost),
+    Locked("pro", PillVariant.Accent),
+}
+
 private data class AlertPreset(
     val label: String,
     val percent: Double,
@@ -1681,6 +1875,59 @@ private val alertPresets = listOf(
     AlertPreset("+0.5%", 0.5),
     AlertPreset("+1%", 1.0),
 )
+
+private fun List<PriceAlert>.findQuickAlert(baseCurrency: String, rate: FxRate): PriceAlert? {
+    val target = quickAlertTarget(rate)
+    return firstOrNull {
+        it.base == baseCurrency &&
+            it.quote == rate.code &&
+            it.direction == AlertDirection.Above &&
+            kotlin.math.abs(it.target - target) < ALERT_TARGET_TOLERANCE
+    }
+}
+
+private fun quickAlertTarget(rate: FxRate): Double =
+    rate.rate * 1.01
+
+private fun PriceAlert.isHit(currentRate: Double?): Boolean {
+    if (currentRate == null) return false
+    return when (direction) {
+        AlertDirection.Above -> currentRate >= target
+        AlertDirection.Below -> currentRate <= target
+    }
+}
+
+private fun PriceAlert.statusLabel(currentRate: Double?): String =
+    when {
+        currentRate == null -> "waiting for ${base} live rate"
+        isHit(currentRate) -> "target hit"
+        else -> "${distancePercent(currentRate)}% away"
+    }
+
+private fun PriceAlert.distanceLabel(currentRate: Double?): String =
+    when {
+        currentRate == null -> "base changed"
+        isHit(currentRate) -> "target reached"
+        else -> "${distancePercent(currentRate)}% to target"
+    }
+
+private fun PriceAlert.distancePercent(currentRate: Double): String {
+    val distance = when (direction) {
+        AlertDirection.Above -> (target - currentRate) / currentRate
+        AlertDirection.Below -> (currentRate - target) / currentRate
+    }.coerceAtLeast(0.0) * 100.0
+    return if (distance < 0.1) "<0.1" else ((distance * 10).toInt() / 10.0).toString()
+}
+
+private fun shortAgeLabel(millis: Long): String {
+    val elapsedSeconds = ((Clock.System.now().toEpochMilliseconds() - millis) / 1000).coerceAtLeast(0)
+    return when {
+        elapsedSeconds < 60 -> "Now"
+        elapsedSeconds < 3600 -> "${elapsedSeconds / 60}m ago"
+        elapsedSeconds < 86_400 -> "${elapsedSeconds / 3600}h ago"
+        else -> "${elapsedSeconds / 86_400}d ago"
+    }
+}
 
 private fun LiveRatesState.alertRates(): List<FxRate> =
     (favorites + compare + converter)
@@ -1694,8 +1941,40 @@ private fun LiveRatesState.portfolioRates(): List<FxRate> =
         .sortedWith(compareByDescending<FxRate> { it.code == baseCurrency }.thenBy { it.code })
         .take(10)
 
+private data class PortfolioHolding(
+    val rate: FxRate,
+    val amount: Double,
+) {
+    val baseValue: Double = amountInBase(rate, amount)
+    val dailyChangeInBase: Double = if (rate.rate == 0.0) 0.0 else baseValue * rate.change24h / 100.0
+}
+
 private fun amountInBase(rate: FxRate, amount: Double): Double =
     if (rate.rate == 0.0) 0.0 else amount / rate.rate
+
+private fun PortfolioHolding.weightLabel(portfolioValue: Double): String =
+    if (portfolioValue <= 0.0 || baseValue <= 0.0) {
+        "0%"
+    } else {
+        "${((baseValue / portfolioValue) * 100.0).toInt()}%"
+    }
+
+private fun PortfolioHolding.dailyChangeLabel(baseCurrency: String): String {
+    val sign = if (dailyChangeInBase >= 0.0) "+" else "-"
+    return "$sign$baseCurrency ${formatMoneyValue(kotlin.math.abs(dailyChangeInBase))} today"
+}
+
+private fun formatPortfolioChange(change: Double, baseCurrency: String): String {
+    val sign = if (change >= 0.0) "+" else "-"
+    return "$sign$baseCurrency ${formatMoneyValue(kotlin.math.abs(change))}"
+}
+
+private fun formatMoneyValue(value: Double): String =
+    when {
+        value == 0.0 -> "0.00"
+        kotlin.math.abs(value) < 0.01 -> "<0.01"
+        else -> formatRate(value)
+    }
 
 private fun buildUserBackupSnapshot(
     themeMode: ThemeMode,
@@ -1729,6 +2008,8 @@ private fun canCreateAlert(subscriptionState: SubscriptionState, currentCount: I
     val access = subscriptionState.featureAccess()
     return access.hasUnlimitedAlerts || currentCount < access.alertLimit
 }
+
+private const val ALERT_TARGET_TOLERANCE = 0.0000001
 
 @Composable
 private fun BackNavButton(label: String?, onClick: () -> Unit) {
@@ -1771,6 +2052,73 @@ private fun StoryCard(story: NewsStory) {
 }
 
 @Composable
+private fun NewsSearchField(query: String, onQueryChange: (String) -> Unit) {
+    BasicTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+        textStyle = FxTheme.typography.body.copy(color = FxTheme.colors.text),
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(FxTheme.shapes.field)
+                    .background(FxTheme.colors.surface2)
+                    .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+                    .padding(horizontal = 12.dp, vertical = 11.dp),
+            ) {
+                if (query.isBlank()) {
+                    Text("Search headlines, tags or currencies", style = FxTheme.typography.caption, color = FxTheme.colors.textGhost)
+                }
+                innerTextField()
+            }
+        },
+    )
+}
+
+@Composable
+private fun NewsFilterRow(
+    label: String,
+    options: List<String>,
+    selected: String,
+    enabled: Boolean,
+    onSelect: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Eyebrow(label)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { option ->
+                Box(
+                    modifier = Modifier
+                        .clip(FxTheme.shapes.pill)
+                        .background(if (selected == option) FxTheme.colors.accentSoft else Color.Transparent)
+                        .border(
+                            1.dp,
+                            if (selected == option) FxTheme.colors.accentLine else FxTheme.colors.border,
+                            FxTheme.shapes.pill,
+                        )
+                        .clickable { onSelect(option) }
+                        .padding(horizontal = 11.dp, vertical = 7.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        if (enabled || selected == option) option else "$option Pro",
+                        style = FxTheme.typography.captionMono,
+                        color = if (selected == option) FxTheme.colors.accent else FxTheme.colors.textDim,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProUpsellCard(title: String, subtitle: String, onClick: () -> Unit) {
     BentoCard(
         modifier = Modifier
@@ -1795,35 +2143,85 @@ private fun ProUpsellCard(title: String, subtitle: String, onClick: () -> Unit) 
 fun PaywallScreen(
     subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
     onClose: () -> Unit = {},
-    onStart: () -> Unit = {},
+    onStart: (SubscriptionPlanKind) -> Unit = {},
     onRestore: () -> Unit = {},
 ) {
+    var selectedKind by remember { mutableStateOf(SubscriptionPlanKind.Monthly) }
+    val selectedPlan = subscriptionState.plans.firstOrNull { it.kind == selectedKind && it.isAvailable }
+        ?: subscriptionState.plans.firstOrNull { it.isAvailable }
+        ?: subscriptionState.plans.first()
+    LaunchedEffect(selectedPlan.kind) {
+        selectedKind = selectedPlan.kind
+    }
+
     ScreenScaffold {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onClose))
         }
         Eyebrow("FX/ PRO", color = FxTheme.colors.accent)
-        Text(subscriptionState.paywallTitle, style = FxTheme.typography.display, color = FxTheme.colors.text)
-        Text(subscriptionState.paywallSubtitle, style = FxTheme.typography.body, color = FxTheme.colors.textDim)
+        Text("The full picture.\nEvery rate. Every market.", style = FxTheme.typography.display, color = FxTheme.colors.text)
+        Text(
+            "Unlimited alerts, deep history, fee comparison, Watch + widget. All on one membership.",
+            style = FxTheme.typography.body,
+            color = FxTheme.colors.textDim,
+        )
+        if (subscriptionState.isPremium) {
+            ProActiveCard(subscriptionState = subscriptionState)
+        }
         BentoCard(padding = 12.dp) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 BenefitRow("⌖", "Live to the second", "Aggregated mid-market from 14 exchanges.")
-                BenefitRow("⬡", "Unlimited alerts", "Price, range, daily and weekly alerts.")
-                BenefitRow("◐", "Traveler mode", "Auto-location, cheat sheets, offline rates.")
-                BenefitRow("⌘", "Real fee comparator", "Wise · Revolut · banks · in one place.")
-                BenefitRow("⌬", "Apple Watch + widget", "Your favorite pair always one glance away.")
+                BenefitRow("⬡", "Unlimited alerts", "Price, range, daily and weekly targets.")
+                BenefitRow("◐", "Traveler mode", "Auto-location, cheat sheets and offline rates.")
+                BenefitRow("⌘", "Real fee comparator", "Wise, Revolut and banks in one place.")
+                BenefitRow("⌬", "Watch + widget", "Your favorite pair always one glance away.")
                 BenefitRow("∞", "Unlimited history", "Down to the minute, back to 2008.")
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            subscriptionState.plans.forEach { plan ->
+                PlanOption(
+                    plan = plan,
+                    selected = plan.kind == selectedPlan.kind,
+                    onSelect = {
+                        if (plan.isAvailable) {
+                            selectedKind = plan.kind
+                        }
+                    },
+                )
             }
         }
         BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { Pill("RECOMMENDED", variant = PillVariant.Accent) }
-                Text("Monthly", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                BigValueText(subscriptionState.productLabel.substringBefore(" /"), " / ${subscriptionState.productLabel.substringAfter("/ ", "month")}")
-                Text("Cancel anytime. Billed through Google Play on Android and App Store on iOS.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    selectedPlan.badge?.let { Pill(it, variant = PillVariant.Accent) }
+                }
+                Text(selectedPlan.title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                BigValueText(selectedPlan.priceLabel, selectedPlan.cadenceLabel)
+                Text(
+                    "Billed through Google Play on Android and App Store on iOS.",
+                    style = FxTheme.typography.caption,
+                    color = FxTheme.colors.textDim,
+                )
             }
         }
-        PrimaryButton(if (subscriptionState.isPremium) "Pro is active" else "Start FX/ Pro", onClick = onStart)
+        subscriptionState.statusMessage?.let {
+            Text(it, style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
+        }
+        PrimaryButton(
+            when {
+                subscriptionState.isPremium -> "Continue"
+                !subscriptionState.canPurchase -> "Purchases unavailable"
+                else -> "Start FX/ Pro"
+            },
+            onClick = {
+                if (subscriptionState.isPremium) {
+                    onClose()
+                } else if (subscriptionState.canPurchase) {
+                    onStart(selectedPlan.kind)
+                }
+            },
+        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text(
                 "Restore purchase  ·  Terms  ·  Privacy",
@@ -1834,6 +2232,73 @@ fun PaywallScreen(
         }
     }
 }
+
+@Composable
+private fun ProActiveCard(subscriptionState: SubscriptionState) {
+    BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card), padding = 12.dp) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FlagDot("✓", CurrencyKind.Fiat, 34.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Eyebrow("ACTIVE", color = FxTheme.colors.accent)
+                Text("FX/ Pro is active", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text(subscriptionState.proStatusLabel(), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanOption(
+    plan: SubscriptionPlan,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    val borderColor = if (selected) FxTheme.colors.accentLine else FxTheme.colors.border
+    val contentAlpha = if (plan.isAvailable) 1f else 0.46f
+    BentoCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, borderColor, FxTheme.shapes.card)
+            .alpha(contentAlpha)
+            .clickable(onClick = onSelect),
+        padding = 12.dp,
+    ) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FlagDot(if (selected) "✓" else "○", CurrencyKind.Fiat, 30.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(plan.title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    plan.badge?.let { Pill(it, variant = PillVariant.Accent) }
+                }
+                Text(plan.cadenceLabel, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(plan.priceLabel, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text(
+                    if (plan.isAvailable) "Available" else "Not configured",
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.textFaint,
+                )
+            }
+        }
+    }
+}
+
+private fun SubscriptionState.proStatusLabel(): String =
+    if (isPremium) {
+        activePlanLabel?.let { "Active plan: $it · Entitlement $entitlementId" }
+            ?: "Entitlement $entitlementId is active"
+    } else {
+        "Alerts, extended history and unlimited watchlists"
+    }
 
 @Composable
 fun OfflineScreen(
@@ -2063,9 +2528,27 @@ private fun GhostButton(text: String, modifier: Modifier = Modifier.fillMaxWidth
 
 @Composable
 private fun BenefitRow(glyph: String, title: String, body: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(glyph, style = FxTheme.typography.numberL, color = FxTheme.colors.accent, modifier = Modifier.width(28.dp))
-        Column {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2.copy(alpha = 0.62f))
+            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(FxTheme.colors.accentSoft)
+                .border(1.dp, FxTheme.colors.accentLine, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(glyph, style = FxTheme.typography.numberBody, color = FxTheme.colors.accent, textAlign = TextAlign.Center)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
             Text(body, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
         }

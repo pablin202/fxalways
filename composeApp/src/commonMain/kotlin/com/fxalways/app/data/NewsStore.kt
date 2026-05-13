@@ -15,8 +15,10 @@ import kotlinx.coroutines.launch
 data class NewsUiState(
     val isLoading: Boolean = true,
     val provider: String = "mock",
-    val region: String = "US",
-    val language: String = "en",
+    val region: String = DeviceLocale.region,
+    val language: String = DeviceLocale.language,
+    val selectedCurrency: String = "USD",
+    val trackedCurrencies: List<String> = listOf("USD", "EUR", "JPY", "GBP", "BTC"),
     val bullish: Int = 46,
     val neutral: Int = 20,
     val bearish: Int = 34,
@@ -36,16 +38,29 @@ class NewsStore(
     }
 
     fun refresh(
-        language: String = DeviceLocale.language,
-        region: String = DeviceLocale.region,
-        currencies: List<String> = listOf("USD", "EUR", "JPY", "GBP", "BTC"),
+        language: String = _state.value.language.takeIf { it.isNotBlank() } ?: DeviceLocale.language,
+        region: String = _state.value.region.takeIf { it.isNotBlank() } ?: DeviceLocale.region,
+        currencies: List<String> = _state.value.trackedCurrencies.ifEmpty { defaultCurrencies(_state.value.selectedCurrency) },
     ) {
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            val selectedCurrency = currencies.firstOrNull().orEmpty().ifBlank { _state.value.selectedCurrency }
+            _state.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    language = language,
+                    region = region.uppercase(),
+                    selectedCurrency = selectedCurrency.uppercase(),
+                    trackedCurrencies = currencies.map { code -> code.uppercase() }.distinct(),
+                )
+            }
             runCatching {
                 api.newsFeed(language, region, currencies)
             }.onSuccess { feed ->
-                _state.value = feed.toUiState()
+                _state.value = feed.toUiState(
+                    selectedCurrency = selectedCurrency,
+                    trackedCurrencies = currencies,
+                )
             }.onFailure { throwable ->
                 _state.update {
                     it.copy(
@@ -56,14 +71,27 @@ class NewsStore(
             }
         }
     }
+
+    fun setRegion(region: String) {
+        refresh(region = region, currencies = _state.value.trackedCurrencies)
+    }
+
+    fun setCurrency(code: String) {
+        refresh(currencies = defaultCurrencies(code))
+    }
 }
 
-private fun NewsFeedDto.toUiState(): NewsUiState =
+private fun NewsFeedDto.toUiState(
+    selectedCurrency: String,
+    trackedCurrencies: List<String>,
+): NewsUiState =
     NewsUiState(
         isLoading = false,
         provider = provider,
         region = region,
         language = language,
+        selectedCurrency = selectedCurrency.uppercase(),
+        trackedCurrencies = trackedCurrencies.map { it.uppercase() }.distinct(),
         bullish = sentiment.bullish,
         neutral = sentiment.neutral,
         bearish = sentiment.bearish,
@@ -78,3 +106,8 @@ private fun NewsFeedDto.toUiState(): NewsUiState =
             )
         },
     )
+
+private fun defaultCurrencies(primary: String): List<String> =
+    listOf(primary, "USD", "EUR", "JPY", "GBP", "BTC")
+        .map { it.uppercase() }
+        .distinct()

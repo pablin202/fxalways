@@ -59,11 +59,32 @@ class AlertsStore {
             direction = direction,
             createdAtMillis = now,
         )
-        replaceAlerts(_state.value.alerts + alert)
+        val existing = _state.value.alerts.firstOrNull {
+            it.base == base &&
+                it.quote == quote &&
+                it.direction == direction &&
+                kotlin.math.abs(it.target - target) < DUPLICATE_TARGET_TOLERANCE
+        }
+        val nextAlerts = if (existing != null) {
+            _state.value.alerts.map {
+                if (it.id == existing.id) {
+                    it.copy(enabled = true, createdAtMillis = now)
+                } else {
+                    it
+                }
+            }
+        } else {
+            _state.value.alerts + alert
+        }
+        replaceAlerts(nextAlerts)
     }
 
     fun toggleAlert(id: String) {
         replaceAlerts(_state.value.alerts.map { if (it.id == id) it.copy(enabled = !it.enabled) else it })
+    }
+
+    fun resumeAlert(id: String) {
+        replaceAlerts(_state.value.alerts.map { if (it.id == id) it.copy(enabled = true) else it })
     }
 
     fun deleteAlert(id: String) {
@@ -79,8 +100,13 @@ class AlertsStore {
     }
 
     private fun replaceAlerts(alerts: List<PriceAlert>) {
-        _state.update { it.copy(alerts = alerts) }
-        persist(alerts)
+        val sortedAlerts = alerts.sortedWith(
+            compareByDescending<PriceAlert> { it.enabled }
+                .thenByDescending { it.lastTriggeredAtMillis ?: 0L }
+                .thenByDescending { it.createdAtMillis },
+        )
+        _state.update { it.copy(alerts = sortedAlerts) }
+        persist(sortedAlerts)
     }
 
     private fun loadAlerts(): List<PriceAlert> =
@@ -88,6 +114,10 @@ class AlertsStore {
 
     private fun persist(alerts: List<PriceAlert>) {
         AlertsPrefs.setAlertsJson(AlertsCodec.encode(alerts, json))
+    }
+
+    private companion object {
+        const val DUPLICATE_TARGET_TOLERANCE = 0.0000001
     }
 }
 

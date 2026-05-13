@@ -1,8 +1,18 @@
 package com.fxalways.app
 
+import platform.Foundation.NSUUID
+import platform.Foundation.NSUserDefaults
+
 actual object UserBackupGateway {
+    private const val KEY_ANONYMOUS_UID = "anonymous_uid"
+
     actual suspend fun ensureUser(): UserBackupState =
-        UserBackupState(isAvailable = false, errorMessage = "iOS Firebase Auth is not connected yet")
+        UserBackupState(
+            uid = anonymousUid(),
+            isAnonymous = true,
+            isAvailable = true,
+            providerLabel = "Anonymous",
+        )
 
     actual suspend fun pullSnapshot(): UserBackupSnapshot? = null
 
@@ -22,7 +32,17 @@ actual object UserBackupGateway {
 
     actual suspend fun signOutToAnonymous(localSnapshot: UserBackupSnapshot): AccountLinkResult =
         AccountLinkResult(
-            state = UserBackupState(isAvailable = false, errorMessage = "iOS Firebase Auth is not connected yet"),
+            state = ensureUser(),
             snapshot = localSnapshot,
         )
+
+    private fun anonymousUid(): String {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val existing = defaults.stringForKey(KEY_ANONYMOUS_UID)
+        if (!existing.isNullOrBlank()) return existing
+
+        val uid = "ios-anon-${NSUUID().UUIDString}"
+        defaults.setObject(uid, KEY_ANONYMOUS_UID)
+        return uid
+    }
 }

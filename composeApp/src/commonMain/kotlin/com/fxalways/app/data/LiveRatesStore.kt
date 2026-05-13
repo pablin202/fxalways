@@ -13,10 +13,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 data class LiveRatesState(
     val isLoading: Boolean = true,
@@ -24,6 +30,7 @@ data class LiveRatesState(
     val errorMessage: String? = null,
     val baseCurrency: String = "USD",
     val updatedLabel: String = "cached · mock",
+    val autoRefreshLabel: String = "Auto-refresh off",
     val favorites: List<FxRate> = FavoriteRates,
     val crypto: List<FxRate> = CryptoRates,
     val converter: List<FxRate> = ConverterRates,
@@ -38,6 +45,8 @@ class LiveRatesStore(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(LiveRatesState(baseCurrency = initialBaseCurrency))
     val state: StateFlow<LiveRatesState> = _state
+    private var autoRefreshJob: Job? = null
+    private var refreshJob: Job? = null
 
     init {
         refresh()
@@ -46,12 +55,28 @@ class LiveRatesStore(
     fun setBaseCurrency(code: String) {
         if (_state.value.baseCurrency == code) return
         _state.update { it.copy(baseCurrency = code) }
-        refresh()
+        refresh(forceLoading = true)
     }
 
-    fun refresh() {
-        scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
+    fun startAutoRefresh(intervalMillis: Long = AUTO_REFRESH_INTERVAL_MILLIS) {
+        if (autoRefreshJob?.isActive == true) return
+        _state.update { it.copy(autoRefreshLabel = "Auto-refresh every ${intervalMillis / 60_000} min") }
+        autoRefreshJob = scope.launch {
+            while (isActive) {
+                delay(intervalMillis)
+                refresh(forceLoading = false)
+            }
+        }
+    }
+
+    fun refresh(forceLoading: Boolean = true) {
+        if (refreshJob?.isActive == true) return
+        refreshJob = scope.launch {
+            if (forceLoading) {
+                _state.update { it.copy(isLoading = true, errorMessage = null) }
+            } else {
+                _state.update { it.copy(errorMessage = null) }
+            }
             runCatching {
                 val base = _state.value.baseCurrency
                 val targets = targetDefinitions(base)
@@ -93,7 +118,8 @@ class LiveRatesStore(
                         isLoading = false,
                         isLive = true,
                         baseCurrency = base,
-                        updatedLabel = "${latest.date} · ${latest.provider}",
+                        updatedLabel = "${latest.date} · ${latest.provider} · ${refreshTimeLabel()}",
+                        autoRefreshLabel = "Auto-refresh every ${AUTO_REFRESH_INTERVAL_MILLIS / 60_000} min",
                         favorites = favoriteRates,
                         converter = converterRates,
                         compare = basePriority(base, compareCodes).mapNotNull { code -> liveRates.firstOrNull { it.code == code } }.take(8),
@@ -110,6 +136,10 @@ class LiveRatesStore(
                 }
             }
         }
+    }
+
+    private companion object {
+        const val AUTO_REFRESH_INTERVAL_MILLIS = 60_000L
     }
 }
 
@@ -170,3 +200,10 @@ private fun List<HistoricalPoint>.toSparkline(fallback: List<Float>): List<Float
         .map { it.value.toFloat() }
         .takeIf { it.size >= 2 }
         ?: fallback
+
+private fun refreshTimeLabel(): String {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val hour = now.hour.toString().padStart(2, '0')
+    val minute = now.minute.toString().padStart(2, '0')
+    return "refreshed $hour:$minute"
+}

@@ -1,18 +1,97 @@
-# iOS host
+# iOS Host
 
-Create an Xcode iOS App target named `iosApp`, then add these Swift files and link the generated `ComposeApp` framework from `:composeApp`.
+The iOS app is a SwiftUI host for the shared Compose Multiplatform UI.
 
-For local development:
+## Project Generation
+
+The committed Xcode project is generated from `project.yml` with XcodeGen:
 
 ```bash
-./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+xcodegen generate
 ```
 
-The shared entry point is `MainViewController()` in `composeApp/src/iosMain/kotlin/com/fxalways/app/MainViewController.kt`.
+Open `FXAlways.xcodeproj` after generation.
 
-Before App Store/TestFlight:
+The project links:
 
-1. Confirm `moneytrackerpro-8ff64` in `PlatformConfig.ios.kt`.
-2. Replace `appl_YOUR_REVENUECAT_PUBLIC_IOS_KEY`.
-3. Configure the monthly auto-renewable subscription in App Store Connect.
-4. Configure the matching entitlement and offering in RevenueCat.
+- `ComposeApp.framework` from `:composeApp`
+- RevenueCat `PurchasesHybridCommon` `17.55.1` through SwiftPM
+- RevenueCat iOS SDK `5.67.1`, resolved transitively by SwiftPM
+
+`project.yml` also copies Compose resources into the app bundle. Without this step iOS crashes on startup because fonts and generated Compose resources are missing.
+
+## Local Build
+
+Build the shared framework first:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./gradlew --no-daemon \
+  :composeApp:compileKotlinIosSimulatorArm64 \
+  :composeApp:linkDebugFrameworkIosSimulatorArm64 \
+  -Pkotlin.native.cacheKind=none
+```
+
+Then build the host app:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
+  -project FXAlways.xcodeproj \
+  -scheme iosApp \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  build
+```
+
+If iOS simulators are missing:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -downloadPlatform iOS
+```
+
+## Smoke Test
+
+Install and launch on a simulator:
+
+```bash
+DEVICE_ID="$(DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun simctl list devices available | rg 'iPhone 17 \\(' | head -1 | sed -E 's/.*\\(([A-F0-9-]{36})\\).*/\\1/')"
+APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/FXAlways-hgzorfcvkkusndfdkqhxzpqwzwzg/Build/Products/Debug-iphonesimulator/FX Always.app"
+
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun simctl boot "$DEVICE_ID" || true
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun simctl launch --console "$DEVICE_ID" com.fxalways.app.ios
+```
+
+Expected launch behavior:
+
+- onboarding renders without crash
+- after onboarding, Rates loads from `https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net`
+- `latestRates`, `historicalRates`, and `newsFeed` return `200 OK`
+- foreground auto-refresh runs every 60 seconds
+
+## Current Auth State
+
+iOS currently creates a stable local anonymous id in `NSUserDefaults` so RevenueCat can configure without crashing.
+
+Production still needs:
+
+1. Add the iOS app to Firebase project `moneytrackerpro-8ff64`.
+2. Add `GoogleService-Info.plist` to `iosApp/iosApp`.
+3. Enable Sign in with Apple in Apple Developer and Firebase Auth.
+4. Replace the iOS local guest implementation with Firebase Auth anonymous sign-in and Apple account linking.
+5. Implement Firestore backup on iOS using the same `users/{uid}/backups/default` document contract as Android.
+
+## RevenueCat
+
+The iOS KMP config currently uses the RevenueCat Test Store key:
+
+```text
+test_aDOfCCMYLDGOStPsXdDkPJFanUC
+```
+
+Before TestFlight/App Store:
+
+1. Create the iOS app/platform in RevenueCat.
+2. Connect the App Store Connect subscription.
+3. Attach the product to entitlement `pro`.
+4. Add products to offering `default`.
+5. Replace the Test Store key in `PlatformConfig.ios.kt` with the iOS public SDK key.
