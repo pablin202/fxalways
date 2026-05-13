@@ -54,12 +54,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fxalways.app.AppSettingsPrefs
 import com.fxalways.app.AlertTestNotifier
 import com.fxalways.app.BackupSettings
+import com.fxalways.app.ExternalUrlOpener
 import com.fxalways.app.Platform
 import com.fxalways.app.PlatformConfig
 import com.fxalways.app.ThemeMode
@@ -72,16 +74,15 @@ import com.fxalways.app.data.mock.CompareRates
 import com.fxalways.app.data.mock.ConverterRates
 import com.fxalways.app.data.mock.CryptoRates
 import com.fxalways.app.data.mock.DetailSeries
-import com.fxalways.app.data.mock.EventItem
-import com.fxalways.app.data.mock.Events
 import com.fxalways.app.data.mock.FavoriteRates
 import com.fxalways.app.data.mock.FeeQuote
 import com.fxalways.app.data.mock.FeeQuotes
-import com.fxalways.app.data.mock.NewsStories
 import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.data.AlertsState
 import com.fxalways.app.data.AlertsStore
 import com.fxalways.app.data.AlertDirection
+import com.fxalways.app.data.DetailStore
+import com.fxalways.app.data.DetailUiState
 import com.fxalways.app.data.LiveRatesState
 import com.fxalways.app.data.LiveRatesStore
 import com.fxalways.app.data.NewsStore
@@ -152,8 +153,11 @@ fun FxAppShell() {
     val newsStore = remember { NewsStore() }
     val alertsStore = remember { AlertsStore() }
     val watchlistStore = remember { WatchlistStore() }
+    val detailStore = remember { DetailStore() }
     val subscriptionGateway = remember { createSubscriptionGateway() }
-    var subscriptionState by remember { mutableStateOf(SubscriptionState(isPremium = false)) }
+    val cachedPremium = remember { AppSettingsPrefs.cachedPremium() }
+    var subscriptionReady by remember { mutableStateOf(cachedPremium != null) }
+    var subscriptionState by remember { mutableStateOf(SubscriptionState(isPremium = cachedPremium == true)) }
     var backupState by remember { mutableStateOf(UserBackupState()) }
     var backupReady by remember { mutableStateOf(false) }
     var backupSyncing by remember { mutableStateOf(false) }
@@ -163,11 +167,22 @@ fun FxAppShell() {
     val newsState by newsStore.state.collectAsState()
     val alertsState by alertsStore.state.collectAsState()
     val watchlistState by watchlistStore.state.collectAsState()
+    val detailState by detailStore.state.collectAsState()
+    fun selectTab(tab: FxTab) {
+        showPaywall = false
+        detailRate = null
+        selectedTab = tab
+        if (tab != FxTab.More) {
+            moreRoute = MoreRoute.Menu
+        }
+    }
     LaunchedEffect(liveStore) {
         liveStore.startAutoRefresh()
     }
     LaunchedEffect(Unit) {
         subscriptionState = subscriptionGateway.currentState()
+        AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
+        subscriptionReady = true
         backupState = UserBackupGateway.ensureUser()
         if (backupState.isAvailable) {
             runCatching {
@@ -233,12 +248,16 @@ fun FxAppShell() {
                         onStart = { planKind ->
                             scope.launch {
                                 subscriptionState = subscriptionGateway.purchasePlan(planKind)
+                                AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
+                                subscriptionReady = true
                                 showPaywall = !subscriptionState.isPremium
                             }
                         },
                         onRestore = {
                             scope.launch {
                                 subscriptionState = subscriptionGateway.restore()
+                                AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
+                                subscriptionReady = true
                                 showPaywall = !subscriptionState.isPremium
                             }
                         },
@@ -248,8 +267,14 @@ fun FxAppShell() {
                         liveState = liveState,
                         alertsState = alertsState,
                         subscriptionState = subscriptionState,
+                        subscriptionReady = subscriptionReady,
+                        detailState = detailState,
+                        newsState = newsState,
                         rate = detailRate,
                         onBack = { detailRate = null },
+                        onOpenPaywall = { showPaywall = true },
+                        onLoadHistory = detailStore::load,
+                        onOpenUrl = ExternalUrlOpener::open,
                         onCreateAlert = { rate ->
                             if (canCreateAlert(subscriptionState, alertsState.alerts.size)) {
                                 alertsStore.addQuickAlert(liveState.baseCurrency, rate)
@@ -290,6 +315,7 @@ fun FxAppShell() {
                             onRefresh = newsStore::refresh,
                             onRegionSelected = newsStore::setRegion,
                             onCurrencySelected = newsStore::setCurrency,
+                            onOpenUrl = ExternalUrlOpener::open,
                             onOpenPaywall = { showPaywall = true },
                         )
                         FxTab.More -> when (moreRoute) {
@@ -301,7 +327,7 @@ fun FxAppShell() {
                                 onOpenWatchlist = { moreRoute = MoreRoute.Watchlist },
                                 onOpenTraveler = { moreRoute = MoreRoute.Traveler },
                                 onOpenSettings = { moreRoute = MoreRoute.Settings },
-                                onOpenNews = { selectedTab = FxTab.News },
+                                onOpenNews = { selectTab(FxTab.News) },
                                 onOpenPaywall = { showPaywall = true },
                             )
                             MoreRoute.Alerts -> AlertsScreen(
@@ -365,6 +391,8 @@ fun FxAppShell() {
                                 onRestorePurchase = {
                                     scope.launch {
                                         subscriptionState = subscriptionGateway.restore()
+                                        AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
+                                        subscriptionReady = true
                                     }
                                 },
                                 onSyncNow = {
@@ -429,6 +457,8 @@ fun FxAppShell() {
                                 onDevPremiumChange = { enabled ->
                                     scope.launch {
                                         subscriptionState = subscriptionGateway.setDevPremium(enabled)
+                                        AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
+                                        subscriptionReady = true
                                     }
                                 },
                                 onThemeModeChange = { mode ->
@@ -449,8 +479,7 @@ fun FxAppShell() {
                 tabs = FxTab.entries.map { it.label },
                 selectedIndex = selectedTab.ordinal,
                 onSelect = {
-                    selectedTab = FxTab.entries[it]
-                    if (selectedTab != FxTab.More) moreRoute = MoreRoute.Menu
+                    selectTab(FxTab.entries[it])
                 },
             )
         }
@@ -648,8 +677,14 @@ fun DetailScreen(
     liveState: LiveRatesState = LiveRatesState(),
     alertsState: AlertsState = AlertsState(),
     subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
+    subscriptionReady: Boolean = true,
+    detailState: DetailUiState = DetailUiState(),
+    newsState: NewsUiState = NewsUiState(),
     rate: FxRate? = null,
     onBack: () -> Unit = {},
+    onOpenPaywall: () -> Unit = {},
+    onLoadHistory: (String, String, Period, List<Float>) -> Unit = { _, _, _, _ -> },
+    onOpenUrl: (String) -> Unit = {},
     onCreateAlert: (FxRate) -> Unit = {},
 ) {
     var period by remember { mutableStateOf(Period.OneMonth) }
@@ -661,12 +696,43 @@ fun DetailScreen(
     } else {
         "${alertsState.activeCount}/${alertAccess.alertLimit} active"
     }
+    val fallbackSeries = if (selected.code == liveState.favorites.firstOrNull()?.code) liveState.detailSeries else selected.sparkline
+    val detailMatches = detailState.base == liveState.baseCurrency && detailState.quote == selected.code && detailState.period == period
+    val hasLoadedPeriodData = detailMatches && detailState.points.isNotEmpty()
+    val isLoadingNewPeriod = detailMatches && detailState.isLoading && !hasLoadedPeriodData
+    val chartData = remember(detailState.series, hasLoadedPeriodData, fallbackSeries, period) {
+        if (hasLoadedPeriodData) detailState.series else fallbackSeries.seriesForPeriod(period)
+    }
+    var visibleChartData by remember(liveState.baseCurrency, selected.code) { mutableStateOf(chartData) }
+    LaunchedEffect(chartData, isLoadingNewPeriod) {
+        if (!isLoadingNewPeriod) {
+            visibleChartData = chartData
+        }
+    }
+    val stats = remember(visibleChartData) { visibleChartData.toDetailStats() }
+    val effectivePremium = subscriptionState.isPremium || !subscriptionReady
+    val periodIsPro = period == Period.OneYear || period == Period.All
+    val historyCaption = if (detailMatches && detailState.points.isNotEmpty()) {
+        "${detailState.provider} · ${detailState.points.size} pts · ${detailState.updatedLabel}"
+    } else {
+        "cached preview"
+    }
+    LaunchedEffect(liveState.baseCurrency, selected.code, period, fallbackSeries, effectivePremium) {
+        if (effectivePremium || !periodIsPro) {
+            onLoadHistory(liveState.baseCurrency, selected.code, period, fallbackSeries)
+        }
+    }
+    val relatedStories = remember(newsState.stories, selected.code) {
+        newsState.stories.filter { story ->
+            story.tag == selected.code || story.moves.any { it.first == selected.code }
+        }
+    }
     ScreenScaffold {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             BackNavButton(label = null, onClick = onBack)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Pill("★ Watching")
-                Pill("🔒")
+                Pill(if (activeForPair > 0) "🔔 $activeForPair alert" else "★ Watching")
+                Pill(if (effectivePremium) "Pro" else "Free")
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -680,40 +746,168 @@ fun DetailScreen(
             Text(formatRate(selected.rate), style = FxTheme.typography.numberXL, color = FxTheme.colors.text)
             Text(formatChange(selected.change24h), style = FxTheme.typography.numberBody, color = if (selected.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down, modifier = Modifier.padding(bottom = 7.dp))
         }
-        Text("mid-market · 14:32:08 UTC · refresh 1s", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+        Text("${selected.caption ?: "mid-market"} · ${liveState.updatedLabel}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
         BentoCard {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                val chartData = if (selected.code == "EUR") liveState.detailSeries else selected.sparkline
-                PriceChart(chartData, Modifier.fillMaxWidth().height(188.dp), focusIndex = 8)
-                SegmentedPeriods(period, { period = it }, Modifier.fillMaxWidth())
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Eyebrow(if (detailState.isLoading && detailMatches) "LOADING HISTORY" else "HISTORY · ${period.label}")
+                    Text(
+                        historyCaption,
+                        style = FxTheme.typography.captionMono,
+                        color = FxTheme.colors.textFaint,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (isLoadingNewPeriod) {
+                    DetailChartLoadingOverlay(visibleChartData, Modifier.fillMaxWidth().height(188.dp))
+                } else {
+                    PriceChart(visibleChartData, Modifier.fillMaxWidth().height(188.dp))
+                }
+                SegmentedPeriods(
+                    period,
+                    { next ->
+                        if (!effectivePremium && (next == Period.OneYear || next == Period.All)) {
+                            onOpenPaywall()
+                        } else {
+                            period = next
+                        }
+                    },
+                    Modifier.fillMaxWidth(),
+                )
+                if (detailMatches && detailState.errorMessage != null) {
+                    Text("History unavailable · using cached preview", style = FxTheme.typography.caption, color = FxTheme.colors.down)
+                }
             }
         }
-        SectionLabel("STATISTICS · 1M")
+        if (periodIsPro && !effectivePremium) {
+            ProUpsellCard(
+                title = "Unlock long-range history",
+                subtitle = "Pro adds 1Y and all-time detail, full event context and deeper market overlays.",
+                onClick = onOpenPaywall,
+            )
+        }
+        SectionLabel("STATISTICS · ${period.label}")
         BentoCard {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                KeyValueRow("Open", "0.9038", "Apr 13")
-                KeyValueRow("High", "0.9241", "Apr 28")
-                KeyValueRow("Low", "0.9028", "Apr 02")
-                KeyValueRow("Volatility", "0.42 %")
-                KeyValueRow("Avg 30-day", "0.9156")
+                KeyValueRow("Open", formatRate(stats.open))
+                KeyValueRow("High", formatRate(stats.high))
+                KeyValueRow("Low", formatRate(stats.low))
+                KeyValueRow("Range", "${formatRate(stats.low)} - ${formatRate(stats.high)}")
+                KeyValueRow("Volatility", "${formatRate(stats.volatilityPct)}%")
+                KeyValueRow("Average", formatRate(stats.average))
             }
         }
-        SectionLabel("EVENTS · ANNOTATED", right = "Filter")
-        BentoCard(padding = 0.dp) { Column { Events.forEach { EventRow(it) } } }
+        SectionLabel("RELATED NEWS", right = if (newsState.isLoading) "Loading" else if (effectivePremium) "Live" else "Preview")
+        if (relatedStories.isEmpty()) {
+            EmptyDetailSection(
+                title = if (newsState.isLoading) "Loading related news" else "No related news",
+                subtitle = if (newsState.isLoading) {
+                    "Fetching ${selected.code} market headlines from the live feed."
+                } else {
+                    "No live headlines are currently tied to ${selected.code}."
+                },
+            )
+        } else {
+            relatedStories.take(if (effectivePremium) relatedStories.size else 2).forEach { story ->
+                StoryCard(story, onClick = { story.sourceUrl.takeIf { it.isNotBlank() }?.let(onOpenUrl) })
+            }
+        }
+        SectionLabel("EVENTS · ANNOTATED", right = if (effectivePremium) "Derived" else "Preview")
+        if (relatedStories.isEmpty()) {
+            EmptyDetailSection(
+                title = "No annotated events",
+                subtitle = "Events will appear here when the live feed includes stories for ${selected.code}.",
+            )
+        } else {
+            BentoCard(padding = 0.dp) {
+                Column {
+                    relatedStories.take(if (effectivePremium) relatedStories.size else 2).forEach { story ->
+                        DetailEventRow(story, onOpenUrl = onOpenUrl)
+                    }
+                }
+            }
+        }
         GhostButton(
-            text = if (activeForPair > 0) "🔔  Add another ${selected.code} alert                                      $alertLabel" else "🔔  Alert me above ${formatRate(selected.rate * 1.01)}                                      $alertLabel",
+            text = if (activeForPair > 0) "🔔 Add another ${selected.code} alert · $alertLabel" else "🔔 Alert me above ${formatRate(selected.rate * 1.01)} · $alertLabel",
             onClick = { onCreateAlert(selected) },
         )
     }
 }
 
 @Composable
-private fun EventRow(item: EventItem) {
-    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(item.date, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, modifier = Modifier.width(42.dp))
-        Pill(item.tag, variant = PillVariant.Accent)
-        Text(item.headline, style = FxTheme.typography.caption, color = FxTheme.colors.text, modifier = Modifier.weight(1f))
-        Text("→", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+private fun DetailChartLoadingPlaceholder(modifier: Modifier = Modifier) {
+    val colors = FxTheme.colors
+    Canvas(modifier = modifier) {
+        val padX = 8.dp.toPx()
+        val padTop = 16.dp.toPx()
+        val padBottom = 18.dp.toPx()
+        val chartH = size.height - padTop - padBottom
+        repeat(4) { i ->
+            val y = padTop + chartH * (i / 3f)
+            var x = padX
+            while (x < size.width - padX) {
+                drawLine(
+                    colors.border.copy(alpha = 0.72f),
+                    Offset(x, y),
+                    Offset((x + 4.dp.toPx()).coerceAtMost(size.width - padX), y),
+                    strokeWidth = 1f,
+                )
+                x += 8.dp.toPx()
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailChartLoadingOverlay(data: List<Float>, modifier: Modifier = Modifier) {
+    val colors = FxTheme.colors
+    val transition = rememberInfiniteTransition()
+    val progress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(1_100), repeatMode = RepeatMode.Restart),
+    )
+    Box(modifier) {
+        PriceChart(data, Modifier.matchParentSize().alpha(0.46f))
+        Canvas(Modifier.matchParentSize()) {
+            val x = size.width * progress
+            drawLine(
+                colors.accent.copy(alpha = 0.48f),
+                Offset(x, 16.dp.toPx()),
+                Offset(x, size.height - 18.dp.toPx()),
+                strokeWidth = 2.dp.toPx(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailEventRow(story: NewsStory, onOpenUrl: (String) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = story.sourceUrl.isNotBlank()) { onOpenUrl(story.sourceUrl) }
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(story.age, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, modifier = Modifier.width(58.dp))
+        Pill(story.tag, variant = PillVariant.Accent)
+        Text(story.title, style = FxTheme.typography.caption, color = FxTheme.colors.text, modifier = Modifier.weight(1f))
+        if (story.sourceUrl.isNotBlank()) {
+            Text("→", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+        }
+    }
+}
+
+@Composable
+private fun EmptyDetailSection(title: String, subtitle: String) {
+    BentoCard(padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Text(subtitle, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+        }
     }
 }
 
@@ -1466,6 +1660,7 @@ fun NewsScreen(
     onRefresh: () -> Unit = {},
     onRegionSelected: (String) -> Unit = {},
     onCurrencySelected: (String) -> Unit = {},
+    onOpenUrl: (String) -> Unit = {},
     onOpenPaywall: () -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
@@ -1539,7 +1734,7 @@ fun NewsScreen(
         }
         SectionLabel("RECENT LINES · ${filteredStories.size}")
         if (newsState.errorMessage != null) {
-            Text("News backend unavailable · showing cached market lines", style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
+            Text("News backend unavailable", style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
         }
         if (visibleStories.isEmpty()) {
             BentoCard(padding = 12.dp) {
@@ -1549,7 +1744,9 @@ fun NewsScreen(
                 }
             }
         }
-        visibleStories.forEach { StoryCard(it) }
+        visibleStories.forEach { story ->
+            StoryCard(story, onClick = { story.sourceUrl.takeIf { it.isNotBlank() }?.let(onOpenUrl) })
+        }
         if (!access.canUseAdvancedNews || visibleStories.size < filteredStories.size) {
             ProUpsellCard(
                 title = "Personalize the market stream",
@@ -2011,6 +2208,51 @@ private fun canCreateAlert(subscriptionState: SubscriptionState, currentCount: I
 
 private const val ALERT_TARGET_TOLERANCE = 0.0000001
 
+private data class DetailStats(
+    val open: Double,
+    val high: Double,
+    val low: Double,
+    val average: Double,
+    val volatilityPct: Double,
+)
+
+private val Period.label: String
+    get() = when (this) {
+        Period.OneDay -> "1D"
+        Period.OneWeek -> "1W"
+        Period.OneMonth -> "1M"
+        Period.OneYear -> "1Y"
+        Period.All -> "ALL"
+    }
+
+private fun List<Float>.seriesForPeriod(period: Period): List<Float> {
+    val source = if (isEmpty()) DetailSeries else this
+    val points = when (period) {
+        Period.OneDay -> 6
+        Period.OneWeek -> 8
+        Period.OneMonth -> 18
+        Period.OneYear -> source.size
+        Period.All -> source.size
+    }
+    return source.takeLast(points.coerceAtMost(source.size)).ifEmpty { DetailSeries }
+}
+
+private fun List<Float>.toDetailStats(): DetailStats {
+    val source = if (isEmpty()) DetailSeries else this
+    val values = source.map { it.toDouble() }
+    val average = values.average().takeIf { !it.isNaN() } ?: 0.0
+    val high = values.maxOrNull() ?: 0.0
+    val low = values.minOrNull() ?: 0.0
+    val volatility = if (average == 0.0) 0.0 else ((high - low) / average) * 100.0
+    return DetailStats(
+        open = values.firstOrNull() ?: 0.0,
+        high = high,
+        low = low,
+        average = average,
+        volatilityPct = volatility,
+    )
+}
+
 @Composable
 private fun BackNavButton(label: String?, onClick: () -> Unit) {
     Row(
@@ -2029,8 +2271,11 @@ private fun BackNavButton(label: String?, onClick: () -> Unit) {
 }
 
 @Composable
-private fun StoryCard(story: NewsStory) {
-    BentoCard(padding = 12.dp) {
+private fun StoryCard(story: NewsStory, onClick: () -> Unit = {}) {
+    BentoCard(
+        padding = 12.dp,
+        modifier = Modifier.clickable(enabled = story.sourceUrl.isNotBlank(), onClick = onClick),
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -2041,6 +2286,13 @@ private fun StoryCard(story: NewsStory) {
             }
             Text(story.title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
             Text(story.summary, style = FxTheme.typography.body, color = FxTheme.colors.textDim)
+            if (story.source.isNotBlank()) {
+                Text(
+                    if (story.sourceUrl.isNotBlank()) "${story.source} · open source" else story.source,
+                    style = FxTheme.typography.captionMono,
+                    color = if (story.sourceUrl.isNotBlank()) FxTheme.colors.accent else FxTheme.colors.textFaint,
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Eyebrow("MOVES")
                 story.moves.forEach { (code, change) ->

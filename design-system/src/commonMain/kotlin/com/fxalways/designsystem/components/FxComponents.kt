@@ -424,15 +424,17 @@ fun PriceChart(data: List<Float>, modifier: Modifier = Modifier.fillMaxWidth().h
         }
         drawPath(area, Brush.verticalGradient(0f to colors.accent.copy(alpha = 0.22f), 1f to colors.accent.copy(alpha = 0f)))
         drawPath(line, colors.accent, style = Stroke(width = 1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        val focus = (focusIndex ?: (data.lastIndex * 0.66f).toInt()).coerceIn(0, data.lastIndex)
-        val p = points[focus]
-        var y = padTop
-        while (y < size.height - padBottom) {
-            drawLine(colors.accent, Offset(p.x, y), Offset(p.x, (y + 3.dp.toPx()).coerceAtMost(size.height - padBottom)), strokeWidth = 0.9f)
-            y += 6.dp.toPx()
+        if (focusIndex != null) {
+            val focus = focusIndex.coerceIn(0, data.lastIndex)
+            val p = points[focus]
+            var y = padTop
+            while (y < size.height - padBottom) {
+                drawLine(colors.accent, Offset(p.x, y), Offset(p.x, (y + 3.dp.toPx()).coerceAtMost(size.height - padBottom)), strokeWidth = 0.9f)
+                y += 6.dp.toPx()
+            }
+            drawCircle(colors.accent.copy(alpha = 0.18f), radius = 9.dp.toPx(), center = p)
+            drawCircle(colors.accent, radius = 4.5.dp.toPx(), center = p)
         }
-        drawCircle(colors.accent.copy(alpha = 0.18f), radius = 9.dp.toPx(), center = p)
-        drawCircle(colors.accent, radius = 4.5.dp.toPx(), center = p)
     }
 }
 
@@ -541,7 +543,7 @@ fun SegmentedPeriods(selected: Period, onSelected: (Period) -> Unit, modifier: M
                     .clip(FxTheme.shapes.field)
                     .background(if (active) FxTheme.colors.bg else Color.Transparent)
                     .border(if (active) 1.dp else 0.dp, if (active) FxTheme.colors.accentLine else Color.Transparent, FxTheme.shapes.field)
-                    .clickable { onSelected(period) }
+                    .clickable(enabled = !active) { onSelected(period) }
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {

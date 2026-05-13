@@ -18,6 +18,8 @@ data class NewsStory(
     val title: String,
     val summary: String,
     val moves: List<Pair<String, Double>>,
+    val source: String = "Demo",
+    val sourceUrl: String = "",
 )
 
 data class EventItem(

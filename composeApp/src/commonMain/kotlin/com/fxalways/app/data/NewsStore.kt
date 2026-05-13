@@ -1,7 +1,6 @@
 package com.fxalways.app.data
 
 import com.fxalways.app.DeviceLocale
-import com.fxalways.app.data.mock.NewsStories
 import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.domain.NewsFeedDto
 import kotlinx.coroutines.CoroutineScope
@@ -14,7 +13,7 @@ import kotlinx.coroutines.launch
 
 data class NewsUiState(
     val isLoading: Boolean = true,
-    val provider: String = "mock",
+    val provider: String = "loading",
     val region: String = DeviceLocale.region,
     val language: String = DeviceLocale.language,
     val selectedCurrency: String = "USD",
@@ -22,7 +21,7 @@ data class NewsUiState(
     val bullish: Int = 46,
     val neutral: Int = 20,
     val bearish: Int = 34,
-    val stories: List<NewsStory> = NewsStories,
+    val stories: List<NewsStory> = emptyList(),
     val errorMessage: String? = null,
 )
 
@@ -103,6 +102,8 @@ private fun NewsFeedDto.toUiState(
                 title = item.title,
                 summary = item.summary,
                 moves = item.moves.map { it.code to it.change },
+                source = item.source,
+                sourceUrl = item.sourceUrl,
             )
         },
     )

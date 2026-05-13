@@ -11,4 +11,6 @@ expect object AppSettingsPrefs {
     fun setThemeMode(mode: ThemeMode)
     fun baseCurrency(): String
     fun setBaseCurrency(code: String)
+    fun cachedPremium(): Boolean?
+    fun setCachedPremium(enabled: Boolean)
 }
