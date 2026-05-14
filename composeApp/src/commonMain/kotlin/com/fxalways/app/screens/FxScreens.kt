@@ -1885,17 +1885,20 @@ fun AlertsScreen(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Eyebrow("${liveState.baseCurrency} PAIR")
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    alertRates.chunked(4).forEach { rowRates ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    alertRates.chunked(2).forEach { rowRates ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             rowRates.forEach { rate ->
-                                Pill(
-                                    text = rate.code,
-                                    variant = if (rate.code == selectedRate.code) PillVariant.Accent else PillVariant.Ghost,
+                                AlertCurrencyChoice(
+                                    rate = rate,
+                                    selected = rate.code == selectedRate.code,
                                     modifier = Modifier.clickable {
                                         selectedRateCode = rate.code
                                         targetText = defaultAlertInput(rate, selectedDirection, selectedKind)
-                                    },
+                                    }.weight(1f),
                                 )
+                            }
+                            if (rowRates.size == 1) {
+                                Spacer(Modifier.weight(1f))
                             }
                         }
                     }
@@ -2305,6 +2308,43 @@ private fun AlertTargetField(
                     innerTextField()
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun AlertCurrencyChoice(
+    rate: FxRate,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .heightIn(min = 54.dp)
+            .clip(FxTheme.shapes.field)
+            .background(if (selected) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
+            .border(
+                1.dp,
+                if (selected) FxTheme.colors.accentLine else FxTheme.colors.border,
+                FxTheme.shapes.field,
+            )
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FlagDot(rate.glyph, rate.kind, 26.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(rate.code, style = FxTheme.typography.bodyStrong, color = if (selected) FxTheme.colors.accent else FxTheme.colors.text)
+            Text(
+                rate.name,
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (selected) {
+            Text("✓", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.accent)
         }
     }
 }
