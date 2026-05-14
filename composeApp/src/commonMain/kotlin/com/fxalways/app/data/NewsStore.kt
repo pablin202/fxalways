@@ -114,6 +114,7 @@ private fun NewsFeedDto.toUiState(
                 moves = item.moves.map { it.code to it.change },
                 source = item.source,
                 sourceUrl = item.sourceUrl,
+                topics = item.topics.map { topic -> topic.uppercase() }.distinct(),
             )
         },
     )

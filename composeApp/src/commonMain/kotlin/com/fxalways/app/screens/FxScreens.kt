@@ -2648,19 +2648,27 @@ fun NewsScreen(
 ) {
     val access = subscriptionState.featureAccess()
     var query by remember { mutableStateOf("") }
+    var selectedTopic by remember { mutableStateOf("ALL") }
     val normalizedQuery = query.trim()
-    val filteredStories = remember(newsState.stories, query, newsState.selectedCurrency) {
+    val topicOptions = remember(newsState.stories) {
+        (listOf("ALL") + newsState.stories.flatMap { story -> story.topics }.filter { it.isNotBlank() })
+            .distinct()
+            .take(8)
+    }
+    val filteredStories = remember(newsState.stories, query, newsState.selectedCurrency, selectedTopic) {
         newsState.stories.filter { story ->
             val matchesQuery = normalizedQuery.isBlank() ||
                 story.title.contains(normalizedQuery, ignoreCase = true) ||
                 story.summary.contains(normalizedQuery, ignoreCase = true) ||
                 story.tag.contains(normalizedQuery, ignoreCase = true) ||
+                story.topics.any { it.contains(normalizedQuery, ignoreCase = true) } ||
                 story.moves.any { it.first.contains(normalizedQuery, ignoreCase = true) }
             val matchesCurrency = newsState.selectedCurrency.isBlank() ||
                 newsState.selectedCurrency == "USD" ||
                 story.moves.any { it.first == newsState.selectedCurrency } ||
                 story.tag == newsState.selectedCurrency
-            matchesQuery && matchesCurrency
+            val matchesTopic = selectedTopic == "ALL" || story.topics.any { it == selectedTopic }
+            matchesQuery && matchesCurrency && matchesTopic
         }
     }
     val visibleStories = filteredStories.take(access.newsStoryLimit.cap(filteredStories.size))
@@ -2671,6 +2679,7 @@ fun NewsScreen(
         hasQuery = normalizedQuery.isNotBlank(),
         region = newsState.region,
         currency = newsState.selectedCurrency,
+        topic = selectedTopic,
     )
     ScreenScaffold {
         ScreenHeader(
@@ -2723,6 +2732,19 @@ fun NewsScreen(
                     enabled = access.canUseAdvancedNews,
                     onSelect = { code ->
                         if (access.canUseAdvancedNews) onCurrencySelected(code) else onOpenPaywall()
+                    },
+                )
+                NewsFilterRow(
+                    label = "TOPIC",
+                    options = topicOptions,
+                    selected = selectedTopic,
+                    enabled = access.canUseAdvancedNews,
+                    onSelect = { topic ->
+                        if (access.canUseAdvancedNews || topic == selectedTopic) {
+                            selectedTopic = topic
+                        } else {
+                            onOpenPaywall()
+                        }
                     },
                 )
             }
@@ -3853,10 +3875,12 @@ private fun newsEmptyCopy(
     hasQuery: Boolean,
     region: String,
     currency: String,
+    topic: String,
 ): Pair<String, String> =
     when {
         !hasBackendStories -> "No market stories yet" to "The backend did not return stories for $region. Refresh or try a broader region."
         hasQuery -> "No search matches" to "No $currency stories match that search. Clear the query or switch currency."
+        topic != "ALL" -> "No $topic stories in $region" to "The feed is live, but this topic has no direct $currency matches right now."
         else -> "No $currency stories in $region" to "The feed is live, but this filter has no direct currency matches right now."
     }
 

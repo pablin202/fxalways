@@ -74,7 +74,7 @@ Use this as the production readiness checklist for each feature. Mark items only
 - [x] Open article/source links when the provider gives a URL.
 - [x] Add empty state for region with no relevant stories.
 - [x] Add cache age and refresh feedback.
-- [ ] Add topic filters.
+- [x] Add topic filters.
 
 ## Traveler
 

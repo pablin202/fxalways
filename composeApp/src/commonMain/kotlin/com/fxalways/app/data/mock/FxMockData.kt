@@ -20,6 +20,7 @@ data class NewsStory(
     val moves: List<Pair<String, Double>>,
     val source: String = "Demo",
     val sourceUrl: String = "",
+    val topics: List<String> = emptyList(),
 )
 
 data class EventItem(
