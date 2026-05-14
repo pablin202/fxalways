@@ -8,7 +8,7 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - `functions`: Firebase Cloud Functions TypeScript.
 - Firestore: cache backend de `latest` y `history` para evitar miles de llamadas al proveedor FX.
 - Proveedor FX inicial: Frankfurter API, basada en datos del European Central Bank.
-- iOS premium: capa `SubscriptionGateway` lista para reemplazar por RevenueCat KMP.
+- iOS premium: `SubscriptionGateway` conectado a RevenueCat KMP con Test Store durante desarrollo.
 
 ## Features incluidas
 
@@ -66,16 +66,20 @@ npm install
 npm run deploy
 ```
 
-## Suscripcion iOS
+## iOS
 
-La app incluye `SubscriptionGateway` para aislar pagos del resto del producto. El placeholder deja Android libre y bloquea features Pro en iOS.
+El proyecto iOS se genera con XcodeGen y compila el framework Compose correcto para device o simulador desde Xcode.
 
-Implementacion recomendada:
+```bash
+./scripts/ios-simulator-run.sh
+./scripts/ios-device-run.sh
+```
 
-1. Crear suscripcion mensual auto-renovable en App Store Connect.
-2. Crear entitlement `pro` y offering mensual en RevenueCat.
-3. Reemplazar `PlaceholderSubscriptionGateway` por un gateway RevenueCat KMP.
-4. Usar `PlatformConfig.revenueCatApiKey` para inicializar RevenueCat por plataforma.
+Para produccion iOS todavia falta:
+
+1. Crear la app iOS en Firebase y agregar `GoogleService-Info.plist`.
+2. Habilitar Sign in with Apple en Apple Developer y Firebase Auth.
+3. Cambiar la key RevenueCat Test Store por la public SDK key de App Store.
 
 ## Fuentes revisadas
 

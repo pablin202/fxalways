@@ -57,17 +57,34 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -downloadPla
 
 If Kotlin/Native cache errors appear, keep the script phase flag `-Pkotlin.native.cacheKind=none`.
 
+## Physical iPhone
+
+The current paired test device is:
+
+```text
+Pablo's iPhone: 00008150-00052DDA343A401C
+```
+
+Build, install and launch over USB or wireless:
+
+```bash
+./scripts/ios-device-run.sh
+```
+
+Use a different paired device with:
+
+```bash
+DEVICE_ID=<device-id> ./scripts/ios-device-run.sh
+```
+
+Wireless runs require the iPhone to stay paired in Xcode, unlocked recently, on the same WiFi as the Mac, and with Developer Mode enabled.
+
 ## Smoke Test
 
 Install and launch on a simulator:
 
 ```bash
-DEVICE_ID="$(DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun simctl list devices available | rg 'iPhone 17 \\(' | head -1 | sed -E 's/.*\\(([A-F0-9-]{36})\\).*/\\1/')"
-APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/FXAlways-hgzorfcvkkusndfdkqhxzpqwzwzg/Build/Products/Debug-iphonesimulator/FX Always.app"
-
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun simctl boot "$DEVICE_ID" || true
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun simctl install "$DEVICE_ID" "$APP_PATH"
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun simctl launch --console "$DEVICE_ID" com.fxalways.app.ios
+./scripts/ios-simulator-run.sh
 ```
 
 Expected launch behavior:

@@ -136,11 +136,6 @@ Manual QA:
 iOS smoke test:
 
 ```bash
-xcodegen generate
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
-  -project FXAlways.xcodeproj \
-  -scheme iosApp \
-  -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
-  build
+./scripts/ios-simulator-run.sh
+./scripts/ios-device-run.sh
 ```
