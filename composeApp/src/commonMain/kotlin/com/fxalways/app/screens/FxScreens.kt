@@ -529,6 +529,29 @@ private val uiTranslations = mapOf(
         "Alerts, extended history and unlimited watchlists" to "Alertas, histórico extendido y watchlists ilimitadas",
         "The full picture.\nMore rates. More context." to "El panorama completo.\nMás rates. Más contexto.",
         "Unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists on one membership." to "Alertas ilimitadas, más histórico, comparaciones ampliadas, viajes y watchlists en una membresía.",
+        "Built for people who move money, travel, track currencies or need alerts before rates move away." to "Hecho para quienes mueven dinero, viajan, siguen monedas o necesitan alertas antes de que cambien los rates.",
+        "PRO UNLOCKS" to "PRO DESBLOQUEA",
+        "FREE VS PRO" to "FREE VS PRO",
+        "Free" to "Free",
+        "Pro unlock" to "Pro desbloquea",
+        "Custom alerts" to "Alertas custom",
+        "1 active alert" to "1 alerta activa",
+        "Unlimited pairs + ranges" to "Pares y rangos ilimitados",
+        "Compare board" to "Tablero comparativo",
+        "4 currencies" to "4 monedas",
+        "Every tracked currency" to "Toda moneda seguida",
+        "Traveler" to "Viajes",
+        "Focused destinations" to "Destinos principales",
+        "All destinations + full cheat sheet" to "Todos los destinos + guía completa",
+        "Watchlist" to "Watchlist",
+        "4 tracked currencies" to "4 monedas seguidas",
+        "Unlimited portfolio tracking" to "Portfolio ilimitado",
+        "News" to "Noticias",
+        "Top stories only" to "Solo historias principales",
+        "Full regional stream" to "Stream regional completo",
+        "History" to "Histórico",
+        "30 days" to "30 días",
+        "1Y + all-time where available" to "1A + todo el histórico donde esté disponible",
         "Fresh market rates" to "Rates frescos",
         "Backend-backed mid-market rates with automatic refresh." to "Rates de mercado medio desde backend con actualización automática.",
         "Unlimited alerts" to "Alertas ilimitadas",
@@ -5327,7 +5350,7 @@ fun PaywallScreen(
 
     ScreenScaffold {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onClose))
+            Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textDim, modifier = Modifier.testTag("paywall_close").clickable(onClick = onClose))
         }
         Eyebrow("FX/ PRO", color = FxTheme.colors.accent)
 	        Text(ui("The full picture.\nMore rates. More context."), style = FxTheme.typography.display, color = FxTheme.colors.text)
@@ -5336,17 +5359,34 @@ fun PaywallScreen(
             style = FxTheme.typography.body,
             color = FxTheme.colors.textDim,
         )
+        Text(
+            ui("Built for people who move money, travel, track currencies or need alerts before rates move away."),
+            style = FxTheme.typography.caption,
+            color = FxTheme.colors.textFaint,
+        )
         if (subscriptionState.isPremium) {
             ProActiveCard(subscriptionState = subscriptionState)
         }
-        BentoCard(padding = 12.dp) {
+        SectionLabel(ui("PRO UNLOCKS"))
+        BentoCard(Modifier.testTag("paywall_benefits"), padding = 12.dp) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-	                BenefitRow("⌖", ui("Fresh market rates"), ui("Backend-backed mid-market rates with automatic refresh."))
-	                BenefitRow("⬡", ui("Unlimited alerts"), ui("Price, range, daily and weekly targets."))
-	                BenefitRow("◐", ui("Traveler mode"), ui("Auto-location, cheat sheets and offline rates."))
-	                BenefitRow("⌘", ui("Fee comparison"), ui("Expanded provider estimates by amount and currency pair."))
-	                BenefitRow("⌬", ui("Bigger watchlists"), ui("Track more currencies across converter, compare and portfolio."))
-	                BenefitRow("∞", ui("Long-range history"), ui("Unlock 1Y and all-time detail views where history is available."))
+	                BenefitRow("FX", ui("Fresh market rates"), ui("Backend-backed mid-market rates with automatic refresh."))
+	                BenefitRow("AL", ui("Unlimited alerts"), ui("Price, range, daily and weekly targets."))
+	                BenefitRow("TR", ui("Traveler mode"), ui("Auto-location, cheat sheets and offline rates."))
+	                BenefitRow("%", ui("Fee comparison"), ui("Expanded provider estimates by amount and currency pair."))
+	                BenefitRow("WL", ui("Bigger watchlists"), ui("Track more currencies across converter, compare and portfolio."))
+	                BenefitRow("1Y", ui("Long-range history"), ui("Unlock 1Y and all-time detail views where history is available."))
+            }
+        }
+        SectionLabel(ui("FREE VS PRO"))
+        BentoCard(Modifier.testTag("paywall_comparison"), padding = 12.dp) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PaywallComparisonRow("alerts", ui("Custom alerts"), ui("1 active alert"), ui("Unlimited pairs + ranges"))
+                PaywallComparisonRow("compare", ui("Compare board"), ui("4 currencies"), ui("Every tracked currency"))
+                PaywallComparisonRow("traveler", ui("Traveler"), ui("Focused destinations"), ui("All destinations + full cheat sheet"))
+                PaywallComparisonRow("watchlist", ui("Watchlist"), ui("4 tracked currencies"), ui("Unlimited portfolio tracking"))
+                PaywallComparisonRow("news", ui("News"), ui("Top stories only"), ui("Full regional stream"))
+                PaywallComparisonRow("history", ui("History"), ui("30 days"), ui("1Y + all-time where available"))
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -5354,6 +5394,7 @@ fun PaywallScreen(
                 PlanOption(
                     plan = plan,
                     selected = plan.kind == selectedPlan.kind,
+                    modifier = Modifier.testTag("paywall_plan_${plan.kind.name}"),
                     onSelect = {
                         if (plan.isAvailable) {
                             selectedKind = plan.kind
@@ -5362,7 +5403,7 @@ fun PaywallScreen(
                 )
             }
         }
-        BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card), padding = 12.dp) {
+        BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card).testTag("paywall_selected_plan"), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     selectedPlan.badge?.let { Pill(ui(it), variant = PillVariant.Accent) }
@@ -5395,21 +5436,47 @@ fun PaywallScreen(
                     onStart(selectedPlan.kind)
                 }
             },
+            modifier = Modifier.fillMaxWidth().testTag("paywall_start_button"),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text(
 	                ui("Restore purchase  ·  Terms  ·  Privacy"),
                 style = FxTheme.typography.captionMono,
                 color = if (actionInProgress) FxTheme.colors.textGhost else FxTheme.colors.textFaint,
-                modifier = Modifier.clickable(enabled = !actionInProgress, onClick = onRestore),
+                modifier = Modifier.testTag("paywall_restore").clickable(enabled = !actionInProgress, onClick = onRestore),
             )
         }
     }
 }
 
 @Composable
+private fun PaywallComparisonRow(id: String, feature: String, freeValue: String, proValue: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("paywall_feature_$id")
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2.copy(alpha = 0.54f))
+            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(0.92f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(feature, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Text(ui("Free"), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            Text(freeValue, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp), horizontalAlignment = Alignment.End) {
+            Text(ui("Pro unlock"), style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
+            Text(proValue, style = FxTheme.typography.caption, color = FxTheme.colors.text)
+        }
+    }
+}
+
+@Composable
 private fun ProActiveCard(subscriptionState: SubscriptionState) {
-    BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card), padding = 12.dp) {
+    BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card).testTag("paywall_active_card"), padding = 12.dp) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -5429,12 +5496,13 @@ private fun ProActiveCard(subscriptionState: SubscriptionState) {
 private fun PlanOption(
     plan: SubscriptionPlan,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onSelect: () -> Unit,
 ) {
     val borderColor = if (selected) FxTheme.colors.accentLine else FxTheme.colors.border
     val contentAlpha = if (plan.isAvailable) 1f else 0.46f
     BentoCard(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .border(1.dp, borderColor, FxTheme.shapes.card)
             .alpha(contentAlpha)
@@ -5446,7 +5514,7 @@ private fun PlanOption(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FlagDot(if (selected) "✓" else "○", CurrencyKind.Fiat, 30.dp)
+            FlagDot(planGlyph(plan.kind), CurrencyKind.Fiat, 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(ui(plan.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
@@ -5465,6 +5533,13 @@ private fun PlanOption(
         }
     }
 }
+
+private fun planGlyph(kind: SubscriptionPlanKind): String =
+    when (kind) {
+        SubscriptionPlanKind.Monthly -> "1M"
+        SubscriptionPlanKind.Yearly -> "1Y"
+        SubscriptionPlanKind.Lifetime -> "∞"
+    }
 
 private fun SubscriptionState.proStatusLabel(): String =
     if (isPremium) {
@@ -5773,19 +5848,19 @@ private fun BenefitRow(glyph: String, title: String, body: String) {
             .clip(FxTheme.shapes.field)
             .background(FxTheme.colors.surface2.copy(alpha = 0.62f))
             .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(34.dp)
+                .size(44.dp)
                 .clip(CircleShape)
                 .background(FxTheme.colors.accentSoft)
                 .border(1.dp, FxTheme.colors.accentLine, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text(glyph, style = FxTheme.typography.numberBody, color = FxTheme.colors.accent, textAlign = TextAlign.Center)
+            Text(glyph, style = FxTheme.typography.captionMono, color = FxTheme.colors.accent, textAlign = TextAlign.Center)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
