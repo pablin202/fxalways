@@ -26,6 +26,7 @@ import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.theme.FxTheme
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.junit.Rule
@@ -101,6 +102,8 @@ class AlertsScreenTest {
         compose.onNodeWithTag("currency_picker_search").performTextReplacement("BTC")
         compose.onNodeWithTag("currency_picker_BTC").assertIsDisplayed()
         compose.onNodeWithText("Crypto · Bitcoin").assertIsDisplayed()
+        compose.onNodeWithTag("currency_picker_BTC").performClick()
+        compose.onNodeWithTag("alert_currency_BTC").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -175,6 +178,38 @@ class AlertsScreenTest {
     }
 
     @Test
+    fun freeUserReactivatesMatchingPausedCustomAlertWithoutPaywallAtLimit() {
+        val harness = renderAlerts(
+            isPremium = false,
+            initialAlerts = listOf(
+                PriceAlert(
+                    id = "eur_custom",
+                    base = "USD",
+                    quote = "EUR",
+                    target = 0.9292,
+                    direction = AlertDirection.Above,
+                    kind = AlertKind.Target,
+                    enabled = false,
+                    createdAtMillis = 1L,
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("1/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithTag("alert_currency_EUR").performScrollTo().performClick()
+        compose.onNodeWithText("Reactivate existing alert").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(0, harness.paywallClicks)
+            assertEquals(1, harness.manualCreateCalls)
+        }
+        compose.onNodeWithTag("alert_card_eur_custom").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Existing alert reactivated USD/EUR.").assertIsDisplayed()
+        compose.onNodeWithText("on").assertIsDisplayed()
+    }
+
+    @Test
     fun alertWithMissingLiveRateShowsWaitingState() {
         renderAlerts(
             isPremium = true,
@@ -194,6 +229,45 @@ class AlertsScreenTest {
 
         compose.onNodeWithTag("alert_card_cad_missing").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("waiting for live rate", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun activeAlertsShowHitAndDistanceStatesForTargetAndDailyMove() {
+        renderAlerts(
+            isPremium = true,
+            initialAlerts = listOf(
+                PriceAlert(
+                    id = "eur_hit",
+                    base = "USD",
+                    quote = "EUR",
+                    target = 0.90,
+                    direction = AlertDirection.Above,
+                    kind = AlertKind.Target,
+                    enabled = true,
+                    createdAtMillis = 1L,
+                ),
+                PriceAlert(
+                    id = "gbp_move",
+                    base = "USD",
+                    quote = "GBP",
+                    target = 0.5,
+                    direction = AlertDirection.Above,
+                    kind = AlertKind.DailyChange,
+                    enabled = true,
+                    createdAtMillis = 2L,
+                    lastTriggeredAtMillis = 1_700_000_000_000L,
+                ),
+            ),
+        )
+
+        compose.onAllNodesWithTag("alert_card_eur_hit").assertCountEquals(1)
+        compose.onAllNodesWithText("target hit", substring = true).assertCountEquals(1)
+        compose.onAllNodesWithText("target reached").assertCountEquals(1)
+
+        compose.onAllNodesWithTag("alert_card_gbp_move").assertCountEquals(1)
+        compose.onAllNodesWithText("24H MOVE").assertCountEquals(1)
+        compose.onAllNodesWithText("0.4 pts away", substring = true).assertCountEquals(1)
+        compose.onAllNodesWithText("0.4 pts to move").assertCountEquals(1)
     }
 
     private fun renderAlerts(
@@ -227,17 +301,37 @@ class AlertsScreenTest {
                         )
                     },
                     onCreateManualAlert = { rate, direction, target, kind ->
-                        val id = "manual_${nextAlertIndex++}"
-                        alerts = alerts + PriceAlert(
-                            id = id,
-                            base = liveState.baseCurrency,
-                            quote = rate.code,
-                            target = target,
-                            direction = direction,
-                            kind = kind,
-                            enabled = true,
-                            createdAtMillis = nextAlertIndex.toLong(),
-                        )
+                        harness.manualCreateCalls += 1
+                        val existing = alerts.firstOrNull {
+                            it.matchesDefinition(
+                                base = liveState.baseCurrency,
+                                quote = rate.code,
+                                target = target,
+                                direction = direction,
+                                kind = kind,
+                            )
+                        }
+                        if (existing != null) {
+                            alerts = alerts.map {
+                                if (it.id == existing.id) {
+                                    it.copy(enabled = true, createdAtMillis = nextAlertIndex.toLong())
+                                } else {
+                                    it
+                                }
+                            }
+                        } else {
+                            val id = "manual_${nextAlertIndex++}"
+                            alerts = alerts + PriceAlert(
+                                id = id,
+                                base = liveState.baseCurrency,
+                                quote = rate.code,
+                                target = target,
+                                direction = direction,
+                                kind = kind,
+                                enabled = true,
+                                createdAtMillis = nextAlertIndex.toLong(),
+                            )
+                        }
                     },
                     onResumeAlert = { id ->
                         alerts = alerts.map { if (it.id == id) it.copy(enabled = true) else it }
@@ -282,6 +376,23 @@ class AlertsScreenTest {
 
     private class AlertsHarness {
         var paywallClicks = 0
+        var manualCreateCalls = 0
         val testedAlertIds = mutableListOf<String>()
     }
 }
+
+private fun PriceAlert.matchesDefinition(
+    base: String,
+    quote: String,
+    target: Double,
+    direction: AlertDirection,
+    kind: AlertKind,
+): Boolean =
+    this.base == base &&
+        this.quote == quote &&
+        this.kind == kind &&
+        this.direction == direction &&
+        abs(this.target - target) < when (kind) {
+            AlertKind.Target -> 0.0000001
+            AlertKind.DailyChange -> 0.01
+        }
