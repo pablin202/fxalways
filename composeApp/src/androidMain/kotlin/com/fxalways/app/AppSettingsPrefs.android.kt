@@ -7,6 +7,7 @@ actual object AppSettingsPrefs {
     private const val KEY_TRAVELER_CURRENCY = "traveler_currency"
     private const val KEY_TRAVELER_BUDGET_BASE = "traveler_budget_base"
     private const val KEY_CONVERTER_CURRENCY_CODES = "converter_currency_codes"
+    private const val KEY_COMPARE_CURRENCY_CODES = "compare_currency_codes"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
 
     actual fun themeMode(): ThemeMode {
@@ -48,6 +49,17 @@ actual object AppSettingsPrefs {
 
     actual fun setConverterCurrencyCodes(codes: List<String>) {
         prefs().edit().putString(KEY_CONVERTER_CURRENCY_CODES, codes.distinct().joinToString(",")).apply()
+    }
+
+    actual fun compareCurrencyCodes(): List<String> =
+        prefs().getString(KEY_COMPARE_CURRENCY_CODES, null)
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+
+    actual fun setCompareCurrencyCodes(codes: List<String>) {
+        prefs().edit().putString(KEY_COMPARE_CURRENCY_CODES, codes.distinct().joinToString(",")).apply()
     }
 
     actual fun cachedPremium(): Boolean? =

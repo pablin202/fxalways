@@ -161,6 +161,7 @@ fun FxAppShell() {
     var travelerCurrency by remember { mutableStateOf(AppSettingsPrefs.travelerCurrency()) }
     var travelerBudgetBase by remember { mutableStateOf(AppSettingsPrefs.travelerBudgetBase()) }
     var converterCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.converterCurrencyCodes()) }
+    var compareCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.compareCurrencyCodes()) }
     val liveStore = remember { LiveRatesStore(initialBaseCurrency = baseCurrency) }
     val newsStore = remember { NewsStore() }
     val alertsStore = remember { AlertsStore() }
@@ -211,6 +212,7 @@ fun FxAppShell() {
                     travelerCurrency,
                     travelerBudgetBase,
                     converterCurrencyCodes,
+                    compareCurrencyCodes,
                     alertsState,
                     watchlistState,
                 )
@@ -222,6 +224,7 @@ fun FxAppShell() {
                         watchlistStore = watchlistStore,
                         liveStore = liveStore,
                         onConverterCurrencyCodes = { converterCurrencyCodes = it },
+                        onCompareCurrencyCodes = { compareCurrencyCodes = it },
                         onTravelerCurrency = { travelerCurrency = it },
                         onTravelerBudgetBase = { travelerBudgetBase = it },
                     )
@@ -239,7 +242,7 @@ fun FxAppShell() {
         backupReady = backupState.isAvailable
         startupReady = true
     }
-    LaunchedEffect(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, alertsState, watchlistState, backupReady) {
+    LaunchedEffect(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, compareCurrencyCodes, alertsState, watchlistState, backupReady) {
         if (backupReady) {
             runCatching {
                 val snapshot = buildUserBackupSnapshot(
@@ -248,6 +251,7 @@ fun FxAppShell() {
                     travelerCurrency,
                     travelerBudgetBase,
                     converterCurrencyCodes,
+                    compareCurrencyCodes,
                     alertsState,
                     watchlistState,
                 )
@@ -360,6 +364,11 @@ fun FxAppShell() {
                         FxTab.Compare -> CompareScreen(
                             liveState = liveState,
                             subscriptionState = subscriptionState,
+                            selectedCurrencyCodes = compareCurrencyCodes,
+                            onCurrencyCodesChange = { codes ->
+                                compareCurrencyCodes = codes
+                                AppSettingsPrefs.setCompareCurrencyCodes(codes)
+                            },
                             onOpenPaywall = { showPaywall = true },
                             onOpenDetail = { detailRate = it },
                         )
@@ -470,6 +479,7 @@ fun FxAppShell() {
                                                 travelerCurrency,
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
+                                                compareCurrencyCodes,
                                                 alertsState,
                                                 watchlistState,
                                             )
@@ -493,6 +503,7 @@ fun FxAppShell() {
                                                 travelerCurrency,
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
+                                                compareCurrencyCodes,
                                                 alertsState,
                                                 watchlistState,
                                             )
@@ -507,6 +518,7 @@ fun FxAppShell() {
                                                 watchlistStore = watchlistStore,
                                                 liveStore = liveStore,
                                                 onConverterCurrencyCodes = { converterCurrencyCodes = it },
+                                                onCompareCurrencyCodes = { compareCurrencyCodes = it },
                                                 onTravelerCurrency = { travelerCurrency = it },
                                                 onTravelerBudgetBase = { travelerBudgetBase = it },
                                             )
@@ -532,6 +544,7 @@ fun FxAppShell() {
                                                 travelerCurrency,
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
+                                                compareCurrencyCodes,
                                                 alertsState,
                                                 watchlistState,
                                             )
@@ -737,7 +750,9 @@ fun ConverterScreen(
     val feeQuotes = estimatedFeeQuotes(sourceRate, targetRate, amountValue)
         .take(access.feeQuoteLimit.cap(EstimatedFeeQuoteCount))
     if (showCurrencyPicker) {
-        ConverterCurrencyPickerSheet(
+        CurrencyListPickerSheet(
+            title = "Edit converter list",
+            lockedSubtitle = "Pro unlocks more converter currencies",
             currencies = availableRates.filterNot { it.code == liveState.baseCurrency },
             selectedCodes = targetCodes,
             limit = access.converterCurrencyLimit,
@@ -1250,13 +1265,74 @@ private fun EmptyDetailSection(title: String, subtitle: String) {
 fun CompareScreen(
     liveState: LiveRatesState,
     subscriptionState: SubscriptionState,
+    selectedCurrencyCodes: List<String> = emptyList(),
+    onCurrencyCodesChange: (List<String>) -> Unit = {},
     onOpenPaywall: () -> Unit,
     onOpenDetail: (FxRate) -> Unit,
 ) {
     val access = subscriptionState.featureAccess()
-    val compareRates = liveState.compare.take(access.compareLimit.cap(liveState.compare.size))
+    var sortMode by remember { mutableStateOf(CompareSortMode.Movers) }
+    var showCurrencyPicker by remember { mutableStateOf(false) }
+    val availableRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat, liveState.crypto) {
+        liveState.compareAvailableRates()
+    }
+    val selectedCodes = remember(liveState.baseCurrency, selectedCurrencyCodes, availableRates, access.compareLimit) {
+        compareTargetCodes(selectedCurrencyCodes, availableRates, liveState.baseCurrency, access.compareLimit)
+    }
+    val compareRates = remember(selectedCodes, availableRates, sortMode) {
+        val byCode = availableRates.associateBy { it.code }
+        selectedCodes.mapNotNull { byCode[it] }.sortedForCompare(sortMode)
+    }
+    val bestRate = compareRates.maxByOrNull { it.change24h }
+    val weakestRate = compareRates.minByOrNull { it.change24h }
+    if (showCurrencyPicker) {
+        CurrencyListPickerSheet(
+            title = "Edit comparison",
+            lockedSubtitle = "Pro unlocks more comparison currencies",
+            currencies = availableRates.filterNot { it.code == liveState.baseCurrency },
+            selectedCodes = selectedCodes,
+            limit = access.compareLimit,
+            isPremium = subscriptionState.isPremium,
+            onDismiss = { showCurrencyPicker = false },
+            onOpenPaywall = {
+                showCurrencyPicker = false
+                onOpenPaywall()
+            },
+            onApply = { codes ->
+                showCurrencyPicker = false
+                onCurrencyCodesChange(codes)
+            },
+        )
+    }
     ScreenScaffold {
-        ScreenHeader("Compare", sub = "${liveState.baseCurrency} BASE", subtitle = "${compareRates.size} currencies · normalized movement")
+        ScreenHeader(
+            "Compare",
+            sub = "${liveState.baseCurrency} BASE",
+            subtitle = "${compareRates.size} currencies · ${sortMode.label.lowercase()} · ${liveState.updatedLabel}",
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CompareSortMode.entries.forEach { mode ->
+                Pill(
+                    mode.label,
+                    variant = if (mode == sortMode) PillVariant.Accent else PillVariant.Ghost,
+                    modifier = Modifier.clickable { sortMode = mode },
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            MetricTile(
+                "STRONGEST",
+                bestRate?.code ?: "--",
+                bestRate?.let { formatChange(it.change24h) } ?: "No data",
+                Modifier.weight(1f).height(76.dp),
+            )
+            MetricTile(
+                "WEAKEST",
+                weakestRate?.code ?: "--",
+                weakestRate?.let { formatChange(it.change24h) } ?: "No data",
+                Modifier.weight(1f).height(76.dp),
+            )
+        }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             compareRates.chunked(2).forEach { rowRates ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1274,22 +1350,25 @@ fun CompareScreen(
                 }
             }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            GhostButton("≡  Edit comparison", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
+            GhostButton("↗  Open strongest", Modifier.weight(1f), onClick = { bestRate?.let(onOpenDetail) })
+        }
         if (!subscriptionState.isPremium) {
             ProUpsellCard(
                 title = "Compare every tracked currency",
-                subtitle = "Pro unlocks the full comparison board and advanced overlays.",
+                subtitle = "Free compares ${access.compareLimit}; Pro unlocks the full board and advanced overlays.",
                 onClick = onOpenPaywall,
             )
         }
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Eyebrow("OVERLAY · 1M")
-                OverlayChart()
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    LegendDot("EUR", FxTheme.colors.accent)
-                    LegendDot("GBP", FxTheme.colors.up)
-                    LegendDot("JPY", FxTheme.colors.down)
-                    LegendDot("BTC", FxTheme.colors.crypto)
+                OverlayChart(compareRates.take(4))
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    compareRates.take(4).forEachIndexed { index, rate ->
+                        LegendDot(rate.code, compareOverlayColor(index, rate.kind))
+                    }
                 }
             }
         }
@@ -2967,7 +3046,9 @@ private fun CurrencyPickerSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ConverterCurrencyPickerSheet(
+private fun CurrencyListPickerSheet(
+    title: String,
+    lockedSubtitle: String,
     currencies: List<FxRate>,
     selectedCodes: List<String>,
     limit: Int,
@@ -3003,7 +3084,7 @@ private fun ConverterCurrencyPickerSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("Edit converter list", style = FxTheme.typography.titleL, color = FxTheme.colors.text)
+                Text(title, style = FxTheme.typography.titleL, color = FxTheme.colors.text)
                 Text(
                     if (isPremium) {
                         "${draftCodes.size} selected · every supported currency available"
@@ -3041,7 +3122,7 @@ private fun ConverterCurrencyPickerSheet(
                     val locked = !selected && draftCodes.size >= effectiveLimit
                     SettingChoiceRow(
                         title = "${currency.glyph}  ${currency.code}",
-                        subtitle = if (locked && !isPremium) "Pro unlocks more converter currencies" else currency.name,
+                        subtitle = if (locked && !isPremium) lockedSubtitle else currency.name,
                         selected = selected,
                         actionLabel = if (selected) "added" else if (locked) "pro" else "add",
                         onClick = {
@@ -3308,6 +3389,12 @@ private fun LiveRatesState.converterAvailableRates(): List<FxRate> =
         .distinctBy { it.code }
         .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
 
+private fun LiveRatesState.compareAvailableRates(): List<FxRate> =
+    (compare + favorites + converter + allFiat + crypto)
+        .filterNot { it.code == baseCurrency }
+        .distinctBy { it.code }
+        .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
+
 private fun converterTargetCodes(
     selectedCurrencyCodes: List<String>,
     availableRates: List<FxRate>,
@@ -3330,6 +3417,32 @@ private fun converterTargetCodes(
                 .take(targetLimit)
         }
 }
+
+private fun compareTargetCodes(
+    selectedCurrencyCodes: List<String>,
+    availableRates: List<FxRate>,
+    baseCurrency: String,
+    limit: Int,
+): List<String> =
+    converterTargetCodes(
+        selectedCurrencyCodes = selectedCurrencyCodes,
+        availableRates = availableRates,
+        baseCurrency = baseCurrency,
+        limit = limit,
+    )
+
+private enum class CompareSortMode(val label: String) {
+    Movers("Movers"),
+    Strongest("Strongest"),
+    Weakest("Weakest"),
+}
+
+private fun List<FxRate>.sortedForCompare(sortMode: CompareSortMode): List<FxRate> =
+    when (sortMode) {
+        CompareSortMode.Movers -> sortedByDescending { kotlin.math.abs(it.change24h) }
+        CompareSortMode.Strongest -> sortedByDescending { it.change24h }
+        CompareSortMode.Weakest -> sortedBy { it.change24h }
+    }
 
 private data class PortfolioHolding(
     val rate: FxRate,
@@ -3381,6 +3494,7 @@ private fun buildUserBackupSnapshot(
     travelerCurrency: String,
     travelerBudgetBase: Double,
     converterCurrencyCodes: List<String>,
+    compareCurrencyCodes: List<String>,
     alertsState: AlertsState,
     watchlistState: WatchlistState,
 ): UserBackupSnapshot =
@@ -3392,6 +3506,7 @@ private fun buildUserBackupSnapshot(
             travelerCurrency = travelerCurrency,
             travelerBudgetBase = travelerBudgetBase,
             converterCurrencyCodes = converterCurrencyCodes,
+            compareCurrencyCodes = compareCurrencyCodes,
         ),
         alerts = alertsState.alerts,
         watchlist = watchlistState.watchlist,
@@ -3403,6 +3518,7 @@ private fun applyUserBackupSnapshot(
     watchlistStore: WatchlistStore,
     liveStore: LiveRatesStore,
     onConverterCurrencyCodes: (List<String>) -> Unit,
+    onCompareCurrencyCodes: (List<String>) -> Unit,
     onTravelerCurrency: (String) -> Unit,
     onTravelerBudgetBase: (Double) -> Unit,
 ): ThemeMode {
@@ -3412,8 +3528,10 @@ private fun applyUserBackupSnapshot(
     AppSettingsPrefs.setTravelerCurrency(snapshot.settings.travelerCurrency)
     AppSettingsPrefs.setTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     AppSettingsPrefs.setConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
+    AppSettingsPrefs.setCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
     liveStore.setBaseCurrency(snapshot.settings.baseCurrency)
     onConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
+    onCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
     onTravelerCurrency(snapshot.settings.travelerCurrency)
     onTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     alertsStore.replaceAll(snapshot.alerts)
@@ -4049,15 +4167,10 @@ private fun SentimentBar(
 }
 
 @Composable
-private fun OverlayChart() {
-    val colors = listOf(FxTheme.colors.accent, FxTheme.colors.up, FxTheme.colors.down, FxTheme.colors.crypto)
+private fun OverlayChart(rates: List<FxRate>) {
     val border = FxTheme.colors.border
-    val series = listOf(
-        FavoriteRates[0].sparkline,
-        FavoriteRates[1].sparkline,
-        FavoriteRates[2].sparkline,
-        CryptoRates[0].sparkline,
-    )
+    val series = rates.map { rate -> rate.sparkline.normalizedPercentSeries() }
+    val colors = rates.mapIndexed { index, rate -> compareOverlayColor(index, rate.kind) }
     Canvas(Modifier.fillMaxWidth().height(130.dp)) {
         repeat(5) { i ->
             val y = size.height * (i / 4f)
@@ -4069,8 +4182,9 @@ private fun OverlayChart() {
             val range = (max - min).coerceAtLeast(1e-9f)
             val path = Path()
             values.forEachIndexed { index, value ->
+                val denominator = values.lastIndex.coerceAtLeast(1)
                 val point = Offset(
-                    x = (index.toFloat() / values.lastIndex) * size.width,
+                    x = (index.toFloat() / denominator) * size.width,
                     y = (1f - (value - min) / range) * size.height,
                 )
                 if (index == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
@@ -4078,4 +4192,15 @@ private fun OverlayChart() {
             drawPath(path, colors[seriesIndex], style = Stroke(width = 1.5f))
         }
     }
+}
+
+private fun List<Float>.normalizedPercentSeries(): List<Float> {
+    val first = firstOrNull()?.takeIf { kotlin.math.abs(it) > 0.0000001f } ?: return this
+    return map { ((it - first) / first) * 100f }
+}
+
+@Composable
+private fun compareOverlayColor(index: Int, kind: CurrencyKind?): Color {
+    val colors = listOf(FxTheme.colors.accent, FxTheme.colors.up, FxTheme.colors.down, FxTheme.colors.textDim)
+    return if (kind == CurrencyKind.Crypto) FxTheme.colors.crypto else colors[index % colors.size]
 }
