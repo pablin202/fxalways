@@ -1773,7 +1773,7 @@ fun ConverterScreen(
                     focusManager.clearFocus()
                 },
             )
-            GhostButton("≡  ${ui("Edit list")}", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
+            GhostButton("≡  ${ui("Edit list")}", Modifier.weight(1f).testTag("converter_edit_list"), onClick = { showCurrencyPicker = true })
         }
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
         BentoCard(padding = 12.dp) {
@@ -1865,6 +1865,7 @@ private fun ConverterRow(
     Row(
         Modifier
             .fillMaxWidth()
+            .testTag("converter_row_${rate.code}")
             .clip(FxTheme.shapes.field)
             .background(bg)
             .border(if (selected || source) 1.dp else 0.dp, border, FxTheme.shapes.field)
@@ -2243,8 +2244,9 @@ fun DetailScreen(
                 }
             }
         }
-        GhostButton(
-            text = if (activeForPair > 0) "🔔 ${ui("Add another alert")} ${selected.code} · $alertLabel" else "🔔 ${ui("Alert me above")} ${formatRate(selected.rate * 1.01)} · $alertLabel",
+        GhostIconButton(
+            icon = MoreFeatureIcon.Alerts,
+            text = if (activeForPair > 0) "${ui("Add another alert")} ${selected.code} · $alertLabel" else "${ui("Alert me above")} ${formatRate(selected.rate * 1.01)} · $alertLabel",
             onClick = { onCreateAlert(selected) },
         )
     }
@@ -4465,7 +4467,7 @@ private fun CurrencyListPickerSheet(
                     onValueChange = { query = it.take(24) },
                     singleLine = true,
                     textStyle = FxTheme.typography.body.copy(color = FxTheme.colors.text),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("currency_list_search"),
                     decorationBox = { innerTextField ->
                         if (query.isBlank()) {
 	                            Text(ui("Search currency"), style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
@@ -5980,6 +5982,29 @@ private fun GhostButton(text: String, modifier: Modifier = Modifier.fillMaxWidth
             .padding(vertical = 13.dp, horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
+        Text(text, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+    }
+}
+
+@Composable
+private fun GhostIconButton(
+    icon: MoreFeatureIcon,
+    text: String,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    onClick: () -> Unit = {},
+) {
+    Row(
+        modifier
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2)
+            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 14.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        MoreFeatureIconView(icon)
+        Spacer(Modifier.width(8.dp))
         Text(text, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
     }
 }

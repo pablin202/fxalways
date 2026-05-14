@@ -1,8 +1,13 @@
 package com.fxalways.app.screens
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -10,7 +15,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.data.LiveRatesState
@@ -19,6 +27,8 @@ import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.theme.FxTheme
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
 
@@ -69,7 +79,8 @@ class ConverterScreenTest {
     fun customInputsUpdateCustomCostInFreeMode() {
         renderConverter(isPremium = false)
 
-        compose.onNodeWithText("CUSTOM COST").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fee_input_Fixed fee").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("CUSTOM COST").assertIsDisplayed()
         compose.onNodeWithText("Fixed fee").assertIsDisplayed()
         compose.onNodeWithText("Fee %").assertIsDisplayed()
         compose.onNodeWithText("FX markup").assertIsDisplayed()
@@ -96,19 +107,77 @@ class ConverterScreenTest {
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
     }
 
-    private fun renderConverter(isPremium: Boolean) {
+    @Test
+    fun freeEditListShowsOnlyCoreCryptoAndLocksWhenLimitIsFull() {
+        val harness = renderConverter(isPremium = false, selectedCodes = listOf("EUR", "GBP", "JPY", "CHF"))
+
+        compose.onNodeWithTag("converter_edit_list").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_search").performTextReplacement("SOL")
+
+        compose.onAllNodesWithTag("currency_list_SOL").assertCountEquals(0)
+
+        compose.onNodeWithTag("currency_list_search").performTextReplacement("BTC")
+        compose.onNodeWithTag("currency_list_BTC").assertIsDisplayed().performClick()
+
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+    }
+
+    @Test
+    fun proEditListSearchesCryptoAndAddsItToConverterRows() {
+        val harness = renderConverter(isPremium = true, selectedCodes = listOf("EUR"))
+
+        compose.onNodeWithTag("converter_edit_list").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_search").performTextReplacement("sol")
+        compose.onNodeWithTag("currency_list_SOL").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("currency_list_scroll").performTouchInput { swipeDown() }
+
+        compose.runOnIdle { assertTrue("SOL" in harness.selectedCodes) }
+        compose.waitUntil(timeoutMillis = 5_000) {
+            compose.onAllNodesWithTag("converter_row_SOL").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("converter_row_SOL").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proEditListLabelsFiatCryptoAndStablecoinSearchResults() {
+        renderConverter(isPremium = true, selectedCodes = listOf("EUR"))
+
+        compose.onNodeWithTag("converter_edit_list").performScrollTo().performClick()
+        compose.onNodeWithText("Fiat · Euro").assertIsDisplayed()
+
+        compose.onNodeWithTag("currency_list_search").performTextReplacement("tether")
+        compose.onNodeWithTag("currency_list_USDT").assertIsDisplayed()
+        compose.onNodeWithText("Stablecoin · Tether").assertIsDisplayed()
+
+        compose.onNodeWithTag("currency_list_search").performTextReplacement("")
+        compose.onNodeWithTag("currency_list_scroll").performScrollToNode(hasTestTag("currency_list_BTC"))
+        compose.onNodeWithTag("currency_list_BTC").assertIsDisplayed()
+        compose.onNodeWithText("Crypto · Bitcoin").assertIsDisplayed()
+    }
+
+    private fun renderConverter(
+        isPremium: Boolean,
+        selectedCodes: List<String> = listOf("EUR", "GBP", "JPY"),
+    ): ConverterHarness {
+        val harness = ConverterHarness(selectedCodes = selectedCodes)
         AndroidAppContext.init(compose.activity)
         compose.setContent {
+            var codes by remember { mutableStateOf(selectedCodes) }
+
             FxTheme {
                 ConverterScreen(
                     liveState = testLiveRatesState(),
                     subscriptionState = SubscriptionState(isPremium = isPremium),
-                    selectedCurrencyCodes = listOf("EUR", "GBP", "JPY"),
-                    onCurrencyCodesChange = {},
-                    onOpenPaywall = {},
+                    selectedCurrencyCodes = codes,
+                    onCurrencyCodesChange = {
+                        codes = it
+                        harness.selectedCodes = it
+                    },
+                    onOpenPaywall = { harness.paywallClicks += 1 },
                 )
             }
         }
+        return harness
     }
 
     private fun testLiveRatesState(): LiveRatesState {
@@ -116,15 +185,30 @@ class ConverterScreenTest {
         val eur = FxRate("EUR", "Euro", "🇪🇺", CurrencyKind.Fiat, 0.92, -0.2, listOf(0.91f, 0.92f), "1 USD = 0.9200 EUR")
         val gbp = FxRate("GBP", "British Pound", "🇬🇧", CurrencyKind.Fiat, 0.78, 0.1, listOf(0.77f, 0.78f), "1 USD = 0.7800 GBP")
         val jpy = FxRate("JPY", "Japanese Yen", "🇯🇵", CurrencyKind.Fiat, 156.0, 0.3, listOf(155f, 156f), "1 USD = 156.0000 JPY")
+        val chf = FxRate("CHF", "Swiss Franc", "🇨🇭", CurrencyKind.Fiat, 0.83, -0.1, listOf(0.82f, 0.83f), "1 USD = 0.8300 CHF")
+        val btc = FxRate("BTC", "Bitcoin", "₿", CurrencyKind.Crypto, 0.000015, 2.4, listOf(0.000014f, 0.000015f), "1 USD = 0.000015 BTC")
+        val eth = FxRate("ETH", "Ethereum", "Ξ", CurrencyKind.Crypto, 0.00024, 1.2, listOf(0.00023f, 0.00024f), "1 USD = 0.000240 ETH")
+        val usdt = FxRate("USDT", "Tether", "₮", CurrencyKind.Crypto, 1.0002, 0.01, listOf(1f, 1.0002f), "1 USD = 1.0002 USDT")
+        val usdc = FxRate("USDC", "USD Coin", "$", CurrencyKind.Crypto, 0.9999, -0.01, listOf(1f, 0.9999f), "1 USD = 0.9999 USDC")
+        val sol = FxRate("SOL", "Solana", "◎", CurrencyKind.Crypto, 0.00628, -1.14, listOf(0.0068f, 0.00628f), "1 USD = 0.006280 SOL")
+        val fiat = listOf(usd, eur, gbp, jpy, chf)
+        val crypto = listOf(btc, eth, usdt, usdc, sol)
         return LiveRatesState(
             isLoading = false,
             isLive = true,
             baseCurrency = "USD",
             updatedLabel = "2026-05-14 · test · refreshed 12:00",
-            favorites = listOf(eur, gbp, jpy),
-            converter = listOf(usd, eur, gbp, jpy),
-            compare = listOf(eur, gbp, jpy),
-            allFiat = listOf(usd, eur, gbp, jpy),
+            favorites = listOf(eur, gbp, jpy, chf),
+            converter = fiat,
+            compare = listOf(eur, gbp, jpy, chf),
+            crypto = crypto,
+            allFiat = fiat,
         )
+    }
+
+    private class ConverterHarness(
+        var selectedCodes: List<String>,
+    ) {
+        var paywallClicks = 0
     }
 }
