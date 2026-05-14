@@ -94,10 +94,10 @@ Use this as the production readiness checklist for each feature. Mark items only
 - [x] Restore purchase action calls RevenueCat restore.
 - [x] Debug dev premium toggle exists.
 - [x] Remove or hide dev toggle in release builds.
-- [ ] Add notification permission/status row.
-- [ ] Add language selector.
-- [ ] Add legal/privacy links.
-- [ ] Add account/subscription management once RevenueCat is live.
+- [x] Add notification permission/status row.
+- [x] Add language selector.
+- [x] Add legal/privacy links.
+- [x] Add account/subscription management once RevenueCat is live.
 
 ## Watchlist And Portfolio
 

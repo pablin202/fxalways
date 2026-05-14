@@ -32,9 +32,10 @@ data class NewsUiState(
 
 class NewsStore(
     private val api: ExchangeApi = ExchangeApi(),
+    initialLanguage: String = DeviceLocale.language,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val _state = MutableStateFlow(NewsUiState())
+    private val _state = MutableStateFlow(NewsUiState(language = initialLanguage.lowercase()))
     val state: StateFlow<NewsUiState> = _state
     private var refreshJob: Job? = null
 
@@ -81,6 +82,10 @@ class NewsStore(
 
     fun setRegion(region: String) {
         refresh(region = region, currencies = _state.value.trackedCurrencies)
+    }
+
+    fun setLanguage(language: String) {
+        refresh(language = language.lowercase(), region = _state.value.region, currencies = _state.value.trackedCurrencies)
     }
 
     fun setCurrency(code: String) {

@@ -41,6 +41,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +49,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -73,6 +75,7 @@ import com.fxalways.app.AlertTestNotifier
 import com.fxalways.app.BackupSettings
 import com.fxalways.app.DeviceLocale
 import com.fxalways.app.ExternalUrlOpener
+import com.fxalways.app.NotificationPermissionStatus
 import com.fxalways.app.Platform
 import com.fxalways.app.PlatformConfig
 import com.fxalways.app.ThemeMode
@@ -108,6 +111,7 @@ import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.app.subscription.cap
 import com.fxalways.app.subscription.createSubscriptionGateway
 import com.fxalways.app.subscription.featureAccess
+import com.fxalways.app.ui.SupportedLanguages
 import com.fxalways.designsystem.components.BentoCard
 import com.fxalways.designsystem.components.BentoTile
 import com.fxalways.designsystem.components.BigValueText
@@ -151,6 +155,528 @@ private enum class MoreRoute {
     Settings,
 }
 
+private val LocalAppLanguage = staticCompositionLocalOf { "en" }
+
+@Composable
+private fun ui(text: String): String = localizedUiText(LocalAppLanguage.current, text)
+
+private fun localizedUiText(language: String, text: String): String {
+    val normalized = language.lowercase().substringBefore("-").substringBefore("_")
+    return uiTranslations[normalized]?.get(text) ?: uiTranslations["en"]?.get(text) ?: text
+}
+
+private val uiTranslations = mapOf(
+    "en" to mapOf(
+        "No topic stories" to "No topic stories",
+        "No currency stories" to "No currency stories",
+        "No matching stories" to "No matching stories",
+        "Try a broader filter or refresh the feed." to "Try a broader filter or refresh the feed.",
+        "No live stories match this search." to "No live stories match this search.",
+    ),
+    "es" to mapOf(
+        "Rates" to "Tipos",
+        "Convert" to "Convertir",
+        "Compare" to "Comparar",
+        "News" to "Noticias",
+        "More" to "Más",
+        "LIVE" to "EN VIVO",
+        "CACHED" to "CACHÉ",
+        "Edit" to "Editar",
+        "See all" to "Ver todo",
+        "Pro" to "Pro",
+        "Free" to "Free",
+        "Preview" to "Vista previa",
+        "Live" to "En vivo",
+        "Loading" to "Cargando",
+        "Estimated" to "Estimado",
+        "Active" to "Activo",
+        "Ready" to "Listo",
+        "Next" to "Siguiente",
+        "Unlimited" to "Ilimitado",
+        "Preparing workspace" to "Preparando espacio",
+        "Loading account, preferences and rates" to "Cargando cuenta, preferencias y tipos",
+        "Live backend unavailable · using cached UI data" to "Backend no disponible · usando datos en caché",
+        "base" to "base",
+        "favorites" to "favoritos",
+        "VOLATILITY · 24H" to "VOLATILIDAD · 24H",
+        "FAVORITES" to "FAVORITOS",
+        "Unlock full watchlists" to "Desbloquear watchlists completas",
+        "Pro adds more favorites, extended history, alerts and complete fee comparison." to "Pro agrega más favoritos, histórico extendido, alertas y comparación completa de fees.",
+        "CRYPTO" to "CRYPTO",
+        "pinned" to "fijado",
+        "Edit converter list" to "Editar lista del conversor",
+        "Pro unlocks more converter currencies" to "Pro desbloquea más monedas en el conversor",
+        "MID" to "MEDIO",
+        "Multi-currency · live to 4 decimals" to "Multimoneda · en vivo a 4 decimales",
+        "YOU SEND" to "ENVIAS",
+        "Converted to" to "Convertido a",
+        "FEES" to "FEES",
+        "See the real transfer cost" to "Ver el costo real de transferencia",
+        "Pro unlocks the complete provider list; estimates update with your amount." to "Pro desbloquea la lista completa de proveedores; los estimados se actualizan con tu monto.",
+        "Base currency · source amount" to "Moneda base · monto origen",
+        "Selected destination" to "Destino seleccionado",
+        "Mid-market" to "Mercado medio",
+        "best" to "mejor",
+        "Bank transfer" to "Transferencia bancaria",
+        "high fee" to "fee alto",
+        "cached preview" to "vista en caché",
+        "mid-market" to "mercado medio",
+        "LOADING HISTORY" to "CARGANDO HISTÓRICO",
+        "HISTORY" to "HISTÓRICO",
+        "History unavailable · using cached preview" to "Histórico no disponible · usando vista en caché",
+        "Unlock long-range history" to "Desbloquear histórico largo",
+        "Pro adds 1Y and all-time detail, full event context and deeper market overlays." to "Pro agrega 1A y todo el histórico, contexto de eventos y overlays de mercado.",
+        "STATISTICS" to "ESTADÍSTICAS",
+        "Open" to "Apertura",
+        "High" to "Máximo",
+        "Low" to "Mínimo",
+        "Range" to "Rango",
+        "Volatility" to "Volatilidad",
+        "Average" to "Promedio",
+        "RELATED NEWS" to "NOTICIAS RELACIONADAS",
+        "Loading related news" to "Cargando noticias relacionadas",
+        "No related news" to "Sin noticias relacionadas",
+        "EVENTS · ANNOTATED" to "EVENTOS · ANOTADOS",
+        "No annotated events" to "Sin eventos anotados",
+        "Edit comparison" to "Editar comparación",
+        "Pro unlocks more comparison currencies" to "Pro desbloquea más monedas para comparar",
+        "Movers" to "Movimientos",
+        "Strongest" to "Más fuertes",
+        "Weakest" to "Más débiles",
+        "STRONGEST" to "MÁS FUERTE",
+        "WEAKEST" to "MÁS DÉBIL",
+        "No data" to "Sin datos",
+        "No comparison currencies" to "Sin monedas para comparar",
+        "The saved list is unavailable for" to "La lista guardada no está disponible para",
+        "Edit the comparison set to choose active currencies." to "Edita el set de comparación para elegir monedas activas.",
+        "Compare every tracked currency" to "Comparar todas las monedas seguidas",
+        "Free compares" to "Free compara",
+        "Pro unlocks the full board and advanced overlays." to "Pro desbloquea el panel completo y overlays avanzados.",
+        "OVERLAY · 1M" to "OVERLAY · 1M",
+        "per 1" to "por 1",
+        "Choose destination" to "Elegir destino",
+        "Traveler" to "Viajes",
+        "DESTINATION" to "DESTINO",
+        "More destinations" to "Más destinos",
+        "Search supported live currencies" to "Buscar monedas soportadas en vivo",
+        "Search" to "Buscar",
+        "supported live currencies" to "monedas soportadas en vivo",
+        "live currencies" to "monedas en vivo",
+        "Free shows" to "Free muestra",
+        "Pro unlocks every supported currency" to "Pro desbloquea todas las monedas soportadas",
+        "more +" to "más +",
+        "Free keeps the destination picker focused on the most common travel currencies." to "Free mantiene el selector enfocado en las monedas de viaje más comunes.",
+        "TRIP BUDGET" to "PRESUPUESTO",
+        "BUDGET" to "PRESUPUESTO",
+        "LOCAL" to "LOCAL",
+        "Daily range" to "Rango diario",
+        "Cash buffer" to "Reserva de efectivo",
+        "CHEAT SHEET" to "GUÍA RÁPIDA",
+        "Unlock full traveler mode" to "Desbloquear modo viajero completo",
+        "Pro adds complete cheat sheets, offline context and more local money tips." to "Pro agrega guías completas, contexto offline y más consejos locales.",
+        "LOCAL ETIQUETTE" to "COSTUMBRES LOCALES",
+        "TIPPING" to "PROPINA",
+        "TAX" to "IMPUESTO",
+        "CARDS ACCEPTED" to "TARJETAS ACEPTADAS",
+        "LOCAL PRICE GUIDE" to "GUÍA DE PRECIOS",
+        "Estimates" to "Estimados",
+        "TOOLS" to "HERRAMIENTAS",
+        "Travel, preferences and account" to "Viajes, preferencias y cuenta",
+        "Local cheat sheets and offline rates" to "Guías locales y rates offline",
+        "Market stream and sentiment" to "Noticias de mercado y sentimiento",
+        "Theme mode, base currency and version" to "Tema, moneda base y versión",
+        "Upgrade to Pro" to "Actualizar a Pro",
+        "COMING NEXT" to "PRÓXIMO",
+        "WIDGETS" to "WIDGETS",
+        "home screen and watch glance" to "inicio y vista rápida",
+        "monthly plan controls" to "controles del plan mensual",
+        "PRICE TARGETS" to "OBJETIVOS DE PRECIO",
+        "Watch breakouts without watching charts." to "Sigue rupturas sin mirar gráficos.",
+        "Android checks every 15 min when online. iOS saves alerts now; push delivery is next." to "Android revisa cada 15 min online. iOS guarda alertas ahora; push viene después.",
+        "CUSTOM ALERT" to "ALERTA PERSONALIZADA",
+        "Target rate" to "Tipo objetivo",
+        "Daily move %" to "Movimiento diario %",
+        "Keep existing alert active" to "Mantener alerta existente activa",
+        "Reactivate existing alert" to "Reactivar alerta existente",
+        "Unlock custom alerts" to "Desbloquear alertas personalizadas",
+        "QUICK CREATE" to "CREACIÓN RÁPIDA",
+        "Create unlimited alerts" to "Crear alertas ilimitadas",
+        "ACTIVE ALERTS" to "ALERTAS ACTIVAS",
+        "NO ALERTS YET" to "SIN ALERTAS",
+        "Create one from a favorite currency or from any detail screen." to "Crea una desde una moneda favorita o desde detalles.",
+        "CUSTOM TRACKING" to "SEGUIMIENTO",
+        "Tracked currencies" to "Monedas seguidas",
+        "Add amounts below to value your portfolio." to "Agrega montos abajo para valorar tu portfolio.",
+        "PORTFOLIO HOLDINGS" to "PORTFOLIO",
+        "Choose currencies below to start tracking." to "Elige monedas abajo para empezar.",
+        "HOW IT WORKS" to "CÓMO FUNCIONA",
+        "Watchlist follows rates. Portfolio value appears after you enter how much you hold." to "La watchlist sigue los rates. El valor aparece al ingresar cuánto tienes.",
+        "ADD OR REMOVE" to "AGREGAR O QUITAR",
+        "Track unlimited currencies" to "Seguir monedas ilimitadas",
+        "amount" to "monto",
+        "done" to "listo",
+        "tracked" to "seguida",
+        "pro" to "pro",
+        "add" to "agregar",
+        "on" to "activa",
+        "paused" to "pausada",
+        "CURRENT" to "ACTUAL",
+        "24H MOVE" to "MOV. 24H",
+        "LAST HIT" to "ÚLTIMO HIT",
+        "Never" to "Nunca",
+        "monitoring" to "monitoreando",
+        "pause" to "pausar",
+        "resume" to "reanudar",
+        "test" to "probar",
+        "MARKET STREAM" to "MERCADO",
+        "MARKET PREVIEW" to "VISTA MERCADO",
+        "SENTIMENT" to "SENTIMIENTO",
+        "REFRESHING" to "ACTUALIZANDO",
+        "BULLISH" to "ALCISTA",
+        "NEUTRAL" to "NEUTRAL",
+        "BEARISH" to "BAJISTA",
+        "Feed" to "Feed",
+        "Updated" to "Actualizado",
+        "REGION" to "REGIÓN",
+        "CURRENCY" to "MONEDA",
+        "TOPIC" to "TEMA",
+        "RECENT LINES" to "LÍNEAS RECIENTES",
+        "Refreshing market stream…" to "Actualizando mercado…",
+        "Personalize the market stream" to "Personalizar noticias de mercado",
+        "Market update" to "Actualización de mercado",
+        "Latest currency market context." to "Último contexto del mercado de divisas.",
+        "News detail" to "Detalle de noticia",
+        "Market source" to "Fuente de mercado",
+        "MARKET MOVES" to "MOVIMIENTOS",
+        "No direct currency move was detected for this story." to "No se detectó movimiento directo para esta noticia.",
+        "SOURCE" to "FUENTE",
+        "Publisher" to "Publicador",
+        "Published" to "Publicado",
+        "Open original source" to "Abrir fuente original",
+        "Choose base currency" to "Elegir moneda base",
+        "FX/ Pro active" to "FX/ Pro activo",
+        "FX/ Free" to "FX/ Free",
+        "DEV" to "DEV",
+        "Debug-only local gate override" to "Override local solo debug",
+        "Version" to "Versión",
+        "Search currency" to "Buscar moneda",
+        "No currencies found" to "No se encontraron monedas",
+        "Cancel" to "Cancelar",
+        "Apply" to "Aplicar",
+        "System" to "Sistema",
+        "Light" to "Claro",
+        "Dark" to "Oscuro",
+        "Follow device appearance" to "Seguir apariencia del dispositivo",
+        "Use the bright interface" to "Usar interfaz clara",
+        "Use the dark trading interface" to "Usar interfaz oscura",
+        "Guest backup active" to "Backup invitado activo",
+        "Backup unavailable" to "Backup no disponible",
+        "Preferences, alerts and watchlist sync to Firebase" to "Preferencias, alertas y watchlist sincronizan con Firebase",
+        "Firebase Auth has not started on this platform" to "Firebase Auth no inició en esta plataforma",
+        "active" to "activo",
+        "offline" to "offline",
+        "Sync pending" to "Sync pendiente",
+        "Target" to "Objetivo",
+        "Daily move" to "Movimiento diario",
+        "Above" to "Arriba",
+        "Below" to "Abajo",
+        "Down" to "Abajo",
+        "create" to "crear",
+        "waiting" to "esperando",
+        "target hit" to "objetivo alcanzado",
+        "target reached" to "objetivo alcanzado",
+        "base changed" to "base cambiada",
+        "MOVES" to "MOVIMIENTOS",
+        "Search headlines, tags or currencies" to "Buscar titulares, tags o monedas",
+        "No market stories yet" to "Sin noticias de mercado",
+        "No search matches" to "Sin coincidencias",
+        "No topic stories" to "Sin noticias de este tema",
+        "No currency stories" to "Sin noticias para esta moneda",
+        "No matching stories" to "Sin noticias coincidentes",
+        "Try a broader filter or refresh the feed." to "Prueba un filtro más amplio o actualiza el feed.",
+        "No live stories match this search." to "No hay noticias en vivo para esta búsqueda.",
+        "No live market stories have arrived yet." to "Aún no llegaron noticias de mercado en vivo.",
+        "Open strongest" to "Abrir más fuerte",
+        "Watching" to "Siguiendo",
+        "alert" to "alerta",
+        "alerts" to "alertas",
+        "PAIR" to "PAR",
+        "Create" to "Crear",
+        "Existing alert reactivated" to "Alerta existente reactivada",
+        "alert created" to "alerta creada",
+        "current" to "actual",
+        "holding" to "posición",
+        "held" to "en cartera",
+        "Tracking live rate" to "Siguiendo rate en vivo",
+        "enter amount held" to "ingresa el monto en cartera",
+        "holdings valued" to "posiciones valoradas",
+        "selected" to "seleccionadas",
+        "every supported currency available" to "todas las monedas disponibles",
+        "Pro unlocks the full list" to "Pro desbloquea la lista completa",
+        "focus" to "foco",
+        "Showing" to "Mostrando",
+        "stories" to "noticias",
+        "News backend unavailable" to "Backend de noticias no disponible",
+        "tap for details" to "toca para detalles",
+        "MED" to "MEDIO",
+        "HIGH" to "ALTO",
+        "LOW" to "BAJO",
+        "No live headlines are currently tied to" to "No hay titulares en vivo vinculados a",
+        "Fetching market headlines" to "Buscando titulares de mercado para",
+        "Events will appear here when stories include" to "Los eventos aparecerán aquí cuando las noticias incluyan",
+        "Derived" to "Derivado",
+        "Market source" to "Fuente de mercado",
+        "This item is generated from the fallback market brief, so there is no external article link." to "Este item viene del resumen de respaldo, por eso no hay link externo.",
+        "not customary" to "no es habitual",
+        "often included" to "a menudo incluido",
+        "cash useful" to "efectivo útil",
+        "service dependent" to "depende del servicio",
+        "VAT in price" to "IVA incluido",
+        "cards common" to "tarjetas comunes",
+        "often optional" to "suele ser opcional",
+        "contactless first" to "contactless primero",
+        "restaurants" to "restaurantes",
+        "usually included" to "normalmente incluido",
+        "carry cash" to "llevar efectivo",
+        "often service charge" to "suele ser cargo de servicio",
+        "varies by item" to "varía por item",
+        "optional" to "opcional",
+        "GST included" to "GST incluido",
+        "often added" to "suele agregarse",
+        "round up" to "redondear",
+        "Check" to "Revisar",
+        "Varies" to "Variable",
+        "verify locally" to "verificar localmente",
+        "mixed payments" to "pagos mixtos",
+        "Coffee" to "Café",
+        "Casual meal" to "Comida casual",
+        "Taxi start" to "Inicio taxi",
+        "Metro ride" to "Viaje metro",
+        "Transit ticket" to "Ticket transporte",
+        "Transit ride" to "Viaje transporte",
+        "Transit fare" to "Tarifa transporte",
+        "Pub meal" to "Comida pub",
+        "Lunch" to "Almuerzo",
+        "Active plan" to "Plan activo",
+        "Entitlement is active" to "Entitlement activo",
+        "Alerts, extended history and unlimited watchlists" to "Alertas, histórico extendido y watchlists ilimitadas",
+        "The full picture.\nMore rates. More context." to "El panorama completo.\nMás rates. Más contexto.",
+        "Unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists on one membership." to "Alertas ilimitadas, más histórico, comparaciones ampliadas, viajes y watchlists en una membresía.",
+        "Fresh market rates" to "Rates frescos",
+        "Backend-backed mid-market rates with automatic refresh." to "Rates de mercado medio desde backend con actualización automática.",
+        "Unlimited alerts" to "Alertas ilimitadas",
+        "Price, range, daily and weekly targets." to "Objetivos de precio, rango, diarios y semanales.",
+        "Traveler mode" to "Modo viajero",
+        "Auto-location, cheat sheets and offline rates." to "Auto-ubicación, guías rápidas y rates offline.",
+        "Fee comparison" to "Comparación de fees",
+        "Expanded provider estimates by amount and currency pair." to "Estimados ampliados por proveedor, monto y par.",
+        "Bigger watchlists" to "Watchlists más grandes",
+        "Track more currencies across converter, compare and portfolio." to "Sigue más monedas en conversor, comparación y portfolio.",
+        "Long-range history" to "Histórico largo",
+        "Unlock 1Y and all-time detail views where history is available." to "Desbloquea 1A y todo el histórico donde esté disponible.",
+        "Billed through Google Play on Android and App Store on iOS." to "Facturado por Google Play en Android y App Store en iOS.",
+        "Processing..." to "Procesando...",
+        "Continue" to "Continuar",
+        "Purchases unavailable" to "Compras no disponibles",
+        "Start FX/ Pro" to "Empezar FX/ Pro",
+        "Restore purchase  ·  Terms  ·  Privacy" to "Restaurar compra  ·  Términos  ·  Privacidad",
+        "FX/ Pro is active" to "FX/ Pro está activo",
+        "Available" to "Disponible",
+        "Not configured" to "No configurado",
+        "Monthly" to "Mensual",
+        "Yearly" to "Anual",
+        "Lifetime" to "De por vida",
+        "monthly" to "mensual",
+        "yearly" to "anual",
+        "lifetime" to "de por vida",
+        "Paid every month" to "Pago mensual",
+        "Best long-term value" to "Mejor valor a largo plazo",
+        "One payment" to "Un solo pago",
+        "One payment, permanent access" to "Un solo pago, acceso permanente",
+        "BEST VALUE" to "MEJOR VALOR",
+        "FOREVER" to "PARA SIEMPRE",
+        "month" to "mes",
+        "year" to "año",
+        "Pro active" to "Pro activo",
+        "No RevenueCat package is configured for" to "No hay paquete RevenueCat configurado para",
+        "No offering packages are configured in RevenueCat." to "No hay paquetes de offering configurados en RevenueCat.",
+        "RevenueCat unavailable." to "RevenueCat no disponible.",
+        "RevenueCat key missing. Add REVENUECAT_API_KEY to enable live purchases." to "Falta la key de RevenueCat. Agrega REVENUECAT_API_KEY para activar compras reales.",
+        "RevenueCat key missing. Add REVENUECAT_API_KEY before testing purchases." to "Falta la key de RevenueCat. Agrega REVENUECAT_API_KEY antes de probar compras.",
+        "RevenueCat key missing. Restore is not connected yet." to "Falta la key de RevenueCat. Restaurar todavía no está conectado.",
+        "Purchase did not complete." to "La compra no se completó.",
+        "Restore failed." to "La restauración falló.",
+        "Dev override only affects local debug gating." to "El override dev solo afecta el acceso local debug.",
+        "saved" to "guardado",
+        "allowed" to "permitidas",
+        "review" to "revisar",
+        "Notifications allowed" to "Notificaciones permitidas",
+        "Notifications unavailable on this device" to "Notificaciones no disponibles en este dispositivo",
+        "Notifications can be enabled from Android settings" to "Puedes activar notificaciones desde Ajustes de Android",
+        "Android can deliver local price alerts while checks run in the background" to "Android puede enviar alertas locales mientras los chequeos corren en segundo plano",
+        "Android permission is required before local price alerts can be delivered" to "Android necesita permiso antes de enviar alertas locales",
+        "Alerts sync with your account; iOS push delivery is next" to "Las alertas sincronizan con tu cuenta; push en iOS viene después",
+        "Review" to "Revisar",
+        "Android phone" to "teléfono Android",
+        "iPhone" to "iPhone",
+        "Auto-refresh off" to "Auto-refresh apagado",
+        "Auto-refresh every" to "Auto-refresh cada",
+        "min" to "min",
+        "cached" to "caché",
+        "loading" to "cargando",
+        "updated just now" to "actualizado recién",
+        "updated" to "actualizado",
+        "refreshed" to "actualizado",
+        "synced just now" to "sincronizado recién",
+        "synced" to "sincronizado",
+        "ago" to "atrás",
+        "away" to "restante",
+        "pts away" to "pts restante",
+        "to target" to "al objetivo",
+        "pts to move" to "pts al movimiento",
+        "waiting for live rate" to "esperando rate en vivo",
+        "waiting for 24h change" to "esperando cambio 24h",
+        "target" to "objetivo",
+        "alert at" to "alerta en",
+        "Now" to "Ahora",
+        "min stale" to "min desactualizado",
+        "saved locally" to "guardado localmente",
+        "BASE" to "BASE",
+        "currencies" to "monedas",
+        "rates" to "rates",
+        "Offline snapshot" to "Snapshot offline",
+        "price targets and breakouts" to "objetivos y rupturas",
+        "custom tracking" to "seguimiento personalizado",
+        "Free includes" to "Free incluye",
+        "Pro unlocks every pair, range and breakout alert." to "Pro desbloquea cada par, rango y alerta de ruptura.",
+        "Pro unlocks bigger watchlists across rates, alerts and portfolio tracking." to "Pro desbloquea watchlists más grandes en rates, alertas y portfolio.",
+        "added" to "agregada",
+        "select" to "seleccionar",
+        "set free" to "poner free",
+        "set pro" to "poner pro",
+        "Simulate" to "Simular",
+        "US Dollar" to "Dólar estadounidense",
+        "Euro" to "Euro",
+        "British Pound" to "Libra esterlina",
+        "Japanese Yen" to "Yen japonés",
+        "Australian Dollar" to "Dólar australiano",
+        "Canadian Dollar" to "Dólar canadiense",
+        "Swiss Franc" to "Franco suizo",
+        "Chinese Yuan" to "Yuan chino",
+        "Brazilian Real" to "Real brasileño",
+        "Mexican Peso" to "Peso mexicano",
+        "No connection" to "Sin conexión",
+        "Showing rates from your last sync · 4 min ago" to "Mostrando rates del último sync · hace 4 min",
+        "CACHED FAVORITES" to "FAVORITOS EN CACHÉ",
+        "Skip" to "Saltar",
+        "Get started" to "Empezar",
+        "Next  →" to "Siguiente  →",
+    ),
+    "pt" to mapOf(
+        "Rates" to "Cotações", "Convert" to "Converter", "Compare" to "Comparar", "News" to "Notícias", "More" to "Mais",
+        "Settings" to "Ajustes", "Alerts" to "Alertas", "Watchlist" to "Watchlist", "Traveler" to "Viagem",
+        "LIVE" to "AO VIVO", "CACHED" to "CACHE", "Edit" to "Editar", "See all" to "Ver tudo", "Preview" to "Prévia",
+        "Live" to "Ao vivo", "Loading" to "Carregando", "Estimated" to "Estimado", "Active" to "Ativo", "Ready" to "Pronto",
+        "Next" to "Próximo", "Unlimited" to "Ilimitado", "Preparing workspace" to "Preparando área", "base" to "base",
+        "favorites" to "favoritos", "FAVORITES" to "FAVORITOS", "CRYPTO" to "CRYPTO", "pinned" to "fixado",
+        "MID" to "MÉDIO", "YOU SEND" to "VOCÊ ENVIA", "Converted to" to "Convertido para", "FEES" to "TAXAS",
+        "Reverse" to "Inverter", "Edit list" to "Editar lista", "HISTORY" to "HISTÓRICO", "STATISTICS" to "ESTATÍSTICAS",
+        "Open" to "Abertura", "High" to "Máxima", "Low" to "Mínima", "Range" to "Faixa", "Volatility" to "Volatilidade",
+        "Average" to "Média", "RELATED NEWS" to "NOTÍCIAS RELACIONADAS", "Movers" to "Movimentos", "Strongest" to "Mais fortes",
+        "Weakest" to "Mais fracas", "STRONGEST" to "MAIS FORTE", "WEAKEST" to "MAIS FRACA",
+        "No data" to "Sem dados", "The saved list is unavailable for" to "A lista salva não está disponível para",
+        "Edit the comparison set to choose active currencies." to "Edite o conjunto de comparação para escolher moedas ativas.",
+        "DESTINATION" to "DESTINO", "TRIP BUDGET" to "ORÇAMENTO", "BUDGET" to "ORÇAMENTO",
+        "LOCAL" to "LOCAL", "Daily range" to "Faixa diária", "Cash buffer" to "Reserva em dinheiro", "CHEAT SHEET" to "GUIA RÁPIDO",
+        "LOCAL ETIQUETTE" to "COSTUMES LOCAIS", "TIPPING" to "GORJETA", "TAX" to "IMPOSTO", "CARDS ACCEPTED" to "CARTÕES ACEITOS",
+        "LOCAL PRICE GUIDE" to "GUIA DE PREÇOS", "TOOLS" to "FERRAMENTAS", "COMING NEXT" to "EM BREVE",
+        "PRICE TARGETS" to "ALVOS DE PREÇO", "CUSTOM ALERT" to "ALERTA PERSONALIZADO", "Target rate" to "Taxa alvo",
+        "Daily move %" to "Movimento diário %", "QUICK CREATE" to "CRIAÇÃO RÁPIDA", "ACTIVE ALERTS" to "ALERTAS ATIVOS",
+        "CUSTOM TRACKING" to "RASTREAMENTO", "Tracked currencies" to "Moedas acompanhadas", "PORTFOLIO HOLDINGS" to "CARTEIRA",
+        "HOW IT WORKS" to "COMO FUNCIONA", "ADD OR REMOVE" to "ADICIONAR OU REMOVER", "amount" to "valor", "done" to "pronto",
+        "tracked" to "seguida", "add" to "adicionar", "on" to "ativo", "paused" to "pausado", "CURRENT" to "ATUAL",
+        "LAST HIT" to "ÚLTIMO ACERTO", "Never" to "Nunca", "monitoring" to "monitorando", "pause" to "pausar", "resume" to "retomar",
+        "test" to "testar", "MARKET STREAM" to "MERCADO", "MARKET PREVIEW" to "PRÉVIA", "SENTIMENT" to "SENTIMENTO",
+        "REFRESHING" to "ATUALIZANDO", "BULLISH" to "ALTA", "NEUTRAL" to "NEUTRO", "BEARISH" to "BAIXA",
+        "Feed" to "Feed", "Updated" to "Atualizado", "REGION" to "REGIÃO", "CURRENCY" to "MOEDA", "TOPIC" to "TEMA",
+        "RECENT LINES" to "LINHAS RECENTES", "Market update" to "Atualização de mercado", "News detail" to "Detalhe da notícia",
+        "SOURCE" to "FONTE", "Publisher" to "Publicador", "Published" to "Publicado", "Choose base currency" to "Escolher moeda base",
+        "Search currency" to "Buscar moeda", "No currencies found" to "Nenhuma moeda encontrada", "Cancel" to "Cancelar", "Apply" to "Aplicar",
+        "System" to "Sistema", "Light" to "Claro", "Dark" to "Escuro", "Version" to "Versão", "active" to "ativo",
+        "offline" to "offline", "Target" to "Alvo", "Daily move" to "Movimento diário", "Above" to "Acima", "Below" to "Abaixo",
+        "Down" to "Baixo", "MOVES" to "MOVIMENTOS", "Continue" to "Continuar", "Processing..." to "Processando...",
+        "Purchases unavailable" to "Compras indisponíveis", "Available" to "Disponível", "Not configured" to "Não configurado",
+        "Monthly" to "Mensal", "Yearly" to "Anual", "Lifetime" to "Vitalício", "monthly" to "mensal", "yearly" to "anual",
+        "lifetime" to "vitalício", "Paid every month" to "Pago todo mês", "Best long-term value" to "Melhor valor no longo prazo",
+        "One payment" to "Pagamento único", "One payment, permanent access" to "Pagamento único, acesso permanente",
+        "BEST VALUE" to "MELHOR VALOR", "FOREVER" to "PARA SEMPRE", "allowed" to "permitidas", "review" to "revisar",
+        "Notifications allowed" to "Notificações permitidas", "Review" to "Revisar",
+        "Android can deliver local price alerts while checks run in the background" to "Android pode enviar alertas locais enquanto as verificações rodam em segundo plano",
+        "Android permission is required before local price alerts can be delivered" to "Android precisa de permissão antes de enviar alertas locais",
+        "Android phone" to "telefone Android", "Auto-refresh off" to "Auto-refresh desligado", "Auto-refresh every" to "Auto-refresh a cada",
+        "min" to "min", "cached" to "cache", "loading" to "carregando", "updated just now" to "atualizado agora",
+        "updated" to "atualizado", "refreshed" to "atualizado", "synced just now" to "sincronizado agora",
+        "synced" to "sincronizado", "ago" to "atrás", "away" to "distante", "to target" to "até o alvo",
+        "waiting for live rate" to "aguardando taxa ao vivo", "waiting for 24h change" to "aguardando variação 24h",
+        "target" to "alvo", "alert at" to "alerta em", "Now" to "Agora", "min stale" to "min desatualizado",
+        "saved locally" to "salvo localmente", "BASE" to "BASE", "currencies" to "moedas", "rates" to "taxas",
+        "Search" to "Buscar", "supported live currencies" to "moedas ao vivo suportadas", "live currencies" to "moedas ao vivo",
+        "Offline snapshot" to "Snapshot offline", "select" to "selecionar", "added" to "adicionada",
+        "No connection" to "Sem conexão", "Skip" to "Pular", "Get started" to "Começar", "Next  →" to "Próximo  →",
+    ),
+    "fr" to mapOf(
+        "Rates" to "Taux", "Convert" to "Convertir", "Compare" to "Comparer", "News" to "Actus", "More" to "Plus",
+        "Settings" to "Réglages", "Alerts" to "Alertes", "Watchlist" to "Suivi", "Traveler" to "Voyage",
+        "LIVE" to "EN DIRECT", "CACHED" to "CACHE", "Edit" to "Modifier", "See all" to "Tout voir", "Preview" to "Aperçu",
+        "Live" to "En direct", "Loading" to "Chargement", "Estimated" to "Estimé", "Active" to "Actif", "Ready" to "Prêt",
+        "Unlimited" to "Illimité", "base" to "base", "favorites" to "favoris", "FAVORITES" to "FAVORIS", "FEES" to "FRAIS",
+        "Reverse" to "Inverser", "Edit list" to "Modifier", "HISTORY" to "HISTORIQUE", "STATISTICS" to "STATISTIQUES",
+        "Open" to "Ouverture", "High" to "Haut", "Low" to "Bas", "Range" to "Plage", "Average" to "Moyenne",
+        "RELATED NEWS" to "ACTUS LIÉES", "STRONGEST" to "PLUS FORT", "WEAKEST" to "PLUS FAIBLE", "No data" to "Aucune donnée",
+        "DESTINATION" to "DESTINATION", "TRIP BUDGET" to "BUDGET", "CHEAT SHEET" to "AIDE-MÉMOIRE", "TIPPING" to "POURBOIRE",
+        "TAX" to "TAXE", "TOOLS" to "OUTILS", "PRICE TARGETS" to "OBJECTIFS", "CUSTOM ALERT" to "ALERTE PERSONNALISÉE",
+        "Target rate" to "Taux cible", "Daily move %" to "Variation quotidienne %", "ACTIVE ALERTS" to "ALERTES ACTIVES",
+        "Tracked currencies" to "Devises suivies", "PORTFOLIO HOLDINGS" to "PORTEFEUILLE", "ADD OR REMOVE" to "AJOUTER OU RETIRER",
+        "amount" to "montant", "done" to "terminé", "tracked" to "suivi", "add" to "ajouter", "paused" to "en pause",
+        "CURRENT" to "ACTUEL", "Never" to "Jamais", "pause" to "pause", "resume" to "reprendre", "test" to "tester",
+        "MARKET STREAM" to "MARCHÉ", "SENTIMENT" to "SENTIMENT", "BULLISH" to "HAUSSIER", "NEUTRAL" to "NEUTRE", "BEARISH" to "BAISSIER",
+        "Updated" to "Mis à jour", "REGION" to "RÉGION", "CURRENCY" to "DEVISE", "TOPIC" to "SUJET", "News detail" to "Détail",
+        "SOURCE" to "SOURCE", "Publisher" to "Éditeur", "Choose base currency" to "Choisir la devise de base",
+        "Search currency" to "Chercher une devise", "No currencies found" to "Aucune devise trouvée", "Cancel" to "Annuler", "Apply" to "Appliquer",
+        "System" to "Système", "Light" to "Clair", "Dark" to "Sombre", "Version" to "Version", "active" to "actif",
+        "Above" to "Au-dessus", "Below" to "En dessous", "Continue" to "Continuer", "Processing..." to "Traitement...",
+        "Available" to "Disponible", "No connection" to "Pas de connexion", "Skip" to "Ignorer", "Get started" to "Commencer", "Next  →" to "Suivant  →",
+    ),
+    "de" to mapOf(
+        "Rates" to "Kurse", "Convert" to "Umrechnen", "Compare" to "Vergleichen", "News" to "News", "More" to "Mehr",
+        "Settings" to "Einstellungen", "Alerts" to "Alarme", "Watchlist" to "Watchlist", "Traveler" to "Reise",
+        "LIVE" to "LIVE", "CACHED" to "CACHE", "Edit" to "Bearbeiten", "See all" to "Alle sehen", "Preview" to "Vorschau",
+        "Loading" to "Laden", "Estimated" to "Geschätzt", "Active" to "Aktiv", "Ready" to "Bereit", "Unlimited" to "Unbegrenzt",
+        "favorites" to "Favoriten", "FAVORITES" to "FAVORITEN", "FEES" to "GEBÜHREN", "Reverse" to "Umkehren", "HISTORY" to "HISTORIE",
+        "STATISTICS" to "STATISTIK", "Open" to "Start", "High" to "Hoch", "Low" to "Tief", "Range" to "Spanne", "Average" to "Durchschnitt",
+        "STRONGEST" to "STÄRKSTE", "WEAKEST" to "SCHWÄCHSTE", "No data" to "Keine Daten", "DESTINATION" to "ZIEL",
+        "TRIP BUDGET" to "REISEBUDGET", "CHEAT SHEET" to "KURZINFO", "TIPPING" to "TRINKGELD", "TAX" to "STEUER",
+        "TOOLS" to "TOOLS", "CUSTOM ALERT" to "EIGENER ALARM", "Target rate" to "Zielkurs", "ACTIVE ALERTS" to "AKTIVE ALARME",
+        "Tracked currencies" to "Verfolgte Währungen", "ADD OR REMOVE" to "HINZUFÜGEN ODER ENTFERNEN", "amount" to "Betrag",
+        "done" to "fertig", "tracked" to "verfolgt", "add" to "hinzufügen", "paused" to "pausiert", "CURRENT" to "AKTUELL",
+        "Never" to "Nie", "pause" to "pausieren", "resume" to "fortsetzen", "MARKET STREAM" to "MARKT", "SENTIMENT" to "STIMMUNG",
+        "BULLISH" to "BULLISCH", "NEUTRAL" to "NEUTRAL", "BEARISH" to "BÄRISCH", "Updated" to "Aktualisiert",
+        "REGION" to "REGION", "CURRENCY" to "WÄHRUNG", "TOPIC" to "THEMA", "SOURCE" to "QUELLE",
+        "Search currency" to "Währung suchen", "No currencies found" to "Keine Währungen gefunden", "Cancel" to "Abbrechen", "Apply" to "Anwenden",
+        "System" to "System", "Light" to "Hell", "Dark" to "Dunkel", "Version" to "Version", "Above" to "Über", "Below" to "Unter",
+        "Continue" to "Weiter", "Processing..." to "Verarbeitung...", "Available" to "Verfügbar", "No connection" to "Keine Verbindung",
+        "Skip" to "Überspringen", "Get started" to "Loslegen", "Next  →" to "Weiter  →",
+    ),
+    "id" to mapOf("Rates" to "Kurs", "Convert" to "Konversi", "Compare" to "Bandingkan", "News" to "Berita", "More" to "Lainnya", "Settings" to "Pengaturan", "Alerts" to "Peringatan", "Watchlist" to "Watchlist", "Traveler" to "Perjalanan", "LIVE" to "LIVE", "CACHED" to "CACHE", "Edit" to "Edit", "Preview" to "Pratinjau", "Loading" to "Memuat", "Unlimited" to "Tanpa batas", "FAVORITES" to "FAVORIT", "FEES" to "BIAYA", "HISTORY" to "RIWAYAT", "STATISTICS" to "STATISTIK", "DESTINATION" to "TUJUAN", "TRIP BUDGET" to "ANGGARAN", "TOOLS" to "ALAT", "CUSTOM ALERT" to "PERINGATAN KHUSUS", "ACTIVE ALERTS" to "PERINGATAN AKTIF", "amount" to "jumlah", "done" to "selesai", "tracked" to "dipantau", "add" to "tambah", "paused" to "jeda", "CURRENT" to "SAAT INI", "Never" to "Tidak pernah", "REGION" to "WILAYAH", "CURRENCY" to "MATA UANG", "TOPIC" to "TOPIK", "Search currency" to "Cari mata uang", "No currencies found" to "Mata uang tidak ditemukan", "Cancel" to "Batal", "Apply" to "Terapkan", "System" to "Sistem", "Light" to "Terang", "Dark" to "Gelap", "Version" to "Versi", "Continue" to "Lanjutkan", "Skip" to "Lewati", "Get started" to "Mulai", "Next  →" to "Berikutnya  →"),
+    "ru" to mapOf("Rates" to "Курсы", "Convert" to "Конвертер", "Compare" to "Сравнить", "News" to "Новости", "More" to "Ещё", "Settings" to "Настройки", "Alerts" to "Оповещения", "Watchlist" to "Список", "Traveler" to "Путешествия", "LIVE" to "ОНЛАЙН", "CACHED" to "КЭШ", "Edit" to "Изменить", "Preview" to "Просмотр", "Loading" to "Загрузка", "Unlimited" to "Без лимита", "FAVORITES" to "ИЗБРАННОЕ", "FEES" to "КОМИССИИ", "HISTORY" to "ИСТОРИЯ", "STATISTICS" to "СТАТИСТИКА", "DESTINATION" to "НАПРАВЛЕНИЕ", "TRIP BUDGET" to "БЮДЖЕТ", "TOOLS" to "ИНСТРУМЕНТЫ", "CUSTOM ALERT" to "СВОЁ ОПОВЕЩЕНИЕ", "ACTIVE ALERTS" to "АКТИВНЫЕ ОПОВЕЩЕНИЯ", "amount" to "сумма", "done" to "готово", "tracked" to "отслеживается", "add" to "добавить", "paused" to "пауза", "CURRENT" to "ТЕКУЩИЙ", "Never" to "Никогда", "REGION" to "РЕГИОН", "CURRENCY" to "ВАЛЮТА", "TOPIC" to "ТЕМА", "Search currency" to "Найти валюту", "No currencies found" to "Валюты не найдены", "Cancel" to "Отмена", "Apply" to "Применить", "System" to "Система", "Light" to "Светлая", "Dark" to "Тёмная", "Version" to "Версия", "Continue" to "Продолжить", "Skip" to "Пропустить", "Get started" to "Начать", "Next  →" to "Далее  →"),
+    "zh" to mapOf("Rates" to "汇率", "Convert" to "换算", "Compare" to "比较", "News" to "新闻", "More" to "更多", "Settings" to "设置", "Alerts" to "提醒", "Watchlist" to "关注", "Traveler" to "旅行", "LIVE" to "实时", "CACHED" to "缓存", "Edit" to "编辑", "Preview" to "预览", "Loading" to "加载中", "Unlimited" to "无限", "FAVORITES" to "收藏", "FEES" to "费用", "HISTORY" to "历史", "STATISTICS" to "统计", "DESTINATION" to "目的地", "TRIP BUDGET" to "旅行预算", "TOOLS" to "工具", "CUSTOM ALERT" to "自定义提醒", "ACTIVE ALERTS" to "活动提醒", "amount" to "金额", "done" to "完成", "tracked" to "已关注", "add" to "添加", "paused" to "暂停", "CURRENT" to "当前", "Never" to "从未", "REGION" to "地区", "CURRENCY" to "货币", "TOPIC" to "主题", "Search currency" to "搜索货币", "No currencies found" to "未找到货币", "Cancel" to "取消", "Apply" to "应用", "System" to "系统", "Light" to "浅色", "Dark" to "深色", "Version" to "版本", "Continue" to "继续", "Skip" to "跳过", "Get started" to "开始", "Next  →" to "下一步  →"),
+    "ja" to mapOf("Rates" to "レート", "Convert" to "換算", "Compare" to "比較", "News" to "ニュース", "More" to "その他", "Settings" to "設定", "Alerts" to "アラート", "Watchlist" to "ウォッチ", "Traveler" to "旅行", "LIVE" to "ライブ", "CACHED" to "キャッシュ", "Edit" to "編集", "Preview" to "プレビュー", "Loading" to "読み込み中", "Unlimited" to "無制限", "FAVORITES" to "お気に入り", "FEES" to "手数料", "HISTORY" to "履歴", "STATISTICS" to "統計", "DESTINATION" to "目的地", "TRIP BUDGET" to "旅行予算", "TOOLS" to "ツール", "CUSTOM ALERT" to "カスタムアラート", "ACTIVE ALERTS" to "有効なアラート", "amount" to "金額", "done" to "完了", "tracked" to "追跡中", "add" to "追加", "paused" to "一時停止", "CURRENT" to "現在", "Never" to "なし", "REGION" to "地域", "CURRENCY" to "通貨", "TOPIC" to "トピック", "Search currency" to "通貨を検索", "No currencies found" to "通貨が見つかりません", "Cancel" to "キャンセル", "Apply" to "適用", "System" to "システム", "Light" to "ライト", "Dark" to "ダーク", "Version" to "バージョン", "Continue" to "続ける", "Skip" to "スキップ", "Get started" to "開始", "Next  →" to "次へ  →"),
+    "hi" to mapOf("Rates" to "दरें", "Convert" to "कन्वर्ट", "Compare" to "तुलना", "News" to "समाचार", "More" to "और", "Settings" to "सेटिंग्स", "Alerts" to "अलर्ट", "Watchlist" to "वॉचलिस्ट", "Traveler" to "यात्रा", "LIVE" to "लाइव", "CACHED" to "कैश", "Edit" to "संपादित", "Preview" to "पूर्वावलोकन", "Loading" to "लोड हो रहा", "Unlimited" to "असीमित", "FAVORITES" to "पसंदीदा", "FEES" to "शुल्क", "HISTORY" to "इतिहास", "STATISTICS" to "आंकड़े", "DESTINATION" to "गंतव्य", "TRIP BUDGET" to "यात्रा बजट", "TOOLS" to "टूल", "CUSTOM ALERT" to "कस्टम अलर्ट", "ACTIVE ALERTS" to "सक्रिय अलर्ट", "amount" to "राशि", "done" to "हो गया", "tracked" to "ट्रैक", "add" to "जोड़ें", "paused" to "रुका", "CURRENT" to "वर्तमान", "Never" to "कभी नहीं", "REGION" to "क्षेत्र", "CURRENCY" to "मुद्रा", "TOPIC" to "विषय", "Search currency" to "मुद्रा खोजें", "No currencies found" to "मुद्रा नहीं मिली", "Cancel" to "रद्द", "Apply" to "लागू", "System" to "सिस्टम", "Light" to "लाइट", "Dark" to "डार्क", "Version" to "संस्करण", "Continue" to "जारी रखें", "Skip" to "छोड़ें", "Get started" to "शुरू करें", "Next  →" to "अगला  →"),
+    "ar" to mapOf("Rates" to "الأسعار", "Convert" to "تحويل", "Compare" to "مقارنة", "News" to "الأخبار", "More" to "المزيد", "Settings" to "الإعدادات", "Alerts" to "تنبيهات", "Watchlist" to "المتابعة", "Traveler" to "السفر", "LIVE" to "مباشر", "CACHED" to "مخزن", "Edit" to "تعديل", "Preview" to "معاينة", "Loading" to "جار التحميل", "Unlimited" to "غير محدود", "FAVORITES" to "المفضلة", "FEES" to "الرسوم", "HISTORY" to "السجل", "STATISTICS" to "إحصاءات", "DESTINATION" to "الوجهة", "TRIP BUDGET" to "ميزانية السفر", "TOOLS" to "أدوات", "CUSTOM ALERT" to "تنبيه مخصص", "ACTIVE ALERTS" to "تنبيهات نشطة", "amount" to "المبلغ", "done" to "تم", "tracked" to "متابع", "add" to "إضافة", "paused" to "متوقف", "CURRENT" to "الحالي", "Never" to "أبداً", "REGION" to "المنطقة", "CURRENCY" to "العملة", "TOPIC" to "الموضوع", "Search currency" to "ابحث عن عملة", "No currencies found" to "لا توجد عملات", "Cancel" to "إلغاء", "Apply" to "تطبيق", "System" to "النظام", "Light" to "فاتح", "Dark" to "داكن", "Version" to "الإصدار", "Continue" to "متابعة", "Skip" to "تخطي", "Get started" to "ابدأ", "Next  →" to "التالي  →"),
+    "bn" to mapOf("Rates" to "রেট", "Convert" to "রূপান্তর", "Compare" to "তুলনা", "News" to "খবর", "More" to "আরও", "Settings" to "সেটিংস", "Alerts" to "অ্যালার্ট", "Watchlist" to "ওয়াচলিস্ট", "Traveler" to "ভ্রমণ", "LIVE" to "লাইভ", "CACHED" to "ক্যাশ", "Edit" to "সম্পাদনা", "Preview" to "প্রিভিউ", "Loading" to "লোড হচ্ছে", "Unlimited" to "সীমাহীন", "FAVORITES" to "প্রিয়", "FEES" to "ফি", "HISTORY" to "ইতিহাস", "STATISTICS" to "পরিসংখ্যান", "DESTINATION" to "গন্তব্য", "TRIP BUDGET" to "ভ্রমণ বাজেট", "TOOLS" to "টুল", "CUSTOM ALERT" to "কাস্টম অ্যালার্ট", "ACTIVE ALERTS" to "সক্রিয় অ্যালার্ট", "amount" to "পরিমাণ", "done" to "শেষ", "tracked" to "ট্র্যাক", "add" to "যোগ", "paused" to "বিরতি", "CURRENT" to "বর্তমান", "Never" to "কখনও না", "REGION" to "অঞ্চল", "CURRENCY" to "মুদ্রা", "TOPIC" to "বিষয়", "Search currency" to "মুদ্রা খুঁজুন", "No currencies found" to "মুদ্রা পাওয়া যায়নি", "Cancel" to "বাতিল", "Apply" to "প্রয়োগ", "System" to "সিস্টেম", "Light" to "লাইট", "Dark" to "ডার্ক", "Version" to "সংস্করণ", "Continue" to "চালিয়ে যান", "Skip" to "এড়িয়ে যান", "Get started" to "শুরু করুন", "Next  →" to "পরবর্তী  →"),
+    "ur" to mapOf("Rates" to "ریٹس", "Convert" to "کنورٹ", "Compare" to "موازنہ", "News" to "خبریں", "More" to "مزید", "Settings" to "ترتیبات", "Alerts" to "الرٹس", "Watchlist" to "واچ لسٹ", "Traveler" to "سفر", "LIVE" to "لائیو", "CACHED" to "کیش", "Edit" to "ترمیم", "Preview" to "پیش منظر", "Loading" to "لوڈ ہو رہا ہے", "Unlimited" to "لامحدود", "FAVORITES" to "پسندیدہ", "FEES" to "فیس", "HISTORY" to "تاریخ", "STATISTICS" to "اعداد", "DESTINATION" to "منزل", "TRIP BUDGET" to "سفر بجٹ", "TOOLS" to "ٹولز", "CUSTOM ALERT" to "کسٹم الرٹ", "ACTIVE ALERTS" to "فعال الرٹس", "amount" to "رقم", "done" to "ہو گیا", "tracked" to "ٹریک", "add" to "شامل", "paused" to "روکا", "CURRENT" to "موجودہ", "Never" to "کبھی نہیں", "REGION" to "علاقہ", "CURRENCY" to "کرنسی", "TOPIC" to "موضوع", "Search currency" to "کرنسی تلاش کریں", "No currencies found" to "کرنسی نہیں ملی", "Cancel" to "منسوخ", "Apply" to "لاگو", "System" to "سسٹم", "Light" to "لائٹ", "Dark" to "ڈارک", "Version" to "ورژن", "Continue" to "جاری رکھیں", "Skip" to "چھوڑیں", "Get started" to "شروع کریں", "Next  →" to "اگلا  →"),
+)
+
 @Composable
 fun FxAppShell() {
     var selectedTab by remember { mutableStateOf(FxTab.Rates) }
@@ -160,13 +686,14 @@ fun FxAppShell() {
     var showPaywall by remember { mutableStateOf(false) }
     var subscriptionActionInProgress by remember { mutableStateOf(false) }
     var themeMode by remember { mutableStateOf(AppSettingsPrefs.themeMode()) }
+    var appLanguage by remember { mutableStateOf(AppSettingsPrefs.language()) }
     var baseCurrency by remember { mutableStateOf(AppSettingsPrefs.baseCurrency()) }
     var travelerCurrency by remember { mutableStateOf(AppSettingsPrefs.travelerCurrency()) }
     var travelerBudgetBase by remember { mutableStateOf(AppSettingsPrefs.travelerBudgetBase()) }
     var converterCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.converterCurrencyCodes()) }
     var compareCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.compareCurrencyCodes()) }
     val liveStore = remember { LiveRatesStore(initialBaseCurrency = baseCurrency) }
-    val newsStore = remember { NewsStore() }
+    val newsStore = remember { NewsStore(initialLanguage = appLanguage) }
     val alertsStore = remember { AlertsStore() }
     val watchlistStore = remember { WatchlistStore() }
     val detailStore = remember { DetailStore() }
@@ -211,6 +738,7 @@ fun FxAppShell() {
             runCatching {
                 val localSnapshot = buildUserBackupSnapshot(
                     themeMode,
+                    appLanguage,
                     baseCurrency,
                     travelerCurrency,
                     travelerBudgetBase,
@@ -230,6 +758,10 @@ fun FxAppShell() {
                         onCompareCurrencyCodes = { compareCurrencyCodes = it },
                         onTravelerCurrency = { travelerCurrency = it },
                         onTravelerBudgetBase = { travelerBudgetBase = it },
+                        onLanguage = {
+                            appLanguage = it
+                            newsStore.setLanguage(it)
+                        },
                     )
                     baseCurrency = remoteSnapshot.settings.baseCurrency
                 } else if (remoteSnapshot == null) {
@@ -245,11 +777,12 @@ fun FxAppShell() {
         backupReady = backupState.isAvailable
         startupReady = true
     }
-    LaunchedEffect(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, compareCurrencyCodes, alertsState, watchlistState, backupReady) {
+    LaunchedEffect(themeMode, appLanguage, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, compareCurrencyCodes, alertsState, watchlistState, backupReady) {
         if (backupReady) {
             runCatching {
                 val snapshot = buildUserBackupSnapshot(
                     themeMode,
+                    appLanguage,
                     baseCurrency,
                     travelerCurrency,
                     travelerBudgetBase,
@@ -281,6 +814,7 @@ fun FxAppShell() {
         ThemeMode.Dark -> true
     }
     FxTheme(dark = dark) {
+        CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -289,7 +823,7 @@ fun FxAppShell() {
         ) {
             Box(Modifier.weight(1f)) {
                 if (!startupReady) {
-                    StartupLoadingScreen(baseCurrency)
+                    StartupLoadingScreen(baseCurrency, appLanguage)
                 } else if (showPaywall) {
                     PaywallScreen(
                         subscriptionState = subscriptionState,
@@ -477,6 +1011,7 @@ fun FxAppShell() {
                             )
                             MoreRoute.Settings -> SettingsScreen(
                                 themeMode = themeMode,
+                                appLanguage = appLanguage,
                                 baseCurrency = baseCurrency,
                                 availableBaseCurrencies = liveState.allFiat,
                                 backupState = backupState,
@@ -485,6 +1020,7 @@ fun FxAppShell() {
                                 subscriptionState = subscriptionState,
                                 onBack = { moreRoute = MoreRoute.Menu },
                                 onOpenPaywall = { showPaywall = true },
+                                onOpenUrl = ExternalUrlOpener::open,
                                 onRestorePurchase = {
                                     scope.launch {
                                         subscriptionState = subscriptionGateway.restore()
@@ -498,6 +1034,7 @@ fun FxAppShell() {
                                         runCatching {
                                             val snapshot = buildUserBackupSnapshot(
                                                 themeMode,
+                                                appLanguage,
                                                 baseCurrency,
                                                 travelerCurrency,
                                                 travelerBudgetBase,
@@ -522,6 +1059,7 @@ fun FxAppShell() {
                                         runCatching {
                                             val snapshot = buildUserBackupSnapshot(
                                                 themeMode,
+                                                appLanguage,
                                                 baseCurrency,
                                                 travelerCurrency,
                                                 travelerBudgetBase,
@@ -544,6 +1082,10 @@ fun FxAppShell() {
                                                 onCompareCurrencyCodes = { compareCurrencyCodes = it },
                                                 onTravelerCurrency = { travelerCurrency = it },
                                                 onTravelerBudgetBase = { travelerBudgetBase = it },
+                                                onLanguage = {
+                                                    appLanguage = it
+                                                    newsStore.setLanguage(it)
+                                                },
                                             )
                                             themeMode = appliedTheme
                                             baseCurrency = result.snapshot.settings.baseCurrency
@@ -563,6 +1105,7 @@ fun FxAppShell() {
                                         runCatching {
                                             val snapshot = buildUserBackupSnapshot(
                                                 themeMode,
+                                                appLanguage,
                                                 baseCurrency,
                                                 travelerCurrency,
                                                 travelerBudgetBase,
@@ -593,6 +1136,11 @@ fun FxAppShell() {
                                     themeMode = mode
                                     AppSettingsPrefs.setThemeMode(mode)
                                 },
+                                onLanguageChange = { code ->
+                                    appLanguage = code
+                                    AppSettingsPrefs.setLanguage(code)
+                                    newsStore.setLanguage(code)
+                                },
                                 onBaseCurrencyChange = { code ->
                                     baseCurrency = code
                                     AppSettingsPrefs.setBaseCurrency(code)
@@ -605,19 +1153,21 @@ fun FxAppShell() {
             }
             if (startupReady) {
                 FxBottomBar(
-                    tabs = FxTab.entries.map { it.label },
+                    tabs = FxTab.entries.map { ui(it.label) },
                     selectedIndex = selectedTab.ordinal,
                     onSelect = {
                         selectTab(FxTab.entries[it])
                     },
+                    iconKeys = FxTab.entries.map { it.label },
                 )
             }
+        }
         }
     }
 }
 
 @Composable
-private fun StartupLoadingScreen(baseCurrency: String) {
+private fun StartupLoadingScreen(baseCurrency: String, language: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -629,8 +1179,8 @@ private fun StartupLoadingScreen(baseCurrency: String) {
         BentoCard(padding = 18.dp) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 LiveDot(Modifier.size(10.dp))
-                Text("Preparing $baseCurrency workspace", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                Text("Loading account, preferences and rates", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                Text("${localizedUiText(language, "Preparing workspace")} · $baseCurrency", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text(localizedUiText(language, "Loading account, preferences and rates"), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
             }
         }
     }
@@ -662,45 +1212,45 @@ fun DashboardScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 LiveDot(Modifier.size(9.dp))
-                Eyebrow(if (liveState.isLive) "LIVE" else "CACHED", color = FxTheme.colors.accent)
+                Eyebrow(if (liveState.isLive) ui("LIVE") else ui("CACHED"), color = FxTheme.colors.accent)
             }
-            Text(liveState.updatedLabel, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, textAlign = TextAlign.End)
+            Text(localizedRuntimeLabel(liveState.updatedLabel), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, textAlign = TextAlign.End)
         }
         ScreenHeader(
-            title = "Rates",
-            subtitle = "base · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} favorites · ${liveState.autoRefreshLabel}",
+            title = ui("Rates"),
+            subtitle = "${ui("base")} · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} ${ui("favorites")} · ${localizedRuntimeLabel(liveState.autoRefreshLabel)}",
             right = { Text("↻", style = FxTheme.typography.numberL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onRefresh)) },
         )
         if (liveState.errorMessage != null) {
-            Text("Live backend unavailable · using cached UI data", style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
+            Text(ui("Live backend unavailable · using cached UI data"), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
         }
         HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MetricTile("VOLATILITY · 24H", "0.42%", null, Modifier.weight(1f).height(76.dp))
+            MetricTile(ui("VOLATILITY · 24H"), "0.42%", null, Modifier.weight(1f).height(76.dp))
             liveState.favorites.firstOrNull { it.code == "GBP" }?.let { MetricTile("GBP · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             liveState.favorites.firstOrNull { it.code == "JPY" }?.let { MetricTile("JPY · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
             liveState.favorites.firstOrNull { it.code == "MXN" }?.let { MetricTile("MXN · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
         }
-        SectionLabel("FAVORITES · ${visibleFavorites.size}", right = if (subscriptionState.isPremium) "Edit" else "Pro")
+        SectionLabel("${ui("FAVORITES")} · ${visibleFavorites.size}", right = if (subscriptionState.isPremium) ui("Edit") else ui("Pro"))
         BentoCard(padding = 0.dp) {
             Column {
                 visibleFavorites.forEach { rate ->
-                    CurrencyRow(rate, dense = true, onClick = { onOpenDetail(rate) })
+                    CurrencyRow(localizedRate(rate), dense = true, onClick = { onOpenDetail(rate) })
                 }
             }
         }
         if (!subscriptionState.isPremium) {
             ProUpsellCard(
-                title = "Unlock full watchlists",
-                subtitle = "Pro adds more favorites, extended history, alerts and complete fee comparison.",
+                title = ui("Unlock full watchlists"),
+                subtitle = ui("Pro adds more favorites, extended history, alerts and complete fee comparison."),
                 onClick = onOpenPaywall,
             )
         }
-        SectionLabel("CRYPTO", right = "See all")
+        SectionLabel(ui("CRYPTO"), right = ui("See all"))
         BentoCard(padding = 0.dp) {
-            Column { liveState.crypto.forEach { rate -> CurrencyRow(rate, dense = true, onClick = { onOpenDetail(rate) }) } }
+            Column { liveState.crypto.forEach { rate -> CurrencyRow(localizedRate(rate), dense = true, onClick = { onOpenDetail(rate) }) } }
         }
     }
 }
@@ -715,7 +1265,7 @@ private fun HeroRateCard(rate: FxRate, baseCurrency: String) {
                     FlagDot(rate.glyph, rate.kind, size = 28.dp)
                     Text("$baseCurrency → ${rate.code}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 }
-                Pill("pinned", variant = PillVariant.Ghost)
+                Pill(ui("pinned"), variant = PillVariant.Ghost)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                 Text(formatRate(rate.rate), style = FxTheme.typography.numberXL.copy(fontSize = 44.sp, lineHeight = 44.sp), color = FxTheme.colors.text)
@@ -723,7 +1273,7 @@ private fun HeroRateCard(rate: FxRate, baseCurrency: String) {
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Eyebrow("24H RANGE")
+                    Eyebrow(ui("24H RANGE"))
                     Text("${formatRate(rate.sparkline.minOrNull()?.toDouble() ?: rate.rate)} — ${formatRate(rate.sparkline.maxOrNull()?.toDouble() ?: rate.rate)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
                 }
                 SparkLine(rate.sparkline, Modifier.size(108.dp, 38.dp), color = FxTheme.colors.accent, showLastDot = true)
@@ -777,8 +1327,8 @@ fun ConverterScreen(
         .take(access.feeQuoteLimit.cap(EstimatedFeeQuoteCount))
     if (showCurrencyPicker) {
         CurrencyListPickerSheet(
-            title = "Edit converter list",
-            lockedSubtitle = "Pro unlocks more converter currencies",
+            title = ui("Edit converter list"),
+            lockedSubtitle = ui("Pro unlocks more converter currencies"),
             currencies = availableRates.filterNot { it.code == liveState.baseCurrency },
             selectedCodes = targetCodes,
             limit = access.converterCurrencyLimit,
@@ -800,20 +1350,20 @@ fun ConverterScreen(
     ScreenScaffold {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LiveDot()
-            Eyebrow("MID", color = FxTheme.colors.accent)
+            Eyebrow(ui("MID"), color = FxTheme.colors.accent)
             Text(
-                liveState.updatedLabel,
+                localizedRuntimeLabel(liveState.updatedLabel),
                 style = FxTheme.typography.captionMono,
                 color = FxTheme.colors.textFaint,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        ScreenHeader("Convert", subtitle = "Multi-currency · live to 4 decimals")
+        ScreenHeader(ui("Convert"), subtitle = ui("Multi-currency · live to 4 decimals"))
         BentoCard(padding = 14.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Eyebrow("YOU SEND")
+                    Eyebrow(ui("YOU SEND"))
                     Pill(sourceRate.code, variant = PillVariant.Accent)
                 }
                 BasicTextField(
@@ -844,7 +1394,7 @@ fun ConverterScreen(
                     },
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Converted to ${targetRate.code}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                    Text("${ui("Converted to")} ${targetRate.code}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
                     Text(
                         formatConvertedAmount(targetRate, convertedAmount(amountValue, sourceRate, targetRate)),
                         style = FxTheme.typography.numberBody,
@@ -873,7 +1423,7 @@ fun ConverterScreen(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             GhostButton(
-                "⇄  Reverse",
+                "⇄  ${ui("Reverse")}",
                 Modifier.weight(1f),
                 onClick = {
                     val previousSource = sourceRate
@@ -884,16 +1434,16 @@ fun ConverterScreen(
                     focusManager.clearFocus()
                 },
             )
-            GhostButton("≡  Edit list", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
+            GhostButton("≡  ${ui("Edit list")}", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
         }
-        SectionLabel("FEES · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) "Estimated" else "Preview")
+        SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
         BentoCard(padding = 0.dp) {
             Column { feeQuotes.forEach { FeeComparisonRow(it) } }
         }
         if (!access.canUseFullFeeComparison) {
             ProUpsellCard(
-                title = "See the real transfer cost",
-                subtitle = "Pro unlocks the complete provider list; estimates update with your amount.",
+                title = ui("See the real transfer cost"),
+                subtitle = ui("Pro unlocks the complete provider list; estimates update with your amount."),
                 onClick = onOpenPaywall,
             )
         }
@@ -938,7 +1488,7 @@ private fun ConverterRow(
         Column(Modifier.weight(1f)) {
             Text(rate.code, style = FxTheme.typography.bodyStrong, color = if (source) FxTheme.colors.textDim else FxTheme.colors.text)
             Text(
-                if (source) "Base currency · source amount" else if (selected) "Selected destination" else rate.name,
+                if (source) ui("Base currency · source amount") else if (selected) ui("Selected destination") else localizedCurrencyName(rate.name),
                 style = FxTheme.typography.caption,
                 color = if (selected) FxTheme.colors.accent else FxTheme.colors.textFaint,
                 maxLines = 1,
@@ -961,8 +1511,8 @@ private fun FeeComparisonRow(quote: EstimatedFeeQuote) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(quote.provider, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, modifier = Modifier.weight(1f))
-        if (quote.badge != null) Pill(quote.badge, variant = if (quote.isHighFee) PillVariant.Down else PillVariant.Up)
+        Text(ui(quote.provider), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, modifier = Modifier.weight(1f))
+        if (quote.badge != null) Pill(ui(quote.badge), variant = if (quote.isHighFee) PillVariant.Down else PillVariant.Up)
         Text(
             quote.amount,
             style = FxTheme.typography.numberBody,
@@ -1089,9 +1639,9 @@ fun DetailScreen(
     val effectivePremium = subscriptionState.isPremium || !subscriptionReady
     val periodIsPro = period == Period.OneYear || period == Period.All
     val historyCaption = if (detailMatches && detailState.points.isNotEmpty()) {
-        "${detailState.provider} · ${detailState.points.size} pts · ${detailState.updatedLabel}"
+        "${detailState.provider} · ${detailState.points.size} pts · ${localizedRuntimeLabel(detailState.updatedLabel)}"
     } else {
-        "cached preview"
+        ui("cached preview")
     }
     LaunchedEffect(liveState.baseCurrency, selected.code, period, fallbackSeries, effectivePremium) {
         if (effectivePremium || !periodIsPro) {
@@ -1107,26 +1657,26 @@ fun DetailScreen(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             BackNavButton(label = null, onClick = onBack)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Pill(if (activeForPair > 0) "🔔 $activeForPair alert" else "★ Watching")
-                Pill(if (effectivePremium) "Pro" else "Free")
+                Pill(if (activeForPair > 0) "🔔 $activeForPair ${ui("alert")}" else "★ ${ui("Watching")}")
+                Pill(if (effectivePremium) ui("Pro") else ui("Free"))
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             FlagDot(selected.glyph, selected.kind, size = 36.dp)
             Column {
                 Text("${liveState.baseCurrency} / ${selected.code}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                Text(selected.name, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+                Text(localizedCurrencyName(selected.name), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
             }
         }
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(formatRate(selected.rate), style = FxTheme.typography.numberXL, color = FxTheme.colors.text)
             Text(formatChange(selected.change24h), style = FxTheme.typography.numberBody, color = if (selected.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down, modifier = Modifier.padding(bottom = 7.dp))
         }
-        Text("${selected.caption ?: "mid-market"} · ${liveState.updatedLabel}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+        Text("${selected.caption?.let { ui(it) } ?: ui("mid-market")} · ${localizedRuntimeLabel(liveState.updatedLabel)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
         BentoCard {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Eyebrow(if (detailState.isLoading && detailMatches) "LOADING HISTORY" else "HISTORY · ${period.label}")
+                    Eyebrow(if (detailState.isLoading && detailMatches) ui("LOADING HISTORY") else "${ui("HISTORY")} · ${period.label}")
                     Text(
                         historyCaption,
                         style = FxTheme.typography.captionMono,
@@ -1152,36 +1702,36 @@ fun DetailScreen(
                     Modifier.fillMaxWidth(),
                 )
                 if (detailMatches && detailState.errorMessage != null) {
-                    Text("History unavailable · using cached preview", style = FxTheme.typography.caption, color = FxTheme.colors.down)
+                    Text(ui("History unavailable · using cached preview"), style = FxTheme.typography.caption, color = FxTheme.colors.down)
                 }
             }
         }
         if (periodIsPro && !effectivePremium) {
             ProUpsellCard(
-                title = "Unlock long-range history",
-                subtitle = "Pro adds 1Y and all-time detail, full event context and deeper market overlays.",
+                title = ui("Unlock long-range history"),
+                subtitle = ui("Pro adds 1Y and all-time detail, full event context and deeper market overlays."),
                 onClick = onOpenPaywall,
             )
         }
-        SectionLabel("STATISTICS · ${period.label}")
+        SectionLabel("${ui("STATISTICS")} · ${period.label}")
         BentoCard {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                KeyValueRow("Open", formatRate(stats.open))
-                KeyValueRow("High", formatRate(stats.high))
-                KeyValueRow("Low", formatRate(stats.low))
-                KeyValueRow("Range", "${formatRate(stats.low)} - ${formatRate(stats.high)}")
-                KeyValueRow("Volatility", "${formatRate(stats.volatilityPct)}%")
-                KeyValueRow("Average", formatRate(stats.average))
+                KeyValueRow(ui("Open"), formatRate(stats.open))
+                KeyValueRow(ui("High"), formatRate(stats.high))
+                KeyValueRow(ui("Low"), formatRate(stats.low))
+                KeyValueRow(ui("Range"), "${formatRate(stats.low)} - ${formatRate(stats.high)}")
+                KeyValueRow(ui("Volatility"), "${formatRate(stats.volatilityPct)}%")
+                KeyValueRow(ui("Average"), formatRate(stats.average))
             }
         }
-        SectionLabel("RELATED NEWS", right = if (newsState.isLoading) "Loading" else if (effectivePremium) "Live" else "Preview")
+        SectionLabel(ui("RELATED NEWS"), right = if (newsState.isLoading) ui("Loading") else if (effectivePremium) ui("Live") else ui("Preview"))
         if (relatedStories.isEmpty()) {
             EmptyDetailSection(
-                title = if (newsState.isLoading) "Loading related news" else "No related news",
+                title = if (newsState.isLoading) ui("Loading related news") else ui("No related news"),
                 subtitle = if (newsState.isLoading) {
-                    "Fetching ${selected.code} market headlines from the live feed."
+                    "${ui("Fetching market headlines")} ${selected.code}"
                 } else {
-                    "No live headlines are currently tied to ${selected.code}."
+                    "${ui("No live headlines are currently tied to")} ${selected.code}."
                 },
             )
         } else {
@@ -1189,11 +1739,11 @@ fun DetailScreen(
                 StoryCard(story, onClick = { onOpenStory(story) })
             }
         }
-        SectionLabel("EVENTS · ANNOTATED", right = if (effectivePremium) "Derived" else "Preview")
+        SectionLabel(ui("EVENTS · ANNOTATED"), right = if (effectivePremium) ui("Derived") else ui("Preview"))
         if (relatedStories.isEmpty()) {
             EmptyDetailSection(
-                title = "No annotated events",
-                subtitle = "Events will appear here when the live feed includes stories for ${selected.code}.",
+                title = ui("No annotated events"),
+                subtitle = "${ui("Events will appear here when stories include")} ${selected.code}.",
             )
         } else {
             BentoCard(padding = 0.dp) {
@@ -1205,7 +1755,7 @@ fun DetailScreen(
             }
         }
         GhostButton(
-            text = if (activeForPair > 0) "🔔 Add another ${selected.code} alert · $alertLabel" else "🔔 Alert me above ${formatRate(selected.rate * 1.01)} · $alertLabel",
+            text = if (activeForPair > 0) "🔔 ${ui("Add another alert")} ${selected.code} · $alertLabel" else "🔔 ${ui("Alert me above")} ${formatRate(selected.rate * 1.01)} · $alertLabel",
             onClick = { onCreateAlert(selected) },
         )
     }
@@ -1313,8 +1863,8 @@ fun CompareScreen(
     val weakestRate = compareRates.minByOrNull { it.change24h }
     if (showCurrencyPicker) {
         CurrencyListPickerSheet(
-            title = "Edit comparison",
-            lockedSubtitle = "Pro unlocks more comparison currencies",
+            title = ui("Edit comparison"),
+            lockedSubtitle = ui("Pro unlocks more comparison currencies"),
             currencies = availableRates.filterNot { it.code == liveState.baseCurrency },
             selectedCodes = selectedCodes,
             limit = access.compareLimit,
@@ -1332,14 +1882,14 @@ fun CompareScreen(
     }
     ScreenScaffold {
         ScreenHeader(
-            "Compare",
-            sub = "${liveState.baseCurrency} BASE",
-            subtitle = "${compareRates.size} currencies · ${sortMode.label.lowercase()} · ${liveState.updatedLabel}",
+            ui("Compare"),
+            sub = "${liveState.baseCurrency} ${ui("BASE")}",
+            subtitle = "${compareRates.size} ${ui("currencies")} · ${ui(sortMode.label).lowercase()} · ${localizedRuntimeLabel(liveState.updatedLabel)}",
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CompareSortMode.entries.forEach { mode ->
                 Pill(
-                    mode.label,
+                    ui(mode.label),
                     variant = if (mode == sortMode) PillVariant.Accent else PillVariant.Ghost,
                     modifier = Modifier.clickable { sortMode = mode },
                 )
@@ -1347,22 +1897,22 @@ fun CompareScreen(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MetricTile(
-                "STRONGEST",
+                ui("STRONGEST"),
                 bestRate?.code ?: "--",
-                bestRate?.let { formatChange(it.change24h) } ?: "No data",
+                bestRate?.let { formatChange(it.change24h) } ?: ui("No data"),
                 Modifier.weight(1f).height(76.dp),
             )
             MetricTile(
-                "WEAKEST",
+                ui("WEAKEST"),
                 weakestRate?.code ?: "--",
-                weakestRate?.let { formatChange(it.change24h) } ?: "No data",
+                weakestRate?.let { formatChange(it.change24h) } ?: ui("No data"),
                 Modifier.weight(1f).height(76.dp),
             )
         }
         if (compareRates.isEmpty()) {
             EmptyDetailSection(
-                title = "No comparison currencies",
-                subtitle = "The saved list is unavailable for ${liveState.baseCurrency}. Edit the comparison set to choose active currencies.",
+                title = ui("No comparison currencies"),
+                subtitle = "${ui("The saved list is unavailable for")} ${liveState.baseCurrency}. ${ui("Edit the comparison set to choose active currencies.")}",
             )
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1384,20 +1934,20 @@ fun CompareScreen(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            GhostButton("≡  Edit comparison", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
-            GhostButton("↗  Open strongest", Modifier.weight(1f), onClick = { bestRate?.let(onOpenDetail) })
+            GhostButton("≡  ${ui("Edit comparison")}", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
+            GhostButton("↗  ${ui("Open strongest")}", Modifier.weight(1f), onClick = { bestRate?.let(onOpenDetail) })
         }
         if (!subscriptionState.isPremium) {
             ProUpsellCard(
-                title = "Compare every tracked currency",
-                subtitle = "Free compares ${access.compareLimit}; Pro unlocks the full board and advanced overlays.",
+                title = ui("Compare every tracked currency"),
+                subtitle = "${ui("Free compares")} ${access.compareLimit}; ${ui("Pro unlocks the full board and advanced overlays.")}",
                 onClick = onOpenPaywall,
             )
         }
         if (compareRates.isNotEmpty()) {
             BentoCard(padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Eyebrow("OVERLAY · 1M")
+                    Eyebrow(ui("OVERLAY · 1M"))
                     OverlayChart(compareRates.take(4))
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                         compareRates.take(4).forEachIndexed { index, rate ->
@@ -1425,7 +1975,7 @@ private fun CompareTile(rate: FxRate, baseCurrency: String, onOpenDetail: (FxRat
                 Text(formatChange(rate.change24h), style = FxTheme.typography.captionMono, color = if (rate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down)
             }
             Text(formatRate(rate.rate), style = FxTheme.typography.numberL, color = FxTheme.colors.text)
-            Text("per 1 $baseCurrency", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            Text("${ui("per 1")} $baseCurrency", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
             SparkLine(rate.sparkline, Modifier.fillMaxWidth().height(30.dp))
         }
     }
@@ -1462,8 +2012,8 @@ fun TravelerScreen(
     var showDestinationPicker by remember { mutableStateOf(false) }
     if (showDestinationPicker) {
         CurrencyPickerSheet(
-            title = "Choose destination",
-            subtitle = "${travelRates.size} live currencies · ${liveState.baseCurrency} base",
+            title = ui("Choose destination"),
+            subtitle = "${travelRates.size} ${ui("live currencies")} · ${liveState.baseCurrency} ${ui("base")}",
             currencies = travelRates,
             selectedCode = selectedRate.code,
             onDismiss = { showDestinationPicker = false },
@@ -1475,12 +2025,12 @@ fun TravelerScreen(
     }
     ScreenScaffold {
         if (onBack != null) {
-            BackNavButton(label = "More", onClick = onBack)
+            BackNavButton(label = ui("More"), onClick = onBack)
         }
         ScreenHeader(
-            "Traveler",
+            ui("Traveler"),
             sub = "${destination.city.uppercase()} · ${selectedRate.code}",
-            subtitle = if (liveState.isLive) "Live ${liveState.baseCurrency} rates · ${liveState.updatedLabel}" else "Offline snapshot · ${liveState.baseCurrency} base",
+            subtitle = if (liveState.isLive) "${ui("Live")} ${liveState.baseCurrency} ${ui("rates")} · ${localizedRuntimeLabel(liveState.updatedLabel)}" else "${ui("Offline snapshot")} · ${liveState.baseCurrency} ${ui("base")}",
         )
         BentoCard(Modifier.fillMaxWidth().height(156.dp), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.18f))
@@ -1493,11 +2043,11 @@ fun TravelerScreen(
                     FlagDot(destination.flag, size = 28.dp)
                 }
                 BigValueText("${destination.symbol}${formatRate(selectedRate.rate)}")
-                Text("${formatChange(selectedRate.change24h)} today · mid-market", style = FxTheme.typography.captionMono, color = if (selectedRate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down)
+                Text("${formatChange(selectedRate.change24h)} ${ui("today")} · ${ui("mid-market")}", style = FxTheme.typography.captionMono, color = if (selectedRate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down)
             }
         }
 
-        SectionLabel("DESTINATION")
+        SectionLabel(ui("DESTINATION"))
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 visibleDestinations.chunked(4).forEach { rowRates ->
@@ -1513,30 +2063,30 @@ fun TravelerScreen(
                     }
                 }
                 SettingChoiceRow(
-                    title = "More destinations",
+                    title = ui("More destinations"),
                     subtitle = if (access.canUseAdvancedTraveler) {
-                        "Search ${travelRates.size} supported live currencies"
+                        "${ui("Search")} ${travelRates.size} ${ui("supported live currencies")}"
                     } else {
-                        "Free shows ${visibleDestinations.size}; Pro unlocks every supported currency"
+                        "${ui("Free shows")} ${visibleDestinations.size}; ${ui("Pro unlocks every supported currency")}"
                     },
                     selected = false,
-                    actionLabel = "more +",
+                    actionLabel = ui("more +"),
                     onClick = {
                         if (access.canUseAdvancedTraveler) showDestinationPicker = true else onOpenPaywall()
                     },
                 )
                 if (!access.canUseAdvancedTraveler && travelRates.size > visibleDestinations.size) {
-                    Text("Free keeps the destination picker focused on the most common travel currencies.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                    Text(ui("Free keeps the destination picker focused on the most common travel currencies."), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
                 }
             }
         }
 
-        SectionLabel("TRIP BUDGET")
+        SectionLabel(ui("TRIP BUDGET"))
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Eyebrow("BUDGET · ${liveState.baseCurrency}")
+                        Eyebrow("${ui("BUDGET")} · ${liveState.baseCurrency}")
                         BasicTextField(
                             value = budgetText,
                             onValueChange = { raw ->
@@ -1551,16 +2101,16 @@ fun TravelerScreen(
                         )
                     }
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Eyebrow("LOCAL")
+                        Eyebrow(ui("LOCAL"))
                         Text("${destination.symbol}${formatMoneyValue(budgetLocal)}", style = FxTheme.typography.numberL, color = FxTheme.colors.text)
                     }
                 }
-                KeyValueRow("Daily range", "${destination.symbol}${formatMoneyValue(budgetLocal / 3.0)} · 3 days")
-                KeyValueRow("Cash buffer", "${destination.symbol}${formatMoneyValue(budgetLocal * destination.cashBufferPct)}")
+                KeyValueRow(ui("Daily range"), "${destination.symbol}${formatMoneyValue(budgetLocal / 3.0)} · 3 ${ui("days")}")
+                KeyValueRow(ui("Cash buffer"), "${destination.symbol}${formatMoneyValue(budgetLocal * destination.cashBufferPct)}")
             }
         }
 
-        SectionLabel("CHEAT SHEET")
+        SectionLabel(ui("CHEAT SHEET"))
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 cheatAmounts.forEach { amount ->
@@ -1570,34 +2120,34 @@ fun TravelerScreen(
         }
         if (!access.canUseAdvancedTraveler) {
             ProUpsellCard(
-                title = "Unlock full traveler mode",
-                subtitle = "Pro adds complete cheat sheets, offline context and more local money tips.",
+                title = ui("Unlock full traveler mode"),
+                subtitle = ui("Pro adds complete cheat sheets, offline context and more local money tips."),
                 onClick = onOpenPaywall,
             )
         }
-        SectionLabel("LOCAL ETIQUETTE")
+        SectionLabel(ui("LOCAL ETIQUETTE"))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricTile("TIPPING", destination.tipping, destination.tippingNote, Modifier.weight(1f))
-            MetricTile("TAX", destination.tax, destination.taxNote, Modifier.weight(1f))
+            MetricTile(ui("TIPPING"), destination.tipping, ui(destination.tippingNote), Modifier.weight(1f))
+            MetricTile(ui("TAX"), ui(destination.tax), ui(destination.taxNote), Modifier.weight(1f))
         }
         BentoTile(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
-                    Eyebrow("CARDS ACCEPTED")
+                    Eyebrow(ui("CARDS ACCEPTED"))
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         destination.paymentRails.forEach { Pill(it) }
                     }
                 }
-                Text(destination.cashNote, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                Text(ui(destination.cashNote), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
             }
         }
-        SectionLabel("LOCAL PRICE GUIDE", right = "Estimates")
+        SectionLabel(ui("LOCAL PRICE GUIDE"), right = ui("Estimates"))
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 destination.priceGuide.forEach { item ->
                     val basePrice = item.localAmount / selectedRate.rate
-                    KeyValueRow(item.label, "${destination.symbol}${formatMoneyValue(item.localAmount)} · ${liveState.baseCurrency} ${formatMoneyValue(basePrice)}")
+                    KeyValueRow(ui(item.label), "${destination.symbol}${formatMoneyValue(item.localAmount)} · ${liveState.baseCurrency} ${formatMoneyValue(basePrice)}")
                 }
             }
         }
@@ -1812,51 +2362,51 @@ fun MoreScreen(
     onOpenPaywall: () -> Unit,
 ) {
     ScreenScaffold {
-        ScreenHeader("More", sub = "TOOLS", subtitle = "Travel, preferences and account")
+        ScreenHeader(ui("More"), sub = ui("TOOLS"), subtitle = ui("Travel, preferences and account"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 MoreRow(
                     icon = MoreFeatureIcon.Traveler,
-                    title = "Traveler",
-                    subtitle = "Local cheat sheets and offline rates",
+                    title = ui("Traveler"),
+                    subtitle = ui("Local cheat sheets and offline rates"),
                     onClick = onOpenTraveler,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.News,
-                    title = "News",
-                    subtitle = "Market stream and sentiment",
+                    title = ui("News"),
+                    subtitle = ui("Market stream and sentiment"),
                     onClick = onOpenNews,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Alerts,
-                    title = "Alerts",
-                    subtitle = "$alertsCount active · price targets and breakouts",
+                    title = ui("Alerts"),
+                    subtitle = "$alertsCount ${ui("active")} · ${ui("price targets and breakouts")}",
                     onClick = onOpenAlerts,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Watchlist,
-                    title = "Watchlist",
-                    subtitle = "$watchlistCount currencies · custom tracking",
+                    title = ui("Watchlist"),
+                    subtitle = "$watchlistCount ${ui("currencies")} · ${ui("custom tracking")}",
                     onClick = onOpenWatchlist,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Settings,
-                    title = "Settings",
-                    subtitle = "Theme mode, base currency and version",
+                    title = ui("Settings"),
+                    subtitle = ui("Theme mode, base currency and version"),
                     onClick = onOpenSettings,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Pro,
-                    title = if (subscriptionState.isPremium) "FX/ Pro active" else "Upgrade to Pro",
-                    subtitle = subscriptionState.proStatusLabel(),
+                    title = if (subscriptionState.isPremium) ui("FX/ Pro active") else ui("Upgrade to Pro"),
+                    subtitle = subscriptionState.localizedProStatusLabel(),
                     onClick = onOpenPaywall,
                 )
             }
         }
-        SectionLabel("COMING NEXT")
+        SectionLabel(ui("COMING NEXT"))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricTile("WIDGETS", "Next", "home screen and watch glance", Modifier.weight(1f))
-            MetricTile("PRO", if (subscriptionState.isPremium) "Active" else "Ready", "monthly plan controls", Modifier.weight(1f))
+            MetricTile(ui("WIDGETS"), ui("Next"), ui("home screen and watch glance"), Modifier.weight(1f))
+            MetricTile("PRO", if (subscriptionState.isPremium) ui("Active") else ui("Ready"), ui("monthly plan controls"), Modifier.weight(1f))
         }
     }
 }
@@ -1877,7 +2427,7 @@ fun AlertsScreen(
 ) {
     val access = subscriptionState.featureAccess()
     val canCreate = canCreateAlert(subscriptionState, alertsState.alerts.size)
-    val limitLabel = if (access.hasUnlimitedAlerts) "Unlimited" else "${alertsState.alerts.size}/${access.alertLimit}"
+	    val limitLabel = if (access.hasUnlimitedAlerts) ui("Unlimited") else "${alertsState.alerts.size}/${access.alertLimit}"
     val alertRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter) { liveState.alertRates() }
     val currentRatesByCode = remember(liveState.baseCurrency, alertRates) {
         alertRates.associateBy { it.code }
@@ -1899,26 +2449,28 @@ fun AlertsScreen(
         kind = selectedKind,
     )
     val canCreateOrUpdate = canCreate || matchingCustomAlert != null
-    var customAlertFeedback by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(liveState.baseCurrency, selectedRate.code, selectedDirection, selectedKind, targetText) {
-        customAlertFeedback = null
-    }
+	    var customAlertFeedback by remember { mutableStateOf<String?>(null) }
+	    val existingAlertReactivatedCopy = ui("Existing alert reactivated")
+	    val alertCreatedCopy = ui("alert created")
+	    LaunchedEffect(liveState.baseCurrency, selectedRate.code, selectedDirection, selectedKind, targetText) {
+	        customAlertFeedback = null
+	    }
     ScreenScaffold {
         if (onBack != null) {
-            BackNavButton(label = "More", onClick = onBack)
+	            BackNavButton(label = ui("More"), onClick = onBack)
         }
-        ScreenHeader("Alerts", sub = "PRICE TARGETS", subtitle = "$limitLabel alerts · ${liveState.baseCurrency} base")
+	        ScreenHeader(ui("Alerts"), sub = ui("PRICE TARGETS"), subtitle = "$limitLabel ${ui("alerts")} · ${liveState.baseCurrency} ${ui("base")}")
 
         BentoCard(Modifier.fillMaxWidth().heightIn(min = 144.dp), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.12f))
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Eyebrow(if (subscriptionState.isPremium) "FX/ PRO" else "FX/ FREE")
-                    Pill("${alertsState.activeCount} active", variant = if (alertsState.activeCount > 0) PillVariant.Up else PillVariant.Ghost)
+	                    Eyebrow(if (subscriptionState.isPremium) "FX/ PRO" else "FX/ FREE")
+	                    Pill("${alertsState.activeCount} ${ui("active")}", variant = if (alertsState.activeCount > 0) PillVariant.Up else PillVariant.Ghost)
                 }
-                Text("Watch breakouts without watching charts.", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+	                Text(ui("Watch breakouts without watching charts."), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 Text(
-                    "Android checks every 15 min when online. iOS saves alerts now; push delivery is next.",
+	                    ui("Android checks every 15 min when online. iOS saves alerts now; push delivery is next."),
                     style = FxTheme.typography.caption,
                     color = FxTheme.colors.textDim,
                     maxLines = 2,
@@ -1927,10 +2479,10 @@ fun AlertsScreen(
             }
         }
 
-        SectionLabel("CUSTOM ALERT")
+	        SectionLabel(ui("CUSTOM ALERT"))
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Eyebrow("${liveState.baseCurrency} PAIR")
+	                Eyebrow("${liveState.baseCurrency} ${ui("PAIR")}")
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     alertRates.chunked(2).forEach { rowRates ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1953,7 +2505,7 @@ fun AlertsScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AlertKind.entries.forEach { kind ->
                         Pill(
-                            text = kind.label,
+	                            text = ui(kind.label),
                             variant = if (kind == selectedKind) PillVariant.Accent else PillVariant.Ghost,
                             modifier = Modifier.clickable {
                                 selectedKind = kind
@@ -1965,7 +2517,7 @@ fun AlertsScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AlertDirection.entries.forEach { direction ->
                         Pill(
-                            text = direction.label(selectedKind),
+	                            text = ui(direction.label(selectedKind)),
                             variant = if (direction == selectedDirection) PillVariant.Accent else PillVariant.Ghost,
                             modifier = Modifier.clickable {
                                 selectedDirection = direction
@@ -1996,14 +2548,14 @@ fun AlertsScreen(
                         targetText = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)
                     },
                     pair = "${liveState.baseCurrency}/${selectedRate.code}",
-                    label = if (selectedKind == AlertKind.Target) "Target rate" else "Daily move %",
+	                    label = if (selectedKind == AlertKind.Target) ui("Target rate") else ui("Daily move %"),
                 )
                 PrimaryButton(
                     text = when {
-                        matchingCustomAlert?.enabled == true -> "Keep existing alert active"
-                        matchingCustomAlert != null -> "Reactivate existing alert"
-                        canCreate -> "Create ${selectedDirection.label(selectedKind).lowercase()} alert"
-                        else -> "Unlock custom alerts"
+	                        matchingCustomAlert?.enabled == true -> ui("Keep existing alert active")
+	                        matchingCustomAlert != null -> ui("Reactivate existing alert")
+	                        canCreate -> "${ui("Create")} ${ui(selectedDirection.label(selectedKind)).lowercase()} ${ui("alert")}"
+	                        else -> ui("Unlock custom alerts")
                     },
                     onClick = {
                         if (!canCreateOrUpdate) {
@@ -2011,10 +2563,10 @@ fun AlertsScreen(
                         } else if (targetValue > 0.0) {
                             onCreateManualAlert(selectedRate, selectedDirection, targetValue, selectedKind)
                             customAlertFeedback = if (matchingCustomAlert != null) {
-                                "Existing ${liveState.baseCurrency}/${selectedRate.code} alert reactivated."
-                            } else {
-                                "${liveState.baseCurrency}/${selectedRate.code} alert created."
-                            }
+	                                "$existingAlertReactivatedCopy ${liveState.baseCurrency}/${selectedRate.code}."
+	                            } else {
+		                                "${liveState.baseCurrency}/${selectedRate.code} $alertCreatedCopy."
+	                            }
                         }
                     },
                 )
@@ -2026,14 +2578,14 @@ fun AlertsScreen(
                     )
                 }
                 Text(
-                    alertSummaryLine(selectedKind, selectedRate, selectedDirection, targetValue, selectedDailyChange),
+                    localizedAlertSummaryLine(selectedKind, selectedRate, selectedDirection, targetValue, selectedDailyChange),
                     style = FxTheme.typography.captionMono,
                     color = FxTheme.colors.textFaint,
                 )
             }
         }
 
-        SectionLabel("QUICK CREATE")
+	        SectionLabel(ui("QUICK CREATE"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 liveState.favorites.take(4).forEach { rate ->
@@ -2064,18 +2616,18 @@ fun AlertsScreen(
 
         if (!canCreate) {
             ProUpsellCard(
-                title = "Create unlimited alerts",
-                subtitle = "Free includes ${access.alertLimit}; Pro unlocks every pair, range and breakout alert.",
+	                title = ui("Create unlimited alerts"),
+	                subtitle = "${ui("Free includes")} ${access.alertLimit}; ${ui("Pro unlocks every pair, range and breakout alert.")}",
                 onClick = onOpenPaywall,
             )
         }
 
-        SectionLabel("ACTIVE ALERTS")
+	        SectionLabel(ui("ACTIVE ALERTS"))
         if (alertsState.alerts.isEmpty()) {
             BentoCard(padding = 14.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Eyebrow("NO ALERTS YET")
-                    Text("Create one from a favorite currency or from any detail screen.", style = FxTheme.typography.body, color = FxTheme.colors.textDim)
+	                    Eyebrow(ui("NO ALERTS YET"))
+	                    Text(ui("Create one from a favorite currency or from any detail screen."), style = FxTheme.typography.body, color = FxTheme.colors.textDim)
                 }
             }
         } else {
@@ -2109,7 +2661,7 @@ fun WatchlistScreen(
 ) {
     val access = subscriptionState.featureAccess()
     val allRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter) { liveState.portfolioRates() }
-    val limitLabel = if (access.hasUnlimitedWatchlistCurrencies) "Unlimited" else "${watchlistState.watchlist.codes.size}/${access.watchlistCurrencyLimit}"
+	    val limitLabel = if (access.hasUnlimitedWatchlistCurrencies) ui("Unlimited") else "${watchlistState.watchlist.codes.size}/${access.watchlistCurrencyLimit}"
     val holdings = remember(liveState.baseCurrency, allRates, watchlistState.watchlist) {
         watchlistState.watchlist.codes.mapNotNull { code ->
             val rate = allRates.firstOrNull { it.code == code } ?: return@mapNotNull null
@@ -2125,22 +2677,22 @@ fun WatchlistScreen(
     val nonZeroHoldings = holdings.count { it.amount > 0.0 }
     ScreenScaffold {
         if (onBack != null) {
-            BackNavButton(label = "More", onClick = onBack)
+	            BackNavButton(label = ui("More"), onClick = onBack)
         }
-        ScreenHeader("Watchlist", sub = "CUSTOM TRACKING", subtitle = "$limitLabel currencies · ${liveState.baseCurrency} base")
+	        ScreenHeader(ui("Watchlist"), sub = ui("CUSTOM TRACKING"), subtitle = "$limitLabel ${ui("currencies")} · ${liveState.baseCurrency} ${ui("base")}")
 
         BentoCard(Modifier.fillMaxWidth().heightIn(min = 148.dp), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.12f))
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Eyebrow(if (subscriptionState.isPremium) "FX/ PRO" else "FX/ FREE")
-                    Pill("${holdings.size} tracked", variant = if (holdings.isNotEmpty()) PillVariant.Accent else PillVariant.Ghost)
+	                    Pill("${holdings.size} ${ui("tracked")}", variant = if (holdings.isNotEmpty()) PillVariant.Accent else PillVariant.Ghost)
                 }
-                Text("Tracked currencies", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+	                Text(ui("Tracked currencies"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 if (nonZeroHoldings == 0) {
-                    BigValueText("${holdings.size}", " tracked")
+	                    BigValueText("${holdings.size}", " ${ui("tracked")}")
                     Text(
-                        "Add amounts below to value your portfolio.",
+	                        ui("Add amounts below to value your portfolio."),
                         style = FxTheme.typography.caption,
                         color = FxTheme.colors.textDim,
                         maxLines = 2,
@@ -2149,7 +2701,7 @@ fun WatchlistScreen(
                 } else {
                     BigValueText("${liveState.baseCurrency} ${formatMoneyValue(portfolioValue)}")
                     Text(
-                        "${formatPortfolioChange(portfolioDailyChange, liveState.baseCurrency)} today · $nonZeroHoldings holdings valued",
+	                        "${formatPortfolioChange(portfolioDailyChange, liveState.baseCurrency)} ${ui("today")} · $nonZeroHoldings ${ui("holdings valued")}",
                         style = FxTheme.typography.caption,
                         color = if (portfolioDailyChange >= 0.0) FxTheme.colors.up else FxTheme.colors.down,
                     )
@@ -2157,18 +2709,18 @@ fun WatchlistScreen(
             }
         }
 
-        SectionLabel("PORTFOLIO HOLDINGS")
+	        SectionLabel(ui("PORTFOLIO HOLDINGS"))
         if (holdings.isEmpty()) {
             BentoCard(padding = 14.dp) {
-                Text("Choose currencies below to start tracking.", style = FxTheme.typography.body, color = FxTheme.colors.textDim)
+	                Text(ui("Choose currencies below to start tracking."), style = FxTheme.typography.body, color = FxTheme.colors.textDim)
             }
         } else {
             if (nonZeroHoldings == 0) {
                 BentoCard(padding = 12.dp) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Eyebrow("HOW IT WORKS")
+	                        Eyebrow(ui("HOW IT WORKS"))
                         Text(
-                            "Watchlist follows rates. Portfolio value appears after you enter how much you hold.",
+	                            ui("Watchlist follows rates. Portfolio value appears after you enter how much you hold."),
                             style = FxTheme.typography.caption,
                             color = FxTheme.colors.textDim,
                         )
@@ -2190,7 +2742,7 @@ fun WatchlistScreen(
             }
         }
 
-        SectionLabel("ADD OR REMOVE")
+	        SectionLabel(ui("ADD OR REMOVE"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 allRates.forEach { rate ->
@@ -2209,8 +2761,8 @@ fun WatchlistScreen(
 
         if (!access.hasUnlimitedWatchlistCurrencies && watchlistState.watchlist.codes.size >= access.watchlistCurrencyLimit) {
             ProUpsellCard(
-                title = "Track unlimited currencies",
-                subtitle = "Free includes ${access.watchlistCurrencyLimit}; Pro unlocks bigger watchlists across rates, alerts and portfolio tracking.",
+	                title = ui("Track unlimited currencies"),
+	                subtitle = "${ui("Free includes")} ${access.watchlistCurrencyLimit}; ${ui("Pro unlocks bigger watchlists across rates, alerts and portfolio tracking.")}",
                 onClick = onOpenPaywall,
             )
         }
@@ -2241,9 +2793,9 @@ private fun PortfolioHoldingRow(
     ) {
         FlagDot(rate.glyph, rate.kind, 28.dp, modifier = Modifier.clickable(onClick = onOpenDetail))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text("${rate.code} holding", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, modifier = Modifier.clickable(onClick = onOpenDetail))
+            Text("${rate.code} ${ui("holding")}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, modifier = Modifier.clickable(onClick = onOpenDetail))
             val holdingSubtitle = if (amount <= 0.0) {
-                "Tracking live rate ${formatRate(rate.rate)} · enter amount held"
+                "${ui("Tracking live rate")} ${formatRate(rate.rate)} · ${ui("enter amount held")}"
             } else {
                 "$baseCurrency ${formatMoneyValue(holding.baseValue)} · ${holding.weightLabel(portfolioValue)} · ${holding.dailyChangeLabel(baseCurrency)}"
             }
@@ -2279,7 +2831,7 @@ private fun PortfolioHoldingRow(
                 decorationBox = { innerTextField ->
                     if (amountText.isBlank()) {
                         Text(
-                            "amount",
+	                            ui("amount"),
                             style = FxTheme.typography.captionMono,
                             color = FxTheme.colors.textGhost,
                             modifier = Modifier.fillMaxWidth(),
@@ -2291,7 +2843,7 @@ private fun PortfolioHoldingRow(
             )
             if (amountFocused) {
                 Text(
-                    "done",
+	                    ui("done"),
                     style = FxTheme.typography.captionMono,
                     color = FxTheme.colors.accent,
                     modifier = Modifier.clickable { focusManager.clearFocus() },
@@ -2323,7 +2875,7 @@ private fun WatchlistCurrencyRow(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(rate.code, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
             Text(
-                if (amount > 0.0) "${formatRate(amount)} held · ${rate.name}" else rate.name,
+	                if (amount > 0.0) "${formatRate(amount)} ${ui("held")} · ${localizedCurrencyName(rate.name)}" else localizedCurrencyName(rate.name),
                 style = FxTheme.typography.caption,
                 color = FxTheme.colors.textFaint,
             )
@@ -2331,9 +2883,9 @@ private fun WatchlistCurrencyRow(
         Text(formatRate(rate.rate), style = FxTheme.typography.numberBody, color = FxTheme.colors.textDim)
         Pill(
             text = when {
-                selected -> "tracked"
-                locked -> "pro"
-                else -> "add"
+	                selected -> ui("tracked")
+	                locked -> ui("pro")
+	                else -> ui("add")
             },
             variant = if (selected) PillVariant.Accent else if (locked) PillVariant.Accent else PillVariant.Ghost,
         )
@@ -2400,7 +2952,7 @@ private fun AlertCurrencyChoice(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(rate.code, style = FxTheme.typography.bodyStrong, color = if (selected) FxTheme.colors.accent else FxTheme.colors.text)
             Text(
-                rate.name,
+                localizedCurrencyName(rate.name),
                 style = FxTheme.typography.caption,
                 color = FxTheme.colors.textFaint,
                 maxLines = 1,
@@ -2434,9 +2986,9 @@ private fun AlertQuickRow(
         FlagDot(rate.glyph, rate.kind, 28.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text("$baseCurrency / ${rate.code}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-            Text("Above ${formatRate(rate.rate * 1.01)} · current ${formatRate(rate.rate)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+	            Text("${ui("Above")} ${formatRate(rate.rate * 1.01)} · ${ui("current")} ${formatRate(rate.rate)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
         }
-        Pill(state.label, variant = state.variant)
+	        Pill(ui(state.label), variant = state.variant)
     }
 }
 
@@ -2457,37 +3009,37 @@ private fun AlertCard(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text("${alert.base} / ${alert.quote}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                     Text(
-                        "${alert.direction.label(alert.kind)} ${alert.targetLabel()} · ${alert.statusLabel(currentRate, currentChangePct)}",
+	                        "${ui(alert.direction.label(alert.kind))} ${alert.targetLabel()} · ${localizedAlertStatusLabel(alert, currentRate, currentChangePct)}",
                         style = FxTheme.typography.captionMono,
                         color = if (isHit) FxTheme.colors.up else FxTheme.colors.textFaint,
                     )
                 }
-                Pill(if (alert.enabled) "on" else "paused", variant = if (alert.enabled) PillVariant.Up else PillVariant.Ghost)
+	                Pill(if (alert.enabled) ui("on") else ui("paused"), variant = if (alert.enabled) PillVariant.Up else PillVariant.Ghost)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 MetricTile(
-                    if (alert.kind == AlertKind.Target) "CURRENT" else "24H MOVE",
+	                    if (alert.kind == AlertKind.Target) ui("CURRENT") else ui("24H MOVE"),
                     if (alert.kind == AlertKind.Target) currentRate?.let(::formatRate) ?: "--" else currentChangePct?.let(::formatSignedPercent) ?: "--",
-                    alert.distanceLabel(currentRate, currentChangePct),
+                    localizedAlertDistanceLabel(alert, currentRate, currentChangePct),
                     Modifier.weight(1f).height(72.dp),
                 )
                 MetricTile(
-                    "LAST HIT",
-                    alert.lastTriggeredAtMillis?.let(::shortAgeLabel) ?: "Never",
-                    if (alert.enabled) "monitoring" else "paused",
+	                    ui("LAST HIT"),
+	                    alert.lastTriggeredAtMillis?.let { localizedShortAgeLabel(it) } ?: ui("Never"),
+	                    if (alert.enabled) ui("monitoring") else ui("paused"),
                     Modifier.weight(1f).height(72.dp),
                 )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (alert.enabled) "pause" else "resume",
+	                    if (alert.enabled) ui("pause") else ui("resume"),
                     style = FxTheme.typography.captionMono,
                     color = FxTheme.colors.textDim,
                     modifier = Modifier.clickable { onToggle(alert.id) },
                 )
                 Spacer(Modifier.width(14.dp))
                 Text(
-                    "test",
+	                    ui("test"),
                     style = FxTheme.typography.captionMono,
                     color = FxTheme.colors.accent,
                     modifier = Modifier.clickable { onTest(alert) },
@@ -2677,15 +3229,13 @@ fun NewsScreen(
     val emptyCopy = newsEmptyCopy(
         hasBackendStories = newsState.stories.isNotEmpty(),
         hasQuery = normalizedQuery.isNotBlank(),
-        region = newsState.region,
-        currency = newsState.selectedCurrency,
         topic = selectedTopic,
     )
     ScreenScaffold {
         ScreenHeader(
-            "News",
-            sub = if (access.canUseAdvancedNews) "MARKET STREAM" else "MARKET PREVIEW",
-            subtitle = "${newsState.provider} · ${newsState.region} · ${newsState.selectedCurrency} focus · ${newsState.refreshedLabel}",
+	            ui("News"),
+	            sub = if (access.canUseAdvancedNews) ui("MARKET STREAM") else ui("MARKET PREVIEW"),
+	            subtitle = "${newsState.provider} · ${newsState.region} · ${newsState.selectedCurrency} ${ui("focus")} · ${localizedRuntimeLabel(newsState.refreshedLabel)}",
             right = {
                 Text(
                     if (newsState.isLoading) "…" else "↻",
@@ -2698,26 +3248,26 @@ fun NewsScreen(
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Eyebrow("SENTIMENT")
+	                    Eyebrow(ui("SENTIMENT"))
                     if (newsState.isLoading) {
-                        Eyebrow("REFRESHING", color = FxTheme.colors.accent)
+	                        Eyebrow(ui("REFRESHING"), color = FxTheme.colors.accent)
                     }
                 }
                 SentimentBar(newsState.bullish, newsState.neutral, newsState.bearish)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    LegendDot("BULLISH ${newsState.bullish}%", FxTheme.colors.up)
-                    LegendDot("NEUTRAL ${newsState.neutral}%", FxTheme.colors.textGhost)
-                    LegendDot("BEARISH ${newsState.bearish}%", FxTheme.colors.down)
+	                    LegendDot("${ui("BULLISH")} ${newsState.bullish}%", FxTheme.colors.up)
+	                    LegendDot("${ui("NEUTRAL")} ${newsState.neutral}%", FxTheme.colors.textGhost)
+	                    LegendDot("${ui("BEARISH")} ${newsState.bearish}%", FxTheme.colors.down)
                 }
-                KeyValueRow("Feed", "${newsState.language.uppercase()} · ${newsState.trackedCurrencies.joinToString(", ")}")
-                KeyValueRow("Updated", "${newsState.provider} · ${newsState.refreshedLabel}")
+	                KeyValueRow(ui("Feed"), "${newsState.language.uppercase()} · ${newsState.trackedCurrencies.joinToString(", ")}")
+	                KeyValueRow(ui("Updated"), "${newsState.provider} · ${localizedRuntimeLabel(newsState.refreshedLabel)}")
             }
         }
         BentoCard(padding = 10.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 NewsSearchField(query = query, onQueryChange = { query = it })
                 NewsFilterRow(
-                    label = "REGION",
+	                    label = ui("REGION"),
                     options = regionOptions,
                     selected = newsState.region,
                     enabled = access.canUseAdvancedNews,
@@ -2726,7 +3276,7 @@ fun NewsScreen(
                     },
                 )
                 NewsFilterRow(
-                    label = "CURRENCY",
+	                    label = ui("CURRENCY"),
                     options = currencyOptions,
                     selected = newsState.selectedCurrency,
                     enabled = access.canUseAdvancedNews,
@@ -2735,7 +3285,7 @@ fun NewsScreen(
                     },
                 )
                 NewsFilterRow(
-                    label = "TOPIC",
+	                    label = ui("TOPIC"),
                     options = topicOptions,
                     selected = selectedTopic,
                     enabled = access.canUseAdvancedNews,
@@ -2749,10 +3299,10 @@ fun NewsScreen(
                 )
             }
         }
-        SectionLabel("RECENT LINES · ${filteredStories.size}")
+	        SectionLabel("${ui("RECENT LINES")} · ${filteredStories.size}")
         if (newsState.errorMessage != null) {
             Text(
-                "News backend unavailable · ${newsState.errorMessage}",
+	                "${ui("News backend unavailable")} · ${newsState.errorMessage}",
                 style = FxTheme.typography.captionMono,
                 color = FxTheme.colors.down,
             )
@@ -2760,10 +3310,10 @@ fun NewsScreen(
         if (visibleStories.isEmpty()) {
             BentoCard(padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(emptyCopy.first, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                    Text(emptyCopy.second, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+	                    Text(ui(emptyCopy.first), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+	                    Text(ui(emptyCopy.second), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
                     if (newsState.isLoading) {
-                        Text("Refreshing market stream…", style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
+	                        Text(ui("Refreshing market stream…"), style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
                     }
                 }
             }
@@ -2773,11 +3323,11 @@ fun NewsScreen(
         }
         if (!access.canUseAdvancedNews || visibleStories.size < filteredStories.size) {
             ProUpsellCard(
-                title = "Personalize the market stream",
+	                title = ui("Personalize the market stream"),
                 subtitle = if (visibleStories.size < filteredStories.size) {
-                    "Showing ${visibleStories.size}/${filteredStories.size} stories. Pro unlocks the full regional stream."
+	                    "${ui("Showing")} ${visibleStories.size}/${filteredStories.size} ${ui("stories")}. ${ui("Pro unlocks the full regional stream.")}"
                 } else {
-                    "Pro unlocks more stories and filters by region, currencies and topics."
+	                    ui("Pro unlocks more stories and filters by region, currencies and topics.")
                 },
                 onClick = onOpenPaywall,
             )
@@ -2795,19 +3345,19 @@ fun NewsDetailScreen(
         tag = "FX",
         impact = "MED",
         age = "Now",
-        title = "Market update",
-        summary = "Latest currency market context.",
+	        title = ui("Market update"),
+	        summary = ui("Latest currency market context."),
         moves = emptyList(),
         source = "FX Always",
         sourceUrl = "",
     )
     val impactColor = if (selected.impact.startsWith("HIGH")) FxTheme.colors.down else FxTheme.colors.accent
     ScreenScaffold {
-        BackNavButton(label = "News", onClick = onBack)
+	        BackNavButton(label = ui("News"), onClick = onBack)
         ScreenHeader(
-            "News detail",
+	            ui("News detail"),
             sub = "${selected.tag} · ${selected.impact}",
-            subtitle = "${selected.source.ifBlank { "Market source" }} · ${selected.age}",
+	            subtitle = "${selected.source.ifBlank { ui("Market source") }} · ${selected.age}",
         )
         BentoCard(padding = 14.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -2819,10 +3369,10 @@ fun NewsDetailScreen(
                 Text(selected.summary, style = FxTheme.typography.body, color = FxTheme.colors.textDim)
             }
         }
-        SectionLabel("MARKET MOVES")
+	        SectionLabel(ui("MARKET MOVES"))
         BentoCard(padding = 12.dp) {
             if (selected.moves.isEmpty()) {
-                Text("No direct currency move was detected for this story.", style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+	                Text(ui("No direct currency move was detected for this story."), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     selected.moves.forEach { (code, change) ->
@@ -2831,15 +3381,15 @@ fun NewsDetailScreen(
                 }
             }
         }
-        SectionLabel("SOURCE")
+	        SectionLabel(ui("SOURCE"))
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                KeyValueRow("Publisher", selected.source.ifBlank { "Market source" })
-                KeyValueRow("Published", selected.age)
+	                KeyValueRow(ui("Publisher"), selected.source.ifBlank { ui("Market source") })
+	                KeyValueRow(ui("Published"), selected.age)
                 if (selected.sourceUrl.isNotBlank()) {
-                    GhostButton("Open original source", onClick = { onOpenUrl(selected.sourceUrl) })
+	                    GhostButton(ui("Open original source"), onClick = { onOpenUrl(selected.sourceUrl) })
                 } else {
-                    Text("This item is generated from the fallback market brief, so there is no external article link.", style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+	                    Text(ui("This item is generated from the fallback market brief, so there is no external article link."), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
                 }
             }
         }
@@ -2849,6 +3399,7 @@ fun NewsDetailScreen(
 @Composable
 fun SettingsScreen(
     themeMode: ThemeMode,
+    appLanguage: String,
     baseCurrency: String,
     availableBaseCurrencies: List<FxRate> = SettingsBaseCurrencies,
     backupState: UserBackupState,
@@ -2857,14 +3408,19 @@ fun SettingsScreen(
     subscriptionState: SubscriptionState,
     onBack: (() -> Unit)? = null,
     onOpenPaywall: () -> Unit,
+    onOpenUrl: (String) -> Unit,
     onRestorePurchase: () -> Unit,
     onSyncNow: () -> Unit,
     onLinkGoogle: () -> Unit,
     onSignOut: () -> Unit,
     onDevPremiumChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
+    onLanguageChange: (String) -> Unit,
     onBaseCurrencyChange: (String) -> Unit,
 ) {
+    val copy = settingsCopy(appLanguage)
+    val activeLanguage = SupportedLanguages.firstOrNull { it.code == appLanguage }
+        ?: SupportedLanguages.first()
     val access = subscriptionState.featureAccess()
     val fullBaseCurrencies = availableBaseCurrencies.ifEmpty { SettingsBaseCurrencies }
     val canUseAllBaseCurrencies = access.hasUnlimitedBaseCurrencies
@@ -2875,8 +3431,8 @@ fun SettingsScreen(
     var showBaseCurrencyPicker by remember { mutableStateOf(false) }
     if (showBaseCurrencyPicker) {
         CurrencyPickerSheet(
-            title = "Choose base currency",
-            subtitle = "${fullBaseCurrencies.size} supported live currencies",
+	            title = ui("Choose base currency"),
+	            subtitle = "${fullBaseCurrencies.size} ${ui("supported live currencies")}",
             currencies = fullBaseCurrencies,
             selectedCode = baseCurrency,
             onDismiss = { showBaseCurrencyPicker = false },
@@ -2888,11 +3444,11 @@ fun SettingsScreen(
     }
     ScreenScaffold {
         if (onBack != null) {
-            BackNavButton(label = "More", onClick = onBack)
+            BackNavButton(label = copy.more, onClick = onBack)
         }
-        ScreenHeader("Settings", sub = "APP PREFERENCES", subtitle = "Theme, base currency and build info")
+        ScreenHeader(copy.title, sub = copy.sub, subtitle = "${copy.activeLanguage}: ${activeLanguage.label} · ${copy.deviceLanguage}: ${DeviceLocale.language.uppercase()}")
 
-        SectionLabel("BACKUP")
+        SectionLabel(copy.backup)
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 AccountBackupCard(
@@ -2902,10 +3458,10 @@ fun SettingsScreen(
                     onClick = onSyncNow,
                 )
                 SettingChoiceRow(
-                    title = "Sync now",
-                    subtitle = "Push the latest settings, alerts and watchlist to Firebase",
+                    title = copy.syncNow,
+                    subtitle = copy.syncNowSubtitle,
                     selected = false,
-                    actionLabel = if (backupSyncing) "syncing" else "sync",
+                    actionLabel = if (backupSyncing) copy.syncing else copy.sync,
                     onClick = onSyncNow,
                 )
                 if (backupState.isAnonymous) {
@@ -2918,51 +3474,69 @@ fun SettingsScreen(
                         Platform.Ios -> "iPhone"
                     }
                     SettingChoiceRow(
-                        title = "Sign in with $providerLabel",
-                        subtitle = "Keep the same backup and restore it on a new $deviceLabel",
+                        title = "${copy.signInWith} $providerLabel",
+                        subtitle = "${copy.signInSubtitle} $deviceLabel",
                         selected = false,
-                        actionLabel = "connect",
+                        actionLabel = copy.connect,
                         onClick = onLinkGoogle,
                     )
                 } else {
                     SettingChoiceRow(
-                        title = "Sign out",
-                        subtitle = "Keep local data and continue with a new guest backup",
+                        title = copy.signOut,
+                        subtitle = copy.signOutSubtitle,
                         selected = false,
-                        actionLabel = "sign out",
+                        actionLabel = copy.signOutAction,
                         onClick = onSignOut,
                     )
                 }
             }
         }
 
-        SectionLabel("SUBSCRIPTION")
+        SectionLabel(copy.subscription)
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SettingChoiceRow(
-                    title = if (subscriptionState.isPremium) "FX/ Pro active" else "FX/ Free",
-                    subtitle = subscriptionState.statusMessage ?: subscriptionState.proStatusLabel(),
+                    title = if (subscriptionState.isPremium) ui("FX/ Pro active") else ui("FX/ Free"),
+                    subtitle = subscriptionState.statusMessage?.let { localizedSubscriptionMessage(it) } ?: subscriptionState.localizedProStatusLabel(),
                     selected = subscriptionState.isPremium,
-                    actionLabel = if (subscriptionState.isPremium) "view" else "upgrade",
+                    actionLabel = if (subscriptionState.isPremium) copy.view else copy.upgrade,
                     onClick = onOpenPaywall,
                 )
                 SettingChoiceRow(
-                    title = "Restore purchase",
-                    subtitle = "Recover an existing Play/App Store subscription",
+                    title = copy.restorePurchase,
+                    subtitle = copy.restorePurchaseSubtitle,
                     selected = false,
-                    actionLabel = "restore",
+                    actionLabel = copy.restore,
                     onClick = onRestorePurchase,
+                )
+                SettingChoiceRow(
+                    title = copy.manageSubscription,
+                    subtitle = copy.manageSubscriptionSubtitle,
+                    selected = false,
+                    actionLabel = copy.open,
+                    onClick = { onOpenUrl(subscriptionManagementUrl()) },
                 )
             }
         }
 
-        SectionLabel("THEME MODE")
+        SectionLabel(copy.notifications)
+        BentoCard(padding = 8.dp) {
+            SettingChoiceRow(
+                title = copy.priceAlertNotifications,
+                subtitle = ui(NotificationPermissionStatus.subtitle),
+                selected = false,
+                actionLabel = ui(NotificationPermissionStatus.actionLabel),
+                onClick = {},
+            )
+        }
+
+        SectionLabel(copy.themeMode)
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 ThemeMode.entries.forEach { mode ->
                     SettingChoiceRow(
-                        title = mode.label,
-                        subtitle = mode.subtitle,
+	                        title = ui(mode.label),
+	                        subtitle = ui(mode.subtitle),
                         selected = themeMode == mode,
                         onClick = { onThemeModeChange(mode) },
                     )
@@ -2970,26 +3544,47 @@ fun SettingsScreen(
             }
         }
 
-        SectionLabel("BASE CURRENCY")
+        SectionLabel(copy.language)
+        BentoCard(padding = 8.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SettingChoiceRow(
+                    title = copy.activeLanguage,
+                    subtitle = "${activeLanguage.label} · ${copy.languageApplied}",
+                    selected = true,
+                    actionLabel = appLanguage.uppercase(),
+                    onClick = {},
+                )
+                SupportedLanguages.forEach { language ->
+                    SettingChoiceRow(
+                        title = language.label,
+                        subtitle = if (language.code == DeviceLocale.language) copy.deviceLanguage else language.code.uppercase(),
+                        selected = appLanguage == language.code,
+                        onClick = { onLanguageChange(language.code) },
+                    )
+                }
+            }
+        }
+
+        SectionLabel(copy.baseCurrency)
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 baseCurrencies.forEach { currency ->
                     SettingChoiceRow(
                         title = "${currency.glyph}  ${currency.code}",
-                        subtitle = currency.name,
+                        subtitle = localizedCurrencyName(currency.name),
                         selected = baseCurrency == currency.code,
                         onClick = { onBaseCurrencyChange(currency.code) },
                     )
                 }
                 SettingChoiceRow(
-                    title = "More currencies",
+                    title = copy.moreCurrencies,
                     subtitle = if (canUseAllBaseCurrencies) {
-                        "Search ${fullBaseCurrencies.size} supported base currencies"
+                        "${copy.search} ${fullBaseCurrencies.size}"
                     } else {
-                        "Free includes ${baseCurrencies.size}; Pro unlocks ${fullBaseCurrencies.size}"
+                        "${copy.freeIncludes} ${baseCurrencies.size}; Pro ${copy.unlocks} ${fullBaseCurrencies.size}"
                     },
                     selected = false,
-                    actionLabel = "more +",
+	                    actionLabel = ui("more +"),
                     onClick = {
                         if (canUseAllBaseCurrencies) showBaseCurrencyPicker = true else onOpenPaywall()
                     },
@@ -2998,28 +3593,48 @@ fun SettingsScreen(
         }
         if (!canUseAllBaseCurrencies && baseCurrencies.size < fullBaseCurrencies.size) {
             ProUpsellCard(
-                title = "Unlock all base currencies",
-                subtitle = "Free includes ${baseCurrencies.size}; Pro unlocks ${fullBaseCurrencies.size} supported base currencies.",
+                title = copy.unlockAllBaseCurrencies,
+                subtitle = "${copy.freeIncludes} ${baseCurrencies.size}; Pro ${copy.unlocks} ${fullBaseCurrencies.size} ${copy.supportedBaseCurrencies}.",
                 onClick = onOpenPaywall,
             )
         }
 
         if (PlatformConfig.isDebug) {
-            SectionLabel("DEV")
+	            SectionLabel(ui("DEV"))
             BentoCard(padding = 8.dp) {
                 SettingChoiceRow(
-                    title = "Simulate ${if (subscriptionState.isPremium) "Free" else "Pro"}",
-                    subtitle = "Debug-only local gate override",
+	                    title = "${ui("Simulate")} ${if (subscriptionState.isPremium) ui("Free") else ui("Pro")}",
+	                    subtitle = ui("Debug-only local gate override"),
                     selected = subscriptionState.isPremium,
-                    actionLabel = if (subscriptionState.isPremium) "set free" else "set pro",
+	                    actionLabel = if (subscriptionState.isPremium) ui("set free") else ui("set pro"),
                     onClick = { onDevPremiumChange(!subscriptionState.isPremium) },
+                )
+            }
+        }
+
+        SectionLabel(copy.legal)
+        BentoCard(padding = 8.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SettingChoiceRow(
+                    title = copy.privacyPolicy,
+                    subtitle = copy.privacyPolicySubtitle,
+                    selected = false,
+                    actionLabel = copy.open,
+                    onClick = { onOpenUrl(PRIVACY_POLICY_URL) },
+                )
+                SettingChoiceRow(
+                    title = copy.termsOfUse,
+                    subtitle = copy.termsOfUseSubtitle,
+                    selected = false,
+                    actionLabel = copy.open,
+                    onClick = { onOpenUrl(TERMS_OF_USE_URL) },
                 )
             }
         }
 
         Spacer(Modifier.height(8.dp))
         Text(
-            "Version ${PlatformConfig.versionName}",
+	            "${ui("Version")} ${PlatformConfig.versionName}",
             style = FxTheme.typography.captionMono,
             color = FxTheme.colors.textFaint,
             modifier = Modifier.fillMaxWidth(),
@@ -3037,14 +3652,14 @@ private fun AccountBackupCard(
 ) {
     val signedIn = backupState.isAvailable && !backupState.isAnonymous
     val title = if (signedIn) {
-        "Signed in with ${backupState.providerLabel ?: "account"}"
+	        "${ui("Signed in with")} ${backupState.providerLabel ?: ui("account")}"
     } else {
-        backupState.title
+	        ui(backupState.title)
     }
     val identity = when {
         signedIn && backupState.email != null -> backupState.email
         signedIn && backupState.displayName != null -> backupState.displayName
-        else -> backupState.subtitle(lastSyncedAtMillis)
+        else -> backupState.localizedSubtitle(lastSyncedAtMillis)
     }
     val initial = when {
         signedIn && !backupState.displayName.isNullOrBlank() -> backupState.displayName.first().uppercaseChar().toString()
@@ -3075,14 +3690,14 @@ private fun AccountBackupCard(
             Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
             Text(identity, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
             if (signedIn) {
-                Text(formatLastSynced(lastSyncedAtMillis), style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
+                Text(formatLastSyncedLocalized(lastSyncedAtMillis), style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
             }
             if (backupState.errorMessage != null) {
                 Text(backupState.errorMessage, style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
             }
         }
         Pill(
-            if (backupSyncing) "syncing" else if (signedIn) backupState.providerLabel ?: "account" else backupState.actionLabel,
+	            if (backupSyncing) ui("syncing") else if (signedIn) backupState.providerLabel ?: ui("account") else ui(backupState.actionLabel),
             variant = if (signedIn || backupState.isAvailable) PillVariant.Accent else PillVariant.Ghost,
         )
     }
@@ -3093,7 +3708,7 @@ private fun SettingChoiceRow(
     title: String,
     subtitle: String,
     selected: Boolean,
-    actionLabel: String = if (selected) "active" else "select",
+	    actionLabel: String = if (selected) ui("active") else ui("select"),
     onClick: () -> Unit,
 ) {
     Row(
@@ -3162,7 +3777,7 @@ private fun CurrencyPickerSheet(
                     modifier = Modifier.fillMaxWidth(),
                     decorationBox = { innerTextField ->
                         if (query.isBlank()) {
-                            Text("Search currency", style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
+	                            Text(ui("Search currency"), style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
                         }
                         innerTextField()
                     },
@@ -3177,13 +3792,13 @@ private fun CurrencyPickerSheet(
                 rows.forEach { currency ->
                     SettingChoiceRow(
                         title = "${currency.glyph}  ${currency.code}",
-                        subtitle = currency.name,
+                        subtitle = localizedCurrencyName(currency.name),
                         selected = currency.code == selectedCode,
                         onClick = { onSelect(currency.code) },
                     )
                 }
                 if (rows.isEmpty()) {
-                    Text("No currencies found", style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+	                    Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -3234,9 +3849,9 @@ private fun CurrencyListPickerSheet(
                 Text(title, style = FxTheme.typography.titleL, color = FxTheme.colors.text)
                 Text(
                     if (isPremium) {
-                        "${draftCodes.size} selected · every supported currency available"
+	                        "${draftCodes.size} ${ui("selected")} · ${ui("every supported currency available")}"
                     } else {
-                        "${draftCodes.size}/$effectiveLimit selected · Pro unlocks the full list"
+	                        "${draftCodes.size}/$effectiveLimit ${ui("selected")} · ${ui("Pro unlocks the full list")}"
                     },
                     style = FxTheme.typography.caption,
                     color = FxTheme.colors.textFaint,
@@ -3251,7 +3866,7 @@ private fun CurrencyListPickerSheet(
                     modifier = Modifier.fillMaxWidth(),
                     decorationBox = { innerTextField ->
                         if (query.isBlank()) {
-                            Text("Search currency", style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
+	                            Text(ui("Search currency"), style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
                         }
                         innerTextField()
                     },
@@ -3269,9 +3884,9 @@ private fun CurrencyListPickerSheet(
                     val locked = !selected && draftCodes.size >= effectiveLimit
                     SettingChoiceRow(
                         title = "${currency.glyph}  ${currency.code}",
-                        subtitle = if (locked && !isPremium) lockedSubtitle else currency.name,
+                        subtitle = if (locked && !isPremium) lockedSubtitle else localizedCurrencyName(currency.name),
                         selected = selected,
-                        actionLabel = if (selected) "added" else if (locked) "pro" else "add",
+	                        actionLabel = if (selected) ui("added") else if (locked) ui("pro") else ui("add"),
                         onClick = {
                             when {
                                 selected -> draftCodes = draftCodes.filterNot { it == currency.code }
@@ -3282,13 +3897,13 @@ private fun CurrencyListPickerSheet(
                     )
                 }
                 if (rows.isEmpty()) {
-                    Text("No currencies found", style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+	                    Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                GhostButton("Cancel", Modifier.weight(1f), onClick = onDismiss)
+	                GhostButton(ui("Cancel"), Modifier.weight(1f), onClick = onDismiss)
                 PrimaryButton(
-                    "Apply",
+	                    ui("Apply"),
                     Modifier.weight(1f),
                     onClick = {
                         if (draftCodes.isNotEmpty()) {
@@ -3351,6 +3966,19 @@ private fun UserBackupState.subtitle(lastSyncedAtMillis: Long?): String {
     return if (errorMessage != null) "$base · $errorMessage" else "$base$syncLabel"
 }
 
+@Composable
+private fun UserBackupState.localizedSubtitle(lastSyncedAtMillis: Long?): String {
+    val syncLabel = lastSyncedAtMillis?.let { " · ${formatLastSyncedLocalized(it)}" }.orEmpty()
+    val base = when {
+        isAvailable && uid?.startsWith("ios-anon-") == true && isAnonymous -> "${ui("Local iOS guest")} ${uid.takeLast(8)}"
+        isAvailable && uid != null && isAnonymous -> "${ui("Firebase guest")} ${uid.take(8)}"
+        isAvailable && uid != null -> ui("Restores on any signed-in device")
+        isAvailable -> ui("Preferences, alerts and watchlist sync to Firebase")
+        else -> ui("Firebase Auth has not started on this platform")
+    }
+    return if (errorMessage != null) "$base · $errorMessage" else "$base$syncLabel"
+}
+
 private val UserBackupState.actionLabel: String
     get() = if (isAvailable) "active" else "offline"
 
@@ -3367,6 +3995,65 @@ private fun formatLastSynced(millis: Long): String {
 
 private fun formatLastSynced(millis: Long?): String =
     millis?.let(::formatLastSynced) ?: "Sync pending"
+
+@Composable
+private fun formatLastSyncedLocalized(millis: Long): String {
+    val elapsedSeconds = ((Clock.System.now().toEpochMilliseconds() - millis) / 1000).coerceAtLeast(0)
+    return when {
+        elapsedSeconds < 15 -> ui("synced just now")
+        elapsedSeconds < 60 -> "${ui("synced")} ${elapsedSeconds}s ${ui("ago")}"
+        elapsedSeconds < 3600 -> "${ui("synced")} ${elapsedSeconds / 60}m ${ui("ago")}"
+        elapsedSeconds < 86_400 -> "${ui("synced")} ${elapsedSeconds / 3600}h ${ui("ago")}"
+        else -> "${ui("synced")} ${elapsedSeconds / 86_400}d ${ui("ago")}"
+    }
+}
+
+@Composable
+private fun formatLastSyncedLocalized(millis: Long?): String =
+    millis?.let { formatLastSyncedLocalized(it) } ?: ui("Sync pending")
+
+@Composable
+private fun localizedRuntimeLabel(label: String): String =
+    when {
+        label == "cached · mock" -> "${ui("cached")} · mock"
+        label == "Auto-refresh off" -> ui("Auto-refresh off")
+        label.startsWith("Auto-refresh every ") -> "${ui("Auto-refresh every")} ${label.substringAfter("every ").substringBefore(" min")} ${ui("min")}"
+        label == "loading" -> ui("loading")
+        label == "updated just now" -> ui("updated just now")
+        label.startsWith("updated ") && label.endsWith("m ago") -> "${ui("updated")} ${label.removePrefix("updated ").removeSuffix("m ago")}m ${ui("ago")}"
+        label.startsWith("updated ") -> "${ui("updated")} ${label.removePrefix("updated ")}"
+        label.startsWith("refreshed ") -> "${ui("refreshed")} ${label.removePrefix("refreshed ")}"
+        else -> ui(label)
+    }
+
+@Composable
+private fun localizedCurrencyName(name: String): String = ui(name)
+
+@Composable
+private fun localizedRate(rate: FxRate): FxRate =
+    rate.copy(
+        name = localizedCurrencyName(rate.name),
+        caption = if (rate.caption == "cached · mock") localizedRuntimeLabel(rate.caption) else ui(rate.caption),
+    )
+
+@Composable
+private fun localizedSubscriptionMessage(message: String): String =
+    when {
+        message.startsWith("No RevenueCat package is configured for ") -> {
+            val plan = message.removePrefix("No RevenueCat package is configured for ").removeSuffix(".")
+            "${ui("No RevenueCat package is configured for")} ${ui(plan)}."
+        }
+        message.startsWith("Pro active") -> message.replace("Pro active", ui("Pro active"))
+        message == "RevenueCat key missing. Add REVENUECAT_API_KEY to enable live purchases." -> ui("RevenueCat key missing. Add REVENUECAT_API_KEY to enable live purchases.")
+        message == "RevenueCat key missing. Add REVENUECAT_API_KEY before testing purchases." -> ui("RevenueCat key missing. Add REVENUECAT_API_KEY before testing purchases.")
+        message == "RevenueCat key missing. Restore is not connected yet." -> ui("RevenueCat key missing. Restore is not connected yet.")
+        message == "RevenueCat unavailable." -> ui("RevenueCat unavailable.")
+        message == "No offering packages are configured in RevenueCat." -> ui("No offering packages are configured in RevenueCat.")
+        message == "Purchase did not complete." -> ui("Purchase did not complete.")
+        message == "Restore failed." -> ui("Restore failed.")
+        message == "Dev override only affects local debug gating." -> ui("Dev override only affects local debug gating.")
+        else -> ui(message)
+    }
 
 private val AlertKind.label: String
     get() = when (this) {
@@ -3475,6 +4162,28 @@ private fun PriceAlert.distanceLabel(currentRate: Double?, currentChangePct: Dou
         else -> "waiting"
     }
 
+@Composable
+private fun localizedAlertStatusLabel(alert: PriceAlert, currentRate: Double?, currentChangePct: Double?): String =
+    when {
+        alert.kind == AlertKind.Target && currentRate == null -> "${ui("waiting for live rate")} · ${alert.base}"
+        alert.kind == AlertKind.DailyChange && currentChangePct == null -> ui("waiting for 24h change")
+        alert.isHit(currentRate, currentChangePct) -> ui("target hit")
+        alert.kind == AlertKind.Target && currentRate != null -> "${alert.distancePercent(currentRate)}% ${ui("away")}"
+        alert.kind == AlertKind.DailyChange && currentChangePct != null -> "${alert.dailyChangeDistancePercent(currentChangePct)} ${ui("pts away")}"
+        else -> ui("waiting")
+    }
+
+@Composable
+private fun localizedAlertDistanceLabel(alert: PriceAlert, currentRate: Double?, currentChangePct: Double?): String =
+    when {
+        alert.kind == AlertKind.Target && currentRate == null -> ui("base changed")
+        alert.kind == AlertKind.DailyChange && currentChangePct == null -> ui("waiting")
+        alert.isHit(currentRate, currentChangePct) -> ui("target reached")
+        alert.kind == AlertKind.Target && currentRate != null -> "${alert.distancePercent(currentRate)}% ${ui("to target")}"
+        alert.kind == AlertKind.DailyChange && currentChangePct != null -> "${alert.dailyChangeDistancePercent(currentChangePct)} ${ui("pts to move")}"
+        else -> ui("waiting")
+    }
+
 private fun PriceAlert.targetLabel(): String =
     when (kind) {
         AlertKind.Target -> formatRate(target)
@@ -3519,6 +4228,26 @@ private fun alertSummaryLine(
         }
     }
 
+@Composable
+private fun localizedAlertSummaryLine(
+    kind: AlertKind,
+    rate: FxRate,
+    direction: AlertDirection,
+    targetValue: Double,
+    currentChangePct: Double,
+): String =
+    when (kind) {
+        AlertKind.Target -> "${ui("Current")} ${formatRate(rate.rate)} · ${ui("target")} ${if (targetValue > 0.0) formatRate(targetValue) else "--"}"
+        AlertKind.DailyChange -> {
+            val threshold = if (targetValue > 0.0) {
+                "${ui(direction.label(kind)).lowercase()} ${formatPercentValue(targetValue)}%"
+            } else {
+                "--"
+            }
+            "24h ${formatSignedPercent(currentChangePct)} · ${ui("alert at")} $threshold"
+        }
+    }
+
 private fun formatPercentValue(value: Double): String =
     ((value * 10.0).toInt() / 10.0).toString()
 
@@ -3534,6 +4263,17 @@ private fun shortAgeLabel(millis: Long): String {
         elapsedSeconds < 3600 -> "${elapsedSeconds / 60}m ago"
         elapsedSeconds < 86_400 -> "${elapsedSeconds / 3600}h ago"
         else -> "${elapsedSeconds / 86_400}d ago"
+    }
+}
+
+@Composable
+private fun localizedShortAgeLabel(millis: Long): String {
+    val elapsedSeconds = ((Clock.System.now().toEpochMilliseconds() - millis) / 1000).coerceAtLeast(0)
+    return when {
+        elapsedSeconds < 60 -> ui("Now")
+        elapsedSeconds < 3600 -> "${elapsedSeconds / 60}m ${ui("ago")}"
+        elapsedSeconds < 86_400 -> "${elapsedSeconds / 3600}h ${ui("ago")}"
+        else -> "${elapsedSeconds / 86_400}d ${ui("ago")}"
     }
 }
 
@@ -3654,6 +4394,7 @@ private fun formatMoneyValue(value: Double): String =
 
 private fun buildUserBackupSnapshot(
     themeMode: ThemeMode,
+    language: String,
     baseCurrency: String,
     travelerCurrency: String,
     travelerBudgetBase: Double,
@@ -3666,6 +4407,7 @@ private fun buildUserBackupSnapshot(
         updatedAtMillis = Clock.System.now().toEpochMilliseconds(),
         settings = BackupSettings(
             themeMode = themeMode.name,
+            language = language,
             baseCurrency = baseCurrency,
             travelerCurrency = travelerCurrency,
             travelerBudgetBase = travelerBudgetBase,
@@ -3685,15 +4427,19 @@ private fun applyUserBackupSnapshot(
     onCompareCurrencyCodes: (List<String>) -> Unit,
     onTravelerCurrency: (String) -> Unit,
     onTravelerBudgetBase: (Double) -> Unit,
+    onLanguage: (String) -> Unit,
 ): ThemeMode {
     val theme = ThemeMode.entries.firstOrNull { it.name == snapshot.settings.themeMode } ?: ThemeMode.System
+    val language = snapshot.settings.language.ifBlank { DeviceLocale.language }
     AppSettingsPrefs.setThemeMode(theme)
+    AppSettingsPrefs.setLanguage(language)
     AppSettingsPrefs.setBaseCurrency(snapshot.settings.baseCurrency)
     AppSettingsPrefs.setTravelerCurrency(snapshot.settings.travelerCurrency)
     AppSettingsPrefs.setTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     AppSettingsPrefs.setConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
     AppSettingsPrefs.setCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
     liveStore.setBaseCurrency(snapshot.settings.baseCurrency)
+    onLanguage(language)
     onConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
     onCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
     onTravelerCurrency(snapshot.settings.travelerCurrency)
@@ -3780,7 +4526,7 @@ private fun StoryCard(story: NewsStory, onClick: () -> Unit = {}) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Pill(story.tag, variant = PillVariant.Ghost)
-                    Eyebrow(story.impact, color = if (story.impact.startsWith("HIGH")) FxTheme.colors.down else FxTheme.colors.accent)
+                    Eyebrow(ui(story.impact), color = if (story.impact.startsWith("HIGH")) FxTheme.colors.down else FxTheme.colors.accent)
                 }
                 Text(story.age, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
             }
@@ -3788,13 +4534,13 @@ private fun StoryCard(story: NewsStory, onClick: () -> Unit = {}) {
             Text(story.summary, style = FxTheme.typography.body, color = FxTheme.colors.textDim)
             if (story.source.isNotBlank()) {
                 Text(
-                    if (story.sourceUrl.isNotBlank()) "${story.source} · tap for details" else story.source,
+                    if (story.sourceUrl.isNotBlank()) "${story.source} · ${ui("tap for details")}" else story.source,
                     style = FxTheme.typography.captionMono,
                     color = if (story.sourceUrl.isNotBlank()) FxTheme.colors.accent else FxTheme.colors.textFaint,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Eyebrow("MOVES")
+                Eyebrow(ui("MOVES"))
                 story.moves.forEach { (code, change) ->
                     Pill("$code ${formatChange(change)}", variant = if (change >= 0) PillVariant.Up else PillVariant.Down)
                 }
@@ -3821,7 +4567,7 @@ private fun NewsSearchField(query: String, onQueryChange: (String) -> Unit) {
                     .padding(horizontal = 12.dp, vertical = 11.dp),
             ) {
                 if (query.isBlank()) {
-                    Text("Search headlines, tags or currencies", style = FxTheme.typography.caption, color = FxTheme.colors.textGhost)
+                    Text(ui("Search headlines, tags or currencies"), style = FxTheme.typography.caption, color = FxTheme.colors.textGhost)
                 }
                 innerTextField()
             }
@@ -3873,15 +4619,206 @@ private fun NewsFilterRow(
 private fun newsEmptyCopy(
     hasBackendStories: Boolean,
     hasQuery: Boolean,
-    region: String,
-    currency: String,
     topic: String,
 ): Pair<String, String> =
     when {
-        !hasBackendStories -> "No market stories yet" to "The backend did not return stories for $region. Refresh or try a broader region."
-        hasQuery -> "No search matches" to "No $currency stories match that search. Clear the query or switch currency."
-        topic != "ALL" -> "No $topic stories in $region" to "The feed is live, but this topic has no direct $currency matches right now."
-        else -> "No $currency stories in $region" to "The feed is live, but this filter has no direct currency matches right now."
+        !hasBackendStories -> "No market stories yet" to "No live market stories have arrived yet."
+        hasQuery -> "No search matches" to "No live stories match this search."
+        topic != "ALL" -> "No topic stories" to "Try a broader filter or refresh the feed."
+        else -> "No currency stories" to "Try a broader filter or refresh the feed."
+    }
+
+private const val PRIVACY_POLICY_URL = "https://fxalways.app/privacy"
+private const val TERMS_OF_USE_URL = "https://fxalways.app/terms"
+
+private fun subscriptionManagementUrl(): String =
+    when (PlatformConfig.platform) {
+        Platform.Android -> "https://play.google.com/store/account/subscriptions"
+        Platform.Ios -> "https://apps.apple.com/account/subscriptions"
+    }
+
+private data class SettingsCopy(
+    val title: String,
+    val sub: String,
+    val more: String,
+    val backup: String,
+    val syncNow: String,
+    val syncNowSubtitle: String,
+    val syncing: String,
+    val sync: String,
+    val signInWith: String,
+    val signInSubtitle: String,
+    val connect: String,
+    val signOut: String,
+    val signOutSubtitle: String,
+    val signOutAction: String,
+    val subscription: String,
+    val view: String,
+    val upgrade: String,
+    val restorePurchase: String,
+    val restorePurchaseSubtitle: String,
+    val restore: String,
+    val manageSubscription: String,
+    val manageSubscriptionSubtitle: String,
+    val open: String,
+    val notifications: String,
+    val priceAlertNotifications: String,
+    val themeMode: String,
+    val language: String,
+    val activeLanguage: String,
+    val deviceLanguage: String,
+    val languageApplied: String,
+    val baseCurrency: String,
+    val moreCurrencies: String,
+    val search: String,
+    val freeIncludes: String,
+    val unlocks: String,
+    val unlockAllBaseCurrencies: String,
+    val supportedBaseCurrencies: String,
+    val legal: String,
+    val privacyPolicy: String,
+    val privacyPolicySubtitle: String,
+    val termsOfUse: String,
+    val termsOfUseSubtitle: String,
+)
+
+private fun settingsCopy(language: String): SettingsCopy =
+    when (language.lowercase()) {
+        "es" -> SettingsCopy(
+            title = "Ajustes",
+            sub = "PREFERENCIAS",
+            more = "Más",
+            backup = "BACKUP",
+            syncNow = "Sincronizar ahora",
+            syncNowSubtitle = "Guarda ajustes, alertas y watchlist en Firebase",
+            syncing = "sincronizando",
+            sync = "sincronizar",
+            signInWith = "Iniciar sesión con",
+            signInSubtitle = "Mantén el mismo backup y restáuralo en un nuevo",
+            connect = "conectar",
+            signOut = "Cerrar sesión",
+            signOutSubtitle = "Mantén los datos locales y continúa con backup invitado",
+            signOutAction = "salir",
+            subscription = "SUSCRIPCIÓN",
+            view = "ver",
+            upgrade = "pro",
+            restorePurchase = "Restaurar compra",
+            restorePurchaseSubtitle = "Recupera una suscripción existente de Play/App Store",
+            restore = "restaurar",
+            manageSubscription = "Gestionar suscripción",
+            manageSubscriptionSubtitle = "Abre el centro de suscripciones de la tienda",
+            open = "abrir",
+            notifications = "NOTIFICACIONES",
+            priceAlertNotifications = "Notificaciones de alertas",
+            themeMode = "TEMA",
+            language = "IDIOMA",
+            activeLanguage = "Idioma activo",
+            deviceLanguage = "Idioma del dispositivo",
+            languageApplied = "aplicado",
+            baseCurrency = "MONEDA BASE",
+            moreCurrencies = "Más monedas",
+            search = "Buscar monedas soportadas",
+            freeIncludes = "Free incluye",
+            unlocks = "desbloquea",
+            unlockAllBaseCurrencies = "Desbloquear todas las monedas base",
+            supportedBaseCurrencies = "monedas base soportadas",
+            legal = "LEGAL",
+            privacyPolicy = "Política de privacidad",
+            privacyPolicySubtitle = "Cómo FX Always maneja cuenta, rates y datos",
+            termsOfUse = "Términos de uso",
+            termsOfUseSubtitle = "Suscripción, disclaimers y uso aceptable",
+        )
+        "pt" -> SettingsCopy(
+            title = "Ajustes",
+            sub = "PREFERÊNCIAS",
+            more = "Mais",
+            backup = "BACKUP",
+            syncNow = "Sincronizar agora",
+            syncNowSubtitle = "Salva ajustes, alertas e watchlist no Firebase",
+            syncing = "sincronizando",
+            sync = "sincronizar",
+            signInWith = "Entrar com",
+            signInSubtitle = "Mantenha o mesmo backup e restaure em um novo",
+            connect = "conectar",
+            signOut = "Sair",
+            signOutSubtitle = "Mantém dados locais e continua com backup convidado",
+            signOutAction = "sair",
+            subscription = "ASSINATURA",
+            view = "ver",
+            upgrade = "pro",
+            restorePurchase = "Restaurar compra",
+            restorePurchaseSubtitle = "Recupera uma assinatura existente da Play/App Store",
+            restore = "restaurar",
+            manageSubscription = "Gerenciar assinatura",
+            manageSubscriptionSubtitle = "Abre o centro de assinaturas da loja",
+            open = "abrir",
+            notifications = "NOTIFICAÇÕES",
+            priceAlertNotifications = "Notificações de alertas",
+            themeMode = "TEMA",
+            language = "IDIOMA",
+            activeLanguage = "Idioma ativo",
+            deviceLanguage = "Idioma do dispositivo",
+            languageApplied = "aplicado",
+            baseCurrency = "MOEDA BASE",
+            moreCurrencies = "Mais moedas",
+            search = "Buscar moedas suportadas",
+            freeIncludes = "Free inclui",
+            unlocks = "desbloqueia",
+            unlockAllBaseCurrencies = "Desbloquear todas as moedas base",
+            supportedBaseCurrencies = "moedas base suportadas",
+            legal = "LEGAL",
+            privacyPolicy = "Política de privacidade",
+            privacyPolicySubtitle = "Como FX Always lida com conta, rates e dados",
+            termsOfUse = "Termos de uso",
+            termsOfUseSubtitle = "Assinatura, disclaimers e uso aceitável",
+        )
+        else -> {
+            fun t(key: String): String = localizedUiText(language, key)
+            SettingsCopy(
+                title = t("Settings"),
+                sub = t("APP PREFERENCES"),
+                more = t("More"),
+                backup = t("BACKUP"),
+                syncNow = t("Sync now"),
+                syncNowSubtitle = t("Push the latest settings, alerts and watchlist to Firebase"),
+                syncing = t("syncing"),
+                sync = t("sync"),
+                signInWith = t("Sign in with"),
+                signInSubtitle = t("Keep the same backup and restore it on a new"),
+                connect = t("connect"),
+                signOut = t("Sign out"),
+                signOutSubtitle = t("Keep local data and continue with a new guest backup"),
+                signOutAction = t("sign out"),
+                subscription = t("SUBSCRIPTION"),
+                view = t("view"),
+                upgrade = t("upgrade"),
+                restorePurchase = t("Restore purchase"),
+                restorePurchaseSubtitle = t("Recover an existing Play/App Store subscription"),
+                restore = t("restore"),
+                manageSubscription = t("Manage subscription"),
+                manageSubscriptionSubtitle = t("Open the store subscription center for billing changes"),
+                open = t("open"),
+                notifications = t("NOTIFICATIONS"),
+                priceAlertNotifications = t("Price alert notifications"),
+                themeMode = t("THEME MODE"),
+                language = t("LANGUAGE"),
+                activeLanguage = t("Active language"),
+                deviceLanguage = t("Device language"),
+                languageApplied = t("applied"),
+                baseCurrency = t("BASE CURRENCY"),
+                moreCurrencies = t("More currencies"),
+                search = t("Search supported base currencies"),
+                freeIncludes = t("Free includes"),
+                unlocks = t("unlocks"),
+                unlockAllBaseCurrencies = t("Unlock all base currencies"),
+                supportedBaseCurrencies = t("supported base currencies"),
+                legal = t("LEGAL"),
+                privacyPolicy = t("Privacy Policy"),
+                privacyPolicySubtitle = t("How FX Always handles account, rates and analytics data"),
+                termsOfUse = t("Terms of Use"),
+                termsOfUseSubtitle = t("Subscription terms, disclaimers and acceptable use"),
+            )
+        }
     }
 
 @Composable
@@ -3926,9 +4863,9 @@ fun PaywallScreen(
             Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onClose))
         }
         Eyebrow("FX/ PRO", color = FxTheme.colors.accent)
-        Text("The full picture.\nMore rates. More context.", style = FxTheme.typography.display, color = FxTheme.colors.text)
+	        Text(ui("The full picture.\nMore rates. More context."), style = FxTheme.typography.display, color = FxTheme.colors.text)
         Text(
-            "Unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists on one membership.",
+	            ui("Unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists on one membership."),
             style = FxTheme.typography.body,
             color = FxTheme.colors.textDim,
         )
@@ -3937,12 +4874,12 @@ fun PaywallScreen(
         }
         BentoCard(padding = 12.dp) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BenefitRow("⌖", "Fresh market rates", "Backend-backed mid-market rates with automatic refresh.")
-                BenefitRow("⬡", "Unlimited alerts", "Price, range, daily and weekly targets.")
-                BenefitRow("◐", "Traveler mode", "Auto-location, cheat sheets and offline rates.")
-                BenefitRow("⌘", "Fee comparison", "Expanded provider estimates by amount and currency pair.")
-                BenefitRow("⌬", "Bigger watchlists", "Track more currencies across converter, compare and portfolio.")
-                BenefitRow("∞", "Long-range history", "Unlock 1Y and all-time detail views where history is available.")
+	                BenefitRow("⌖", ui("Fresh market rates"), ui("Backend-backed mid-market rates with automatic refresh."))
+	                BenefitRow("⬡", ui("Unlimited alerts"), ui("Price, range, daily and weekly targets."))
+	                BenefitRow("◐", ui("Traveler mode"), ui("Auto-location, cheat sheets and offline rates."))
+	                BenefitRow("⌘", ui("Fee comparison"), ui("Expanded provider estimates by amount and currency pair."))
+	                BenefitRow("⌬", ui("Bigger watchlists"), ui("Track more currencies across converter, compare and portfolio."))
+	                BenefitRow("∞", ui("Long-range history"), ui("Unlock 1Y and all-time detail views where history is available."))
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3961,26 +4898,26 @@ fun PaywallScreen(
         BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    selectedPlan.badge?.let { Pill(it, variant = PillVariant.Accent) }
+                    selectedPlan.badge?.let { Pill(ui(it), variant = PillVariant.Accent) }
                 }
-                Text(selectedPlan.title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                BigValueText(selectedPlan.priceLabel, selectedPlan.cadenceLabel)
+                Text(ui(selectedPlan.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                BigValueText(selectedPlan.priceLabel, ui(selectedPlan.cadenceLabel))
                 Text(
-                    "Billed through Google Play on Android and App Store on iOS.",
+	                    ui("Billed through Google Play on Android and App Store on iOS."),
                     style = FxTheme.typography.caption,
                     color = FxTheme.colors.textDim,
                 )
             }
         }
         subscriptionState.statusMessage?.let {
-            Text(it, style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
+            Text(localizedSubscriptionMessage(it), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
         }
         PrimaryButton(
             when {
-                actionInProgress -> "Processing..."
-                subscriptionState.isPremium -> "Continue"
-                !subscriptionState.canPurchase -> "Purchases unavailable"
-                else -> "Start FX/ Pro"
+	                actionInProgress -> ui("Processing...")
+	                subscriptionState.isPremium -> ui("Continue")
+	                !subscriptionState.canPurchase -> ui("Purchases unavailable")
+	                else -> ui("Start FX/ Pro")
             },
             onClick = {
                 if (actionInProgress) {
@@ -3994,7 +4931,7 @@ fun PaywallScreen(
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text(
-                "Restore purchase  ·  Terms  ·  Privacy",
+	                ui("Restore purchase  ·  Terms  ·  Privacy"),
                 style = FxTheme.typography.captionMono,
                 color = if (actionInProgress) FxTheme.colors.textGhost else FxTheme.colors.textFaint,
                 modifier = Modifier.clickable(enabled = !actionInProgress, onClick = onRestore),
@@ -4013,9 +4950,9 @@ private fun ProActiveCard(subscriptionState: SubscriptionState) {
         ) {
             FlagDot("✓", CurrencyKind.Fiat, 34.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Eyebrow("ACTIVE", color = FxTheme.colors.accent)
-                Text("FX/ Pro is active", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                Text(subscriptionState.proStatusLabel(), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+	                Eyebrow(ui("ACTIVE"), color = FxTheme.colors.accent)
+	                Text(ui("FX/ Pro is active"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text(subscriptionState.localizedProStatusLabel(), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
             }
         }
     }
@@ -4045,15 +4982,15 @@ private fun PlanOption(
             FlagDot(if (selected) "✓" else "○", CurrencyKind.Fiat, 30.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(plan.title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                    plan.badge?.let { Pill(it, variant = PillVariant.Accent) }
+                    Text(ui(plan.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    plan.badge?.let { Pill(ui(it), variant = PillVariant.Accent) }
                 }
-                Text(plan.cadenceLabel, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                Text(ui(plan.cadenceLabel), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(plan.priceLabel, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 Text(
-                    if (plan.isAvailable) "Available" else "Not configured",
+	                    if (plan.isAvailable) ui("Available") else ui("Not configured"),
                     style = FxTheme.typography.captionMono,
                     color = FxTheme.colors.textFaint,
                 )
@@ -4071,6 +5008,15 @@ private fun SubscriptionState.proStatusLabel(): String =
     }
 
 @Composable
+private fun SubscriptionState.localizedProStatusLabel(): String =
+    if (isPremium) {
+        activePlanLabel?.let { "${ui("Active plan")}: $it · $entitlementId" }
+            ?: "${ui("Entitlement is active")} · $entitlementId"
+    } else {
+        ui("Alerts, extended history and unlimited watchlists")
+    }
+
+@Composable
 fun OfflineScreen(
     liveState: LiveRatesState = LiveRatesState(),
     onRefresh: () -> Unit = {},
@@ -4078,21 +5024,21 @@ fun OfflineScreen(
     ScreenScaffold {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LiveDot(color = FxTheme.colors.down)
-            Eyebrow("OFFLINE", color = FxTheme.colors.down)
-            Text("cached · 14:32 UTC", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+	            Eyebrow(ui("OFFLINE"), color = FxTheme.colors.down)
+	            Text("${ui("cached")} · 14:32 UTC", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
         }
-        ScreenHeader("No connection", subtitle = "Showing rates from your last sync · 4 min ago")
+	        ScreenHeader(ui("No connection"), subtitle = ui("Showing rates from your last sync · 4 min ago"))
         BentoCard {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Eyebrow("LAST KNOWN · USD → EUR", color = FxTheme.colors.down)
+	                Eyebrow("${ui("LAST KNOWN")} · USD → EUR", color = FxTheme.colors.down)
                 Text("0.9182", style = FxTheme.typography.numberXL, color = FxTheme.colors.textDim)
-                Text("14:28:11 UTC  ·  4 min stale", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                Text("14:28:11 UTC  ·  4 ${ui("min stale")}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
             }
         }
-        PrimaryButton("↻  Retry connection", onClick = onRefresh)
-        SectionLabel("CACHED FAVORITES")
-        BentoCard(padding = 0.dp) { Column { liveState.favorites.take(4).forEach { CurrencyRow(it, dense = true, enabled = false) } } }
-        Text("╌╌╌  saved locally  ╌╌╌", style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+	        PrimaryButton("↻  ${ui("Retry connection")}", onClick = onRefresh)
+	        SectionLabel(ui("CACHED FAVORITES"))
+        BentoCard(padding = 0.dp) { Column { liveState.favorites.take(4).forEach { CurrencyRow(localizedRate(it), dense = true, enabled = false) } } }
+        Text("╌╌╌  ${ui("saved locally")}  ╌╌╌", style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
     }
 }
 
@@ -4110,38 +5056,36 @@ fun OnboardingScreen(onComplete: () -> Unit = {}) {
     val localCurrency = remember { DeviceLocale.currencyCode }
     val localRegion = remember { DeviceLocale.region.uppercase() }
     val localLanguage = remember { DeviceLocale.language.uppercase() }
-    val steps = remember {
-        listOf(
+	    val steps = listOf(
             OnboardingStep(
-                tag = "STEP 01 · LIVE RATES",
-                title = "Fresh rates.\nAlways ready.",
-                body = "The app starts with your local base currency and keeps rates refreshed from the backend.",
+	                tag = ui("STEP 01 · LIVE RATES"),
+	                title = ui("Fresh rates.\nAlways ready."),
+	                body = ui("The app starts with your local base currency and keeps rates refreshed from the backend."),
                 glyph = "⌖",
-                signal = "Local base · $localCurrency",
+	                signal = "${ui("Local base")} · $localCurrency",
             ),
             OnboardingStep(
-                tag = "STEP 02 · FEES THAT MATTER",
-                title = "See the cost\nbefore you send.",
-                body = "Compare estimated provider fees by amount and currency pair, then unlock deeper comparisons with Pro.",
+	                tag = ui("STEP 02 · FEES THAT MATTER"),
+	                title = ui("See the cost\nbefore you send."),
+	                body = ui("Compare estimated provider fees by amount and currency pair, then unlock deeper comparisons with Pro."),
                 glyph = "⬢",
-                signal = "Converter · fees · Pro gates",
+	                signal = "${ui("Converter")} · ${ui("fees")} · Pro",
             ),
             OnboardingStep(
-                tag = "STEP 03 · TRAVEL READY",
-                title = "Your wallet\nfollows the map.",
-                body = "Auto-detect local currency on landing. Offline-safe last rates. Per-country tipping built in.",
+	                tag = ui("STEP 03 · TRAVEL READY"),
+	                title = ui("Your wallet\nfollows the map."),
+	                body = ui("Auto-detect local currency on landing. Offline-safe last rates. Per-country tipping built in."),
                 glyph = "◐",
-                signal = "Region · $localRegion",
+	                signal = "${ui("Region")} · $localRegion",
             ),
             OnboardingStep(
-                tag = "STEP 04 · BACKUP",
-                title = "Start private.\nRestore later.",
-                body = "A guest backup is created silently. You can connect Google on Android or Apple on iOS when you want portability.",
+	                tag = ui("STEP 04 · BACKUP"),
+	                title = ui("Start private.\nRestore later."),
+	                body = ui("A guest backup is created silently. You can connect Google on Android or Apple on iOS when you want portability."),
                 glyph = "∞",
-                signal = "Language · $localLanguage",
+	                signal = "${ui("Language")} · $localLanguage",
             ),
-        )
-    }
+	    )
     val pagerState = rememberPagerState(pageCount = { steps.size })
     val scope = rememberCoroutineScope()
 
@@ -4167,7 +5111,7 @@ fun OnboardingScreen(onComplete: () -> Unit = {}) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Pill(localCurrency, variant = PillVariant.Ghost)
                     Text(
-                        "Skip",
+	                        ui("Skip"),
                         style = FxTheme.typography.caption,
                         color = FxTheme.colors.textDim,
                         modifier = Modifier
@@ -4209,7 +5153,7 @@ fun OnboardingScreen(onComplete: () -> Unit = {}) {
                     }
                 }
                 PrimaryButton(
-                    text = if (pagerState.currentPage == steps.lastIndex) "Get started" else "Next  →",
+	                    text = if (pagerState.currentPage == steps.lastIndex) ui("Get started") else ui("Next  →"),
                     modifier = Modifier.width(if (pagerState.currentPage == steps.lastIndex) 154.dp else 126.dp),
                 ) {
                     if (pagerState.currentPage == steps.lastIndex) {

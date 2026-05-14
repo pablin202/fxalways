@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class BackupSettings(
     val themeMode: String = ThemeMode.System.name,
+    val language: String = "",
     val baseCurrency: String = "USD",
     val travelerCurrency: String = "JPY",
     val travelerBudgetBase: Double = 100.0,
@@ -46,6 +47,7 @@ fun UserBackupSnapshot.isDefaultLocalBackup(): Boolean =
 
 private fun BackupSettings.isDefaultLocalSettings(): Boolean =
     themeMode == ThemeMode.System.name &&
+        language in setOf("", "en", DeviceLocale.language) &&
         baseCurrency in setOf("USD", DeviceLocale.currencyCode) &&
         travelerCurrency == "JPY" &&
         travelerBudgetBase == 100.0 &&

@@ -445,6 +445,7 @@ fun FxBottomBar(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    iconKeys: List<String> = tabs,
 ) {
     val dividerColor = FxTheme.colors.border.copy(alpha = 0.55f)
     Row(
@@ -462,6 +463,7 @@ fun FxBottomBar(
     ) {
         tabs.forEachIndexed { index, label ->
             val selected = index == selectedIndex
+            val iconKey = iconKeys.getOrNull(index) ?: label
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -472,7 +474,7 @@ fun FxBottomBar(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                BottomTabIcon(label, if (selected) FxTheme.colors.accent else FxTheme.colors.textFaint)
+                BottomTabIcon(iconKey, if (selected) FxTheme.colors.accent else FxTheme.colors.textFaint)
                 Text(label.uppercase(), style = FxTheme.typography.tab, color = if (selected) FxTheme.colors.accent else FxTheme.colors.textFaint)
             }
         }

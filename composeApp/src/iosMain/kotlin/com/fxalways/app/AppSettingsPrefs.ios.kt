@@ -4,6 +4,7 @@ import platform.Foundation.NSUserDefaults
 
 actual object AppSettingsPrefs {
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_LANGUAGE = "language"
     private const val KEY_BASE_CURRENCY = "base_currency"
     private const val KEY_TRAVELER_CURRENCY = "traveler_currency"
     private const val KEY_TRAVELER_BUDGET_BASE = "traveler_budget_base"
@@ -18,6 +19,13 @@ actual object AppSettingsPrefs {
 
     actual fun setThemeMode(mode: ThemeMode) {
         NSUserDefaults.standardUserDefaults.setObject(mode.name, KEY_THEME_MODE)
+    }
+
+    actual fun language(): String =
+        NSUserDefaults.standardUserDefaults.stringForKey(KEY_LANGUAGE)?.takeIf { it.isNotBlank() } ?: DeviceLocale.language
+
+    actual fun setLanguage(code: String) {
+        NSUserDefaults.standardUserDefaults.setObject(code.lowercase(), KEY_LANGUAGE)
     }
 
     actual fun baseCurrency(): String =

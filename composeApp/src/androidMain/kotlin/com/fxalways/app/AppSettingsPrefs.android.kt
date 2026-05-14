@@ -3,6 +3,7 @@ package com.fxalways.app
 actual object AppSettingsPrefs {
     private const val NAME = "fx_always_prefs"
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_LANGUAGE = "language"
     private const val KEY_BASE_CURRENCY = "base_currency"
     private const val KEY_TRAVELER_CURRENCY = "traveler_currency"
     private const val KEY_TRAVELER_BUDGET_BASE = "traveler_budget_base"
@@ -17,6 +18,13 @@ actual object AppSettingsPrefs {
 
     actual fun setThemeMode(mode: ThemeMode) {
         prefs().edit().putString(KEY_THEME_MODE, mode.name).apply()
+    }
+
+    actual fun language(): String =
+        prefs().getString(KEY_LANGUAGE, null)?.takeIf { it.isNotBlank() } ?: DeviceLocale.language
+
+    actual fun setLanguage(code: String) {
+        prefs().edit().putString(KEY_LANGUAGE, code.lowercase()).apply()
     }
 
     actual fun baseCurrency(): String =
