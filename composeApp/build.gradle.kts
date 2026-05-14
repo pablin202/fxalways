@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.compose.ExperimentalComposeLibrary
 import java.util.Properties
 
 plugins {
@@ -55,6 +56,12 @@ kotlin {
             implementation(libs.firebase.firestore)
             implementation(libs.google.play.services.auth)
         }
+        androidInstrumentedTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.androidx.test.ext.junit)
+            @OptIn(ExperimentalComposeLibrary::class)
+            implementation(compose.uiTestJUnit4)
+        }
         matching { it.name.lowercase().startsWith("ios") }.configureEach {
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
         }
@@ -99,10 +106,15 @@ android {
         targetSdk = libs.versions.android.compileSdk.get().toInt()
         versionCode = 1
         versionName = "1.0.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         val backendUrl = projectPropertyOrLocal("FX_BACKEND_URL", "https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net")
         val revenueCatKey = projectPropertyOrLocal("REVENUECAT_API_KEY", projectPropertyOrLocal("REVENUECAT_ANDROID_KEY", ""))
         buildConfigField("String", "FX_BACKEND_URL", "\"$backendUrl\"")
         buildConfigField("String", "REVENUECAT_API_KEY", "\"$revenueCatKey\"")
     }
+}
+
+dependencies {
+    debugImplementation(libs.compose.ui.test.manifest)
 }

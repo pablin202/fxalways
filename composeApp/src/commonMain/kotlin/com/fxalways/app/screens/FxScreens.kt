@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
@@ -224,6 +225,24 @@ private val uiTranslations = mapOf(
         "YOU SEND" to "ENVIAS",
         "Converted to" to "Convertido a",
         "FEES" to "FEES",
+        "Best received" to "Mejor recepción",
+        "Worst loss" to "Mayor pérdida",
+        "vs mid-market" to "vs mercado medio",
+        "Mid-market value" to "Valor medio",
+        "Your custom cost" to "Tu costo personalizado",
+        "Effective rate" to "Tasa efectiva",
+        "CUSTOM COST" to "COSTO PERSONALIZADO",
+        "Fixed fee" to "Fee fijo",
+        "Fee %" to "Fee %",
+        "FX markup" to "Margen FX",
+        "Fee" to "Fee",
+        "Markup" to "Margen",
+        "Lost" to "Perdido",
+        "Card payment" to "Pago con tarjeta",
+        "ATM cash" to "Cajero ATM",
+        "Airport exchange" to "Cambio en aeropuerto",
+        "Custom" to "Personalizado",
+        "avoid" to "evitar",
         "See the real transfer cost" to "Ver el costo real de transferencia",
         "Pro unlocks the complete provider list; estimates update with your amount." to "Pro desbloquea la lista completa de proveedores; los estimados se actualizan con tu monto.",
         "Base currency · source amount" to "Moneda base · monto origen",
@@ -1472,6 +1491,9 @@ fun ConverterScreen(
     var targetCode by remember(liveState.baseCurrency, initialTarget) { mutableStateOf(initialTarget) }
     var amountText by remember { mutableStateOf(sanitizeAmountInput(AppSettingsPrefs.converterAmountText())) }
     var amountFocused by remember { mutableStateOf(false) }
+    var customFixedFeeText by remember { mutableStateOf("0") }
+    var customFeePercentText by remember { mutableStateOf("1.00") }
+    var customMarkupPercentText by remember { mutableStateOf("2.50") }
     val sourceRate = rates.firstOrNull { it.code == sourceCode }
         ?: rates.firstOrNull { it.code == liveState.baseCurrency }
         ?: rates.first()
@@ -1479,8 +1501,19 @@ fun ConverterScreen(
         ?: rates.firstOrNull { it.code != sourceRate.code }
         ?: sourceRate
     val amountValue = parseAmountInput(amountText)
-    val feeQuotes = estimatedFeeQuotes(sourceRate, targetRate, amountValue)
-        .take(access.feeQuoteLimit.cap(EstimatedFeeQuoteCount))
+    val customFee = CustomFeeInput(
+        fixedFee = parseAmountInput(customFixedFeeText),
+        feePercent = parseAmountInput(customFeePercentText),
+        markupPercent = parseAmountInput(customMarkupPercentText),
+    )
+    val allFeeQuotes = estimatedFeeQuotes(sourceRate, targetRate, amountValue, customFee)
+    val feeQuotes = if (access.canUseFullFeeComparison) {
+        allFeeQuotes.take(EstimatedFeeQuoteCount)
+    } else {
+        allFeeQuotes.filter { it.provider in FreeFeeProviders }
+    }
+    val bestQuote = feeQuotes.minByOrNull { it.lossTargetValue }
+    val customQuote = feeQuotes.firstOrNull { it.provider == "Custom" }
     if (showCurrencyPicker) {
         CurrencyListPickerSheet(
             title = ui("Edit converter list"),
@@ -1603,8 +1636,58 @@ fun ConverterScreen(
             GhostButton("≡  ${ui("Edit list")}", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
         }
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
+        BentoCard(padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetricTile(
+                        ui("Best received"),
+                        bestQuote?.amount ?: formatConvertedAmount(targetRate, 0.0),
+                        bestQuote?.provider?.let { ui(it) },
+                        Modifier.weight(1f),
+                    )
+                    MetricTile(
+                        ui("Worst loss"),
+                        feeQuotes.maxByOrNull { it.lossTargetValue }?.loss ?: "${targetRate.code} 0.00",
+                        ui("vs mid-market"),
+                        Modifier.weight(1f),
+                    )
+                }
+                KeyValueRow(ui("Mid-market value"), formatConvertedAmount(targetRate, convertedAmount(amountValue, sourceRate, targetRate)))
+                customQuote?.let {
+                    KeyValueRow(ui("Your custom cost"), it.loss, "${ui("Effective rate")} ${it.effectiveRate}")
+                }
+            }
+        }
+        BentoCard(padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Eyebrow(ui("CUSTOM COST"))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FeeInputField(
+                        label = ui("Fixed fee"),
+                        value = customFixedFeeText,
+                        suffix = sourceRate.code,
+                        modifier = Modifier.weight(1f),
+                        onValueChange = { customFixedFeeText = sanitizeAmountInput(it) },
+                    )
+                    FeeInputField(
+                        label = ui("Fee %"),
+                        value = customFeePercentText,
+                        suffix = "%",
+                        modifier = Modifier.weight(1f),
+                        onValueChange = { customFeePercentText = sanitizeAmountInput(it) },
+                    )
+                    FeeInputField(
+                        label = ui("FX markup"),
+                        value = customMarkupPercentText,
+                        suffix = "%",
+                        modifier = Modifier.weight(1f),
+                        onValueChange = { customMarkupPercentText = sanitizeAmountInput(it) },
+                    )
+                }
+            }
+        }
         BentoCard(padding = 0.dp) {
-            Column { feeQuotes.forEach { FeeComparisonRow(it) } }
+            Column { feeQuotes.forEachIndexed { index, quote -> FeeComparisonRow(quote, rank = index + 1) } }
         }
         if (!access.canUseFullFeeComparison) {
             ProUpsellCard(
@@ -1671,70 +1754,160 @@ private fun ConverterRow(
 }
 
 @Composable
-private fun FeeComparisonRow(quote: EstimatedFeeQuote) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+private fun FeeComparisonRow(quote: EstimatedFeeQuote, rank: Int) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .testTag("fee_quote_${quote.provider}")
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(ui(quote.provider), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, modifier = Modifier.weight(1f))
-        if (quote.badge != null) Pill(ui(quote.badge), variant = if (quote.isHighFee) PillVariant.Down else PillVariant.Up)
-        Text(
-            quote.amount,
-            style = FxTheme.typography.numberBody,
-            color = FxTheme.colors.text,
-            modifier = Modifier.widthIn(min = 70.dp),
-            textAlign = TextAlign.End,
-        )
-        Text(
-            quote.fee,
-            style = FxTheme.typography.captionMono,
-            color = FxTheme.colors.textFaint,
-            modifier = Modifier.widthIn(min = 48.dp),
-            textAlign = TextAlign.End,
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("#$rank", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(ui(quote.provider), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    quote.badge?.let { Pill(ui(it), variant = if (quote.isHighFee) PillVariant.Down else PillVariant.Up) }
+                }
+                Text(
+                    "${ui("Fee")} ${quote.fee} · ${ui("Markup")} ${quote.markup}",
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.textFaint,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(quote.amount, style = FxTheme.typography.numberBody, color = FxTheme.colors.text, textAlign = TextAlign.End)
+                Text(quote.loss, style = FxTheme.typography.captionMono, color = if (quote.lossTargetValue > 0.0) FxTheme.colors.down else FxTheme.colors.up)
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("${ui("Effective rate")} ${quote.effectiveRate}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+            Text("${ui("Lost")} ${quote.lossPercent}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+        }
+    }
+}
+
+@Composable
+private fun FeeInputField(
+    label: String,
+    value: String,
+    suffix: String,
+    modifier: Modifier = Modifier,
+    onValueChange: (String) -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = FxTheme.typography.numberBody.copy(color = FxTheme.colors.text),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("fee_input_$label")
+                .clip(FxTheme.shapes.field)
+                .background(if (focused) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
+                .border(1.dp, if (focused) FxTheme.colors.accentLine else FxTheme.colors.border, FxTheme.shapes.field)
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .onFocusChanged { focused = it.isFocused },
+            decorationBox = { innerTextField ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box(Modifier.weight(1f)) {
+                        if (value.isBlank()) {
+                            Text("0", style = FxTheme.typography.numberBody, color = FxTheme.colors.textGhost)
+                        }
+                        innerTextField()
+                    }
+                    Text(suffix, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                }
+            },
         )
     }
 }
 
-private const val EstimatedFeeQuoteCount = 4
+private const val EstimatedFeeQuoteCount = 8
+private val FreeFeeProviders = setOf("Mid-market", "Custom")
+
+private data class CustomFeeInput(
+    val fixedFee: Double,
+    val feePercent: Double,
+    val markupPercent: Double,
+)
 
 private data class EstimatedFeeQuote(
     val provider: String,
     val badge: String?,
     val amount: String,
     val fee: String,
+    val markup: String,
+    val loss: String,
+    val lossPercent: String,
+    val effectiveRate: String,
+    val lossTargetValue: Double,
     val isHighFee: Boolean = false,
+)
+
+private data class FeeProviderTemplate(
+    val provider: String,
+    val badge: String? = null,
+    val fixedFee: Double = 0.0,
+    val feePercent: Double = 0.0,
+    val markupPercent: Double = 0.0,
 )
 
 private fun estimatedFeeQuotes(
     sourceRate: FxRate,
     targetRate: FxRate,
     amount: Double,
+    customFee: CustomFeeInput,
 ): List<EstimatedFeeQuote> {
     val safeAmount = amount.coerceAtLeast(0.0)
-
-    fun quote(
-        provider: String,
-        badge: String?,
-        feeAmount: Double,
-        isHighFee: Boolean = false,
-    ): EstimatedFeeQuote {
-        val netSource = (safeAmount - feeAmount).coerceAtLeast(0.0)
-        return EstimatedFeeQuote(
-            provider = provider,
-            badge = badge,
-            amount = formatConvertedAmount(targetRate, convertedAmount(netSource, sourceRate, targetRate)),
-            fee = "${sourceRate.code} ${formatMoneyValue(feeAmount.coerceAtLeast(0.0))}",
-            isHighFee = isHighFee,
-        )
-    }
-
-    return listOf(
-        quote("Mid-market", "best", 0.0),
-        quote("Wise", null, maxOf(0.35, safeAmount * 0.0045)),
-        quote("Revolut", null, safeAmount * 0.008),
-        quote("Bank transfer", "high fee", 5.0 + safeAmount * 0.032, isHighFee = true),
+    val templates = listOf(
+        FeeProviderTemplate("Mid-market", "best"),
+        FeeProviderTemplate("Wise", fixedFee = 0.35, feePercent = 0.45),
+        FeeProviderTemplate("Revolut", feePercent = 0.80, markupPercent = 0.15),
+        FeeProviderTemplate("Card payment", feePercent = 0.30, markupPercent = 2.70),
+        FeeProviderTemplate("ATM cash", fixedFee = 4.0, feePercent = 1.0, markupPercent = 3.00),
+        FeeProviderTemplate("Bank transfer", "high fee", fixedFee = 5.0, feePercent = 0.80, markupPercent = 3.20),
+        FeeProviderTemplate("Airport exchange", "avoid", markupPercent = 8.50),
+        FeeProviderTemplate("Custom", fixedFee = customFee.fixedFee, feePercent = customFee.feePercent, markupPercent = customFee.markupPercent),
     )
+    val midMarketTarget = convertedAmount(safeAmount, sourceRate, targetRate)
+    val rawRate = if (sourceRate.rate == 0.0) 0.0 else targetRate.rate / sourceRate.rate
+
+    return templates.map { template ->
+        val variableFee = safeAmount * template.feePercent.coerceAtLeast(0.0) / 100.0
+        val fixedFee = template.fixedFee.coerceAtLeast(0.0)
+        val sourceFee = (fixedFee + variableFee).coerceAtMost(safeAmount)
+        val netSource = (safeAmount - sourceFee).coerceAtLeast(0.0)
+        val markupMultiplier = (1.0 - template.markupPercent.coerceIn(0.0, 99.0) / 100.0)
+        val receivedTarget = netSource * rawRate * markupMultiplier
+        val lossTarget = (midMarketTarget - receivedTarget).coerceAtLeast(0.0)
+        val lossPct = if (midMarketTarget > 0.0) lossTarget / midMarketTarget * 100.0 else 0.0
+        val effectiveRate = if (safeAmount > 0.0) receivedTarget / safeAmount else 0.0
+        val highFee = lossPct >= 3.0 || template.badge in setOf("high fee", "avoid")
+        EstimatedFeeQuote(
+            provider = template.provider,
+            badge = template.badge ?: when {
+                lossPct == 0.0 -> "best"
+                lossPct >= 6.0 -> "avoid"
+                lossPct >= 3.0 -> "high fee"
+                else -> null
+            },
+            amount = formatConvertedAmount(targetRate, receivedTarget),
+            fee = "${sourceRate.code} ${formatMoneyValue(sourceFee)}",
+            markup = "${formatRate(template.markupPercent)}%",
+            loss = "${targetRate.code} ${formatMoneyValue(lossTarget)}",
+            lossPercent = "${formatRate(lossPct)}%",
+            effectiveRate = "${formatRate(effectiveRate)} ${targetRate.code}",
+            lossTargetValue = lossTarget,
+            isHighFee = highFee,
+        )
+    }.sortedWith(compareBy<EstimatedFeeQuote> { it.lossTargetValue }.thenBy { it.provider != "Custom" })
 }
 
 private fun convertedAmount(amount: Double, sourceRate: FxRate, targetRate: FxRate): Double =
