@@ -41,6 +41,8 @@ val CryptoRates = listOf(
     FxRate("BTC", "Bitcoin", "₿", CurrencyKind.Crypto, 0.0000154, 2.84, listOf(0.0000141f, 0.0000146f, 0.0000144f, 0.0000152f, 0.0000154f)),
     FxRate("ETH", "Ethereum", "Ξ", CurrencyKind.Crypto, 0.000243, 1.92, listOf(0.000225f, 0.000231f, 0.000236f, 0.000229f, 0.000243f)),
     FxRate("SOL", "Solana", "◎", CurrencyKind.Crypto, 0.00628, -1.14, listOf(0.0068f, 0.0067f, 0.0064f, 0.0065f, 0.00628f)),
+    FxRate("USDT", "Tether", "₮", CurrencyKind.Crypto, 1.0002, 0.01, listOf(1.0f, 1.0001f, 0.9998f, 1.0002f)),
+    FxRate("USDC", "USD Coin", "$", CurrencyKind.Crypto, 0.9999, -0.01, listOf(1.0f, 0.9999f, 1.0001f, 0.9999f)),
 )
 
 val ConverterRates = listOf(

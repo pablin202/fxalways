@@ -1,0 +1,145 @@
+package com.fxalways.app.screens
+
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.fxalways.app.AndroidAppContext
+import com.fxalways.app.data.LiveRatesState
+import com.fxalways.app.subscription.SubscriptionState
+import com.fxalways.designsystem.components.CurrencyKind
+import com.fxalways.designsystem.components.FxRate
+import com.fxalways.designsystem.theme.FxTheme
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import org.junit.Rule
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class DashboardScreenTest {
+    @get:Rule
+    val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun freeDashboardShowsCryptoSnapshotAndFocusedAssetList() {
+        val harness = renderDashboard(isPremium = false)
+
+        compose.onNodeWithTag("dashboard_crypto_header").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_snapshot").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_stablecoins").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_avg").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_BTC").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_ETH").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_USDT").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_USDC").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("dashboard_crypto_SOL").assertCountEquals(0)
+        compose.onNodeWithTag("dashboard_crypto_upsell").performScrollTo().assertIsDisplayed()
+
+        compose.onNodeWithTag("dashboard_crypto_see_all").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, harness.seeAllCryptoClicks) }
+    }
+
+    @Test
+    fun proDashboardShowsStablecoinsAndOpensCryptoDetail() {
+        val harness = renderDashboard(isPremium = true)
+
+        compose.onNodeWithTag("dashboard_crypto_USDT").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_USDC").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_ETH").performScrollTo().performClick()
+
+        compose.runOnIdle { assertEquals(listOf("ETH"), harness.openedDetailCodes) }
+    }
+
+    @Test
+    fun proDashboardAddsTrackedCryptoBeyondCoreList() {
+        renderDashboard(isPremium = true, trackedCurrencyCodes = listOf("SOL"))
+
+        compose.onNodeWithTag("dashboard_crypto_BTC").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_crypto_SOL").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun freeDashboardKeepsTrackedCryptoLockedToCoreList() {
+        renderDashboard(isPremium = false, trackedCurrencyCodes = listOf("SOL"))
+
+        compose.onNodeWithTag("dashboard_crypto_BTC").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("dashboard_crypto_SOL").assertCountEquals(0)
+    }
+
+    @Test
+    fun emptyCryptoStateShowsExplicitEmptyCard() {
+        renderDashboard(isPremium = true, liveState = testLiveRatesState(crypto = emptyList()))
+
+        compose.onNodeWithTag("dashboard_crypto_empty").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("dashboard_crypto_BTC").assertCountEquals(0)
+    }
+
+    private fun renderDashboard(
+        isPremium: Boolean,
+        trackedCurrencyCodes: List<String> = emptyList(),
+        liveState: LiveRatesState = testLiveRatesState(),
+    ): DashboardHarness {
+        val harness = DashboardHarness()
+        AndroidAppContext.init(compose.activity)
+        compose.setContent {
+            FxTheme {
+                DashboardScreen(
+                    liveState = liveState,
+                    subscriptionState = SubscriptionState(isPremium = isPremium),
+                    trackedCurrencyCodes = trackedCurrencyCodes,
+                    onRefresh = { harness.refreshClicks += 1 },
+                    onOpenPaywall = { harness.paywallClicks += 1 },
+                    onOpenDetail = { harness.openedDetailCodes += it.code },
+                    onEditFavorites = { harness.editFavoritesClicks += 1 },
+                    onSeeAllCrypto = { harness.seeAllCryptoClicks += 1 },
+                )
+            }
+        }
+        return harness
+    }
+
+    private fun testLiveRatesState(
+        crypto: List<FxRate> = testCryptoRates(),
+    ): LiveRatesState {
+        val usd = FxRate("USD", "US Dollar", "🇺🇸", CurrencyKind.Fiat, 1.0, 0.0, listOf(1f, 1f), "1 USD = 1.0000 USD")
+        val eur = FxRate("EUR", "Euro", "🇪🇺", CurrencyKind.Fiat, 0.92, -0.2, listOf(0.91f, 0.92f), "1 USD = 0.9200 EUR")
+        val gbp = FxRate("GBP", "British Pound", "🇬🇧", CurrencyKind.Fiat, 0.78, 0.4, listOf(0.77f, 0.78f), "1 USD = 0.7800 GBP")
+        val jpy = FxRate("JPY", "Japanese Yen", "🇯🇵", CurrencyKind.Fiat, 156.0, 1.8, listOf(155f, 156f), "1 USD = 156.0000 JPY")
+        val chf = FxRate("CHF", "Swiss Franc", "🇨🇭", CurrencyKind.Fiat, 0.83, -1.1, listOf(0.82f, 0.83f), "1 USD = 0.8300 CHF")
+        val mxn = FxRate("MXN", "Mexican Peso", "🇲🇽", CurrencyKind.Fiat, 18.72, 0.2, listOf(18.6f, 18.72f), "1 USD = 18.7200 MXN")
+        val fiat = listOf(usd, eur, gbp, jpy, chf, mxn)
+        return LiveRatesState(
+            isLoading = false,
+            isLive = true,
+            baseCurrency = "USD",
+            updatedLabel = "2026-05-14 · test · refreshed 12:00",
+            favorites = listOf(eur, gbp, jpy, chf, mxn),
+            converter = fiat + crypto.take(2),
+            compare = listOf(eur, gbp, jpy, chf, mxn),
+            crypto = crypto,
+            allFiat = fiat,
+        )
+    }
+
+    private fun testCryptoRates(): List<FxRate> =
+        listOf(
+            FxRate("BTC", "Bitcoin", "₿", CurrencyKind.Crypto, 0.0000154, 2.84, listOf(0.000014f, 0.000015f), "1 USD = 0.000015 BTC"),
+            FxRate("ETH", "Ethereum", "Ξ", CurrencyKind.Crypto, 0.000243, 1.92, listOf(0.00022f, 0.00024f), "1 USD = 0.000243 ETH"),
+            FxRate("SOL", "Solana", "◎", CurrencyKind.Crypto, 0.00628, -1.14, listOf(0.0068f, 0.00628f), "1 USD = 0.006280 SOL"),
+            FxRate("USDT", "Tether", "₮", CurrencyKind.Crypto, 1.0002, 0.01, listOf(1f, 1.0002f), "1 USD = 1.0002 USDT"),
+            FxRate("USDC", "USD Coin", "$", CurrencyKind.Crypto, 0.9999, -0.01, listOf(1f, 0.9999f), "1 USD = 0.9999 USDC"),
+        )
+
+    private class DashboardHarness {
+        var refreshClicks = 0
+        var paywallClicks = 0
+        var editFavoritesClicks = 0
+        var seeAllCryptoClicks = 0
+        val openedDetailCodes = mutableListOf<String>()
+    }
+}

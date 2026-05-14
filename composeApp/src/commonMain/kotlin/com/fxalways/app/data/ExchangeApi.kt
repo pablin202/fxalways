@@ -1,6 +1,7 @@
 package com.fxalways.app.data
 
 import com.fxalways.app.PlatformConfig
+import com.fxalways.app.domain.CryptoMarketsResponse
 import com.fxalways.app.domain.HistoricalSeries
 import com.fxalways.app.domain.LatestRates
 import com.fxalways.app.domain.NewsFeedDto
@@ -47,6 +48,12 @@ class ExchangeApi(
             parameter("base", base)
             parameter("quote", quote)
             parameter("days", days)
+        }.body()
+
+    suspend fun cryptoMarkets(base: String, limit: Int = 200): CryptoMarketsResponse =
+        client.get("$baseUrl/cryptoMarkets") {
+            parameter("base", base)
+            parameter("limit", limit)
         }.body()
 
     suspend fun newsFeed(

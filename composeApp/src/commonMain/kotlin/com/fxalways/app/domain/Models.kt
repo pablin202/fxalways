@@ -50,6 +50,30 @@ data class HistoricalSeries(
 )
 
 @Serializable
+data class CryptoMarketAssetDto(
+    val code: String,
+    val name: String,
+    val glyph: String = "◆",
+    val stable: Boolean = false,
+    val rank: Int? = null,
+    val priceUsd: Double = 0.0,
+    val priceBase: Double = 0.0,
+    val value: Double = 0.0,
+    val change24h: Double = 0.0,
+    val marketCapUsd: Double? = null,
+    val volume24hUsd: Double? = null,
+    val sparkline: List<Double> = emptyList(),
+)
+
+@Serializable
+data class CryptoMarketsResponse(
+    val base: String,
+    val provider: String,
+    val refreshedAt: String,
+    val assets: List<CryptoMarketAssetDto>,
+)
+
+@Serializable
 data class NewsMove(
     val code: String,
     val change: Double,

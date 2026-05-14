@@ -31,10 +31,13 @@ class PaywallScreenTest {
         compose.onNodeWithTag("paywall_comparison").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_feature_alerts").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_feature_compare").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("paywall_feature_crypto").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_feature_traveler").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_feature_watchlist").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("1 active alert").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Unlimited pairs + ranges").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("BTC, ETH, USDT, USDC").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Search and add up to 200 crypto assets").performScrollTo().assertIsDisplayed()
 
         compose.onNodeWithTag("paywall_plan_Yearly").performScrollTo().performClick()
         compose.onNodeWithTag("paywall_selected_plan").performScrollTo().assertIsDisplayed()

@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -34,6 +36,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
@@ -195,6 +198,18 @@ private val uiTranslations = mapOf(
         "CACHED" to "CACHÉ",
         "Edit" to "Editar",
         "See all" to "Ver todo",
+        "CRYPTO MARKET" to "MERCADO CRYPTO",
+        "Crypto" to "Crypto",
+        "Fiat" to "Fiat",
+        "Stablecoins" to "Stablecoins",
+        "Stablecoin" to "Stablecoin",
+        "24H avg" to "Prom. 24H",
+        "Strongest" to "Más fuerte",
+        "major crypto assets" to "activos crypto principales",
+        "per coin" to "por moneda",
+        "live crypto movers" to "movimientos crypto en vivo",
+        "No crypto rates yet" to "Sin rates crypto todavía",
+        "Pro shows the full crypto board across compare, alerts and portfolio." to "Pro muestra el tablero crypto completo en comparación, alertas y portfolio.",
         "Pro" to "Pro",
         "Free" to "Free",
         "Preview" to "Vista previa",
@@ -540,6 +555,9 @@ private val uiTranslations = mapOf(
         "Compare board" to "Tablero comparativo",
         "4 currencies" to "4 monedas",
         "Every tracked currency" to "Toda moneda seguida",
+        "Crypto catalog" to "Catálogo crypto",
+        "BTC, ETH, USDT, USDC" to "BTC, ETH, USDT, USDC",
+        "Search and add up to 200 crypto assets" to "Busca y agrega hasta 200 activos crypto",
         "Traveler" to "Viajes",
         "Focused destinations" to "Destinos principales",
         "All destinations + full cheat sheet" to "Todos los destinos + guía completa",
@@ -1066,6 +1084,7 @@ fun FxAppShell() {
                                 DashboardScreen(
                                     liveState = liveState,
                                     subscriptionState = subscriptionState,
+                                    trackedCurrencyCodes = compareCurrencyCodes,
                                     onRefresh = {
                                         Observability.event("rates_refresh", mapOf("source" to "dashboard"))
                                         liveStore.refresh()
@@ -1081,7 +1100,7 @@ fun FxAppShell() {
                                         }
                                     },
                                     onSeeAllCrypto = {
-                                        val cryptoCodes = liveState.crypto.map { it.code }
+                                        val cryptoCodes = liveState.visibleDashboardCryptoRates(subscriptionState.isPremium, compareCurrencyCodes).map { it.code }
                                         if (cryptoCodes.isNotEmpty()) {
                                             Observability.event("dashboard_crypto_see_all", mapOf("count" to cryptoCodes.size.toString()))
                                             compareCurrencyCodes = cryptoCodes
@@ -1411,6 +1430,7 @@ private fun ScreenScaffold(content: @Composable ColumnScope.() -> Unit) {
 fun DashboardScreen(
     liveState: LiveRatesState,
     subscriptionState: SubscriptionState,
+    trackedCurrencyCodes: List<String> = emptyList(),
     onRefresh: () -> Unit,
     onOpenPaywall: () -> Unit,
     onOpenDetail: (FxRate) -> Unit,
@@ -1419,6 +1439,10 @@ fun DashboardScreen(
 ) {
     val access = subscriptionState.featureAccess()
     val visibleFavorites = liveState.favorites.take(access.favoriteLimit.cap(liveState.favorites.size))
+    val visibleCrypto = liveState.visibleDashboardCryptoRates(subscriptionState.isPremium, trackedCurrencyCodes)
+    val cryptoAverageMove = visibleCrypto.takeIf { it.isNotEmpty() }?.map { it.change24h }?.average() ?: 0.0
+    val strongestCrypto = visibleCrypto.maxByOrNull { it.change24h }
+    val stablecoinCount = visibleCrypto.count { it.code in StablecoinCodes }
     ScreenScaffold {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1463,9 +1487,85 @@ fun DashboardScreen(
                 onClick = onOpenPaywall,
             )
         }
-        SectionLabel(ui("CRYPTO"), right = ui("See all"), onRightClick = onSeeAllCrypto)
-        BentoCard(padding = 0.dp) {
-            Column { liveState.crypto.forEach { rate -> CurrencyRow(localizedRate(rate), dense = true, onClick = { onOpenDetail(rate) }) } }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp).testTag("dashboard_crypto_header"),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Eyebrow(ui("CRYPTO MARKET"))
+            Text(
+                ui("See all"),
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.accent,
+                modifier = Modifier.testTag("dashboard_crypto_see_all").clickable(onClick = onSeeAllCrypto),
+            )
+        }
+        if (visibleCrypto.isEmpty()) {
+            BentoCard(Modifier.testTag("dashboard_crypto_empty"), padding = 12.dp) {
+                Text(ui("No crypto rates yet"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.textDim)
+            }
+        } else {
+            BentoCard(Modifier.testTag("dashboard_crypto_snapshot"), padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MetricTile(ui("Crypto"), "${visibleCrypto.size}", ui("major crypto assets"), Modifier.weight(1f).height(76.dp).testTag("dashboard_crypto_count"))
+                        MetricTile(ui("24H avg"), formatChange(cryptoAverageMove), strongestCrypto?.code, Modifier.weight(1f).height(76.dp).testTag("dashboard_crypto_avg"))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MetricTile(ui("Stablecoins"), "$stablecoinCount", "USDT / USDC", Modifier.weight(1f).height(76.dp).testTag("dashboard_crypto_stablecoins"))
+                        MetricTile(ui("Strongest"), strongestCrypto?.code ?: "--", strongestCrypto?.let { formatChange(it.change24h) }, Modifier.weight(1f).height(76.dp).testTag("dashboard_crypto_strongest"))
+                    }
+                    Text(ui("live crypto movers"), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                }
+            }
+            BentoCard(Modifier.testTag("dashboard_crypto_list"), padding = 0.dp) {
+                Column {
+                    visibleCrypto.forEach { rate ->
+                        CryptoAssetRow(rate, liveState.baseCurrency, onClick = { onOpenDetail(rate) })
+                    }
+                }
+            }
+            if (!subscriptionState.isPremium && liveState.crypto.size > visibleCrypto.size) {
+                Box(Modifier.testTag("dashboard_crypto_upsell")) {
+                    ProUpsellCard(
+                        title = ui("Unlock full watchlists"),
+                        subtitle = ui("Pro shows the full crypto board across compare, alerts and portfolio."),
+                        onClick = onOpenPaywall,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val DefaultCryptoCodes = listOf("BTC", "ETH", "USDT", "USDC")
+private val StablecoinCodes = setOf("USDT", "USDC", "DAI", "BUSD", "PYUSD", "USDS")
+
+@Composable
+private fun CryptoAssetRow(rate: FxRate, baseCurrency: String, onClick: () -> Unit) {
+    val inversePrice = if (rate.rate > 0.0) 1.0 / rate.rate else 0.0
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("dashboard_crypto_${rate.code}")
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FlagDot(rate.glyph, rate.kind, 34.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(rate.code, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text(rate.name, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text("$baseCurrency ${formatMoneyValue(inversePrice)} · ${ui("per coin")}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+        }
+        SparkLine(rate.sparkline, Modifier.size(64.dp, 26.dp), color = if (rate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down, showLastDot = true)
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.widthIn(min = 64.dp)) {
+            Text(formatCryptoAmount(rate.rate), style = FxTheme.typography.numberBody, color = FxTheme.colors.text)
+            Spacer(Modifier.height(2.dp))
+            Text(formatChange(rate.change24h), style = FxTheme.typography.captionMono, color = if (rate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down)
         }
     }
 }
@@ -1508,8 +1608,8 @@ fun ConverterScreen(
     val access = subscriptionState.featureAccess()
     val focusManager = LocalFocusManager.current
     var showCurrencyPicker by remember { mutableStateOf(false) }
-    val availableRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat, liveState.crypto) {
-        liveState.converterAvailableRates()
+    val availableRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat, liveState.crypto, subscriptionState.isPremium) {
+        liveState.converterAvailableRates(subscriptionState.isPremium)
     }
     val targetCodes = remember(liveState.baseCurrency, selectedCurrencyCodes, availableRates, access.converterCurrencyLimit) {
         converterTargetCodes(
@@ -2238,8 +2338,8 @@ fun CompareScreen(
     val access = subscriptionState.featureAccess()
     var sortMode by remember { mutableStateOf(CompareSortMode.Movers) }
     var showCurrencyPicker by remember { mutableStateOf(false) }
-    val availableRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat, liveState.crypto) {
-        liveState.compareAvailableRates()
+    val availableRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat, liveState.crypto, subscriptionState.isPremium) {
+        liveState.compareAvailableRates(subscriptionState.isPremium)
     }
     val selectedCodes = remember(liveState.baseCurrency, selectedCurrencyCodes, availableRates, access.compareLimit) {
         compareTargetCodes(selectedCurrencyCodes, availableRates, liveState.baseCurrency, access.compareLimit)
@@ -4229,6 +4329,7 @@ private fun CurrencyPickerSheet(
     onSelect: (String) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val rows = remember(currencies, query) {
         val term = query.trim()
         currencies
@@ -4242,6 +4343,7 @@ private fun CurrencyPickerSheet(
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = FxTheme.colors.surface1,
         contentColor = FxTheme.colors.text,
     ) {
@@ -4271,23 +4373,25 @@ private fun CurrencyPickerSheet(
                     },
                 )
             }
-            Column(
+            LazyColumn(
                 Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                    .height(390.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                rows.forEach { currency ->
+                items(rows, key = { it.code }) { currency ->
                     SettingChoiceRow(
                         title = "${currency.glyph}  ${currency.code}",
-                        subtitle = localizedCurrencyName(currency.name),
+                        subtitle = "${assetKindLabel(currency)} · ${localizedCurrencyName(currency.name)}",
                         selected = currency.code == selectedCode,
                         modifier = Modifier.testTag("currency_picker_${currency.code}"),
                         onClick = { onSelect(currency.code) },
                     )
                 }
                 if (rows.isEmpty()) {
-	                    Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+	                    item {
+	                        Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+	                    }
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -4310,7 +4414,15 @@ private fun CurrencyListPickerSheet(
 ) {
     var query by remember { mutableStateOf("") }
     var draftCodes by remember(selectedCodes) { mutableStateOf(selectedCodes) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val effectiveLimit = limit.cap(currencies.size).coerceAtLeast(1)
+    fun applyDraftAndDismiss() {
+        if (draftCodes.isNotEmpty()) {
+            onApply(draftCodes.take(effectiveLimit))
+        } else {
+            onDismiss()
+        }
+    }
     val rows = remember(currencies, query) {
         val term = query.trim()
         currencies
@@ -4323,7 +4435,8 @@ private fun CurrencyListPickerSheet(
             .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
     }
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { applyDraftAndDismiss() },
+        sheetState = sheetState,
         containerColor = FxTheme.colors.surface1,
         contentColor = FxTheme.colors.text,
     ) {
@@ -4361,19 +4474,19 @@ private fun CurrencyListPickerSheet(
                     },
                 )
             }
-            Column(
+            LazyColumn(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 430.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .height(430.dp)
+                    .testTag("currency_list_scroll"),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                rows.forEach { currency ->
+                items(rows, key = { it.code }) { currency ->
                     val selected = currency.code in draftCodes
                     val locked = !selected && draftCodes.size >= effectiveLimit
                     SettingChoiceRow(
                         title = "${currency.glyph}  ${currency.code}",
-                        subtitle = if (locked && !isPremium) lockedSubtitle else localizedCurrencyName(currency.name),
+                        subtitle = if (locked && !isPremium) lockedSubtitle else "${assetKindLabel(currency)} · ${localizedCurrencyName(currency.name)}",
                         selected = selected,
 	                        actionLabel = if (selected) ui("added") else if (locked) ui("pro") else ui("add"),
                         modifier = Modifier.testTag("currency_list_${currency.code}"),
@@ -4387,19 +4500,17 @@ private fun CurrencyListPickerSheet(
                     )
                 }
                 if (rows.isEmpty()) {
-	                    Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+	                    item {
+	                        Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+	                    }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
 	                GhostButton(ui("Cancel"), Modifier.weight(1f), onClick = onDismiss)
 	                PrimaryButton(
 		                    ui("Apply"),
-	                    Modifier.weight(1f).testTag("currency_list_apply"),
-                    onClick = {
-                        if (draftCodes.isNotEmpty()) {
-                            onApply(draftCodes.take(effectiveLimit))
-                        }
-                    },
+                    Modifier.weight(1f).testTag("currency_list_apply"),
+                    onClick = { applyDraftAndDismiss() },
                 )
             }
             Spacer(Modifier.height(10.dp))
@@ -4408,6 +4519,14 @@ private fun CurrencyListPickerSheet(
 }
 
 private val PopularCurrencyCodes = listOf("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD")
+
+@Composable
+private fun assetKindLabel(currency: FxRate): String =
+    when {
+        currency.kind == CurrencyKind.Crypto && currency.code in StablecoinCodes -> ui("Stablecoin")
+        currency.kind == CurrencyKind.Crypto -> ui("Crypto")
+        else -> ui("Fiat")
+    }
 
 private fun compactCurrencyChoices(
     currencies: List<FxRate>,
@@ -4778,16 +4897,40 @@ private fun LiveRatesState.portfolioRates(): List<FxRate> =
         .distinctBy { it.code }
         .sortedWith(compareByDescending<FxRate> { it.code == baseCurrency }.thenBy { it.code })
 
-private fun LiveRatesState.converterAvailableRates(): List<FxRate> =
-    (allFiat + favorites + compare + converter + crypto)
-        .distinctBy { it.code }
-        .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
+private fun LiveRatesState.defaultCryptoRates(): List<FxRate> {
+    val byCode = crypto.associateBy { it.code }
+    return DefaultCryptoCodes.mapNotNull { byCode[it] }
+}
 
-private fun LiveRatesState.compareAvailableRates(): List<FxRate> =
-    (compare + favorites + converter + allFiat + crypto)
+private fun LiveRatesState.visibleDashboardCryptoRates(isPremium: Boolean, trackedCurrencyCodes: List<String>): List<FxRate> {
+    val byCode = crypto.associateBy { it.code }
+    val trackedCrypto = if (isPremium) {
+        trackedCurrencyCodes
+            .filter { it !in DefaultCryptoCodes }
+            .mapNotNull { byCode[it] }
+    } else {
+        emptyList()
+    }
+    return (defaultCryptoRates() + trackedCrypto).distinctBy { it.code }
+}
+
+private fun LiveRatesState.availableCryptoRates(isPremium: Boolean): List<FxRate> =
+    if (isPremium) {
+        crypto
+    } else {
+        defaultCryptoRates()
+    }
+
+private fun LiveRatesState.converterAvailableRates(isPremium: Boolean): List<FxRate> =
+    (allFiat + favorites + compare + converter + availableCryptoRates(isPremium))
+        .distinctBy { it.code }
+        .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes || it.code in DefaultCryptoCodes }.thenBy { it.code })
+
+private fun LiveRatesState.compareAvailableRates(isPremium: Boolean): List<FxRate> =
+    (compare + favorites + converter + allFiat + availableCryptoRates(isPremium))
         .filterNot { it.code == baseCurrency }
         .distinctBy { it.code }
-        .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
+        .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes || it.code in DefaultCryptoCodes }.thenBy { it.code })
 
 private fun converterTargetCodes(
     selectedCurrencyCodes: List<String>,
@@ -5383,6 +5526,7 @@ fun PaywallScreen(
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 PaywallComparisonRow("alerts", ui("Custom alerts"), ui("1 active alert"), ui("Unlimited pairs + ranges"))
                 PaywallComparisonRow("compare", ui("Compare board"), ui("4 currencies"), ui("Every tracked currency"))
+                PaywallComparisonRow("crypto", ui("Crypto catalog"), ui("BTC, ETH, USDT, USDC"), ui("Search and add up to 200 crypto assets"))
                 PaywallComparisonRow("traveler", ui("Traveler"), ui("Focused destinations"), ui("All destinations + full cheat sheet"))
                 PaywallComparisonRow("watchlist", ui("Watchlist"), ui("4 tracked currencies"), ui("Unlimited portfolio tracking"))
                 PaywallComparisonRow("news", ui("News"), ui("Top stories only"), ui("Full regional stream"))

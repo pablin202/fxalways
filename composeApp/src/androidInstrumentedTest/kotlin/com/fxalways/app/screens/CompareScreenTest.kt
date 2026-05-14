@@ -7,12 +7,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.data.LiveRatesState
@@ -22,6 +27,7 @@ import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.theme.FxTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
 
@@ -101,6 +107,56 @@ class CompareScreenTest {
     }
 
     @Test
+    fun proEditSheetAddsCryptoAndBoardShowsIt() {
+        val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR"))
+
+        compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_SOL").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_apply").performClick()
+
+        compose.onNodeWithTag("compare_tile_SOL").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertTrue("SOL" in harness.selectedCodes) }
+    }
+
+    @Test
+    fun proEditSheetDismissAppliesDraftSelection() {
+        val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR"))
+
+        compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_SOL").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_scroll").performTouchInput { swipeDown() }
+
+        compose.onNodeWithTag("compare_tile_SOL").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertTrue("SOL" in harness.selectedCodes) }
+    }
+
+    @Test
+    fun proEditSheetCancelDiscardsDraftSelection() {
+        val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR"))
+
+        compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_SOL").performScrollTo().performClick()
+        compose.onNodeWithText("Cancel").performClick()
+
+        compose.onAllNodesWithTag("compare_tile_SOL").assertCountEquals(0)
+        compose.runOnIdle { assertEquals(listOf("EUR"), harness.selectedCodes) }
+    }
+
+    @Test
+    fun editSheetLabelsFiatCryptoAndStablecoinRows() {
+        renderCompare(isPremium = true, selectedCodes = listOf("EUR"))
+
+        compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
+
+        compose.onNodeWithText("Fiat · Euro").assertIsDisplayed()
+        compose.onAllNodesWithTag("currency_list_BTC").assertCountEquals(1)
+        compose.onAllNodesWithText("Crypto · Bitcoin").assertCountEquals(1)
+        compose.onNodeWithTag("currency_list_scroll").performScrollToNode(hasTestTag("currency_list_USDT"))
+        compose.onNodeWithTag("currency_list_USDT").assertIsDisplayed()
+        compose.onNodeWithText("Stablecoin · Tether").assertIsDisplayed()
+    }
+
+    @Test
     fun unavailableSavedCodesFallBackToDefaultComparison() {
         renderCompare(isPremium = false, selectedCodes = listOf("XXX", "YYY"))
 
@@ -142,6 +198,8 @@ class CompareScreenTest {
         val chf = FxRate("CHF", "Swiss Franc", "🇨🇭", CurrencyKind.Fiat, 0.83, -1.1, listOf(0.82f, 0.83f), "1 USD = 0.8300 CHF")
         val mxn = FxRate("MXN", "Mexican Peso", "🇲🇽", CurrencyKind.Fiat, 18.72, 0.2, listOf(18.6f, 18.72f), "1 USD = 18.7200 MXN")
         val btc = FxRate("BTC", "Bitcoin", "₿", CurrencyKind.Crypto, 0.000015, 2.4, listOf(0.000014f, 0.000015f), "1 USD = 0.000015 BTC")
+        val usdt = FxRate("USDT", "Tether", "₮", CurrencyKind.Crypto, 1.0002, 0.01, listOf(1f, 1.0002f), "1 USD = 1.0002 USDT")
+        val sol = FxRate("SOL", "Solana", "◎", CurrencyKind.Crypto, 0.00628, -1.14, listOf(0.0068f, 0.00628f), "1 USD = 0.006280 SOL")
         return LiveRatesState(
             isLoading = false,
             isLive = true,
@@ -150,7 +208,7 @@ class CompareScreenTest {
             favorites = listOf(eur, gbp, jpy, chf, mxn),
             converter = listOf(usd, eur, gbp, jpy, chf, mxn),
             compare = listOf(eur, gbp, jpy, chf, mxn),
-            crypto = listOf(btc),
+            crypto = listOf(btc, usdt, sol),
             allFiat = listOf(usd, eur, gbp, jpy, chf, mxn),
         )
     }

@@ -6,6 +6,7 @@ import com.fxalways.app.data.mock.ConverterRates
 import com.fxalways.app.data.mock.CryptoRates
 import com.fxalways.app.data.mock.DetailSeries
 import com.fxalways.app.data.mock.FavoriteRates
+import com.fxalways.app.domain.CryptoMarketAssetDto
 import com.fxalways.app.domain.CurrencyInfo
 import com.fxalways.app.domain.HistoricalPoint
 import com.fxalways.designsystem.components.CurrencyKind
@@ -90,6 +91,9 @@ class LiveRatesStore(
                 val base = _state.value.baseCurrency
                 val catalog = runCatching { api.supportedCurrencies().currencies }.getOrElse { fallbackCurrencyCatalog }
                 val latest = api.latest(base)
+                val cryptoRates = runCatching {
+                    api.cryptoMarkets(base, limit = 200).assets.mapNotNull { it.toFxRate(base) }.ifEmpty { CryptoRates }
+                }.getOrElse { CryptoRates }
                 val rateByCode = latest.rates.associateBy { it.code }
                 val targets = targetDefinitions(base, catalog, rateByCode.keys)
                 val historyTargets = targets.filter { it.code in historyCodes }.take(8)
@@ -132,7 +136,7 @@ class LiveRatesStore(
                 val converterRates = buildList {
                     baseRate?.let(::add)
                     basePriority(base, converterCodes, liveRates).forEach(::add)
-                    addAll(CryptoRates.take(1))
+                    addAll(coreCryptoRates(cryptoRates))
                 }
                 val nextState = LiveRatesState(
                     isLoading = false,
@@ -142,8 +146,9 @@ class LiveRatesStore(
                     updatedLabel = "${latest.date} · ${latest.provider} · ${refreshTimeLabel()}",
                     autoRefreshLabel = "Auto-refresh every ${AUTO_REFRESH_INTERVAL_MILLIS / 60_000} min",
                     favorites = favoriteRates,
+                    crypto = cryptoRates,
                     converter = converterRates,
-                    compare = basePriority(base, compareCodes, liveRates).take(8),
+                    compare = (basePriority(base, compareCodes, liveRates) + coreCryptoRates(cryptoRates)).take(12),
                     allFiat = allFiatRates,
                     detailSeries = histories.values.firstOrNull()?.toSparkline(DetailSeries) ?: DetailSeries,
                 )
@@ -179,6 +184,7 @@ private data class CachedLiveRatesPayload(
     val updatedLabel: String,
     val cachedAtMillis: Long,
     val favorites: List<CachedFxRate>,
+    val crypto: List<CachedFxRate> = emptyList(),
     val converter: List<CachedFxRate>,
     val compare: List<CachedFxRate>,
     val allFiat: List<CachedFxRate>,
@@ -203,6 +209,7 @@ private fun LiveRatesState.toCachePayload(): CachedLiveRatesPayload =
         updatedLabel = updatedLabel,
         cachedAtMillis = Clock.System.now().toEpochMilliseconds(),
         favorites = favorites.map { it.toCache() },
+        crypto = crypto.map { it.toCache() },
         converter = converter.map { it.toCache() },
         compare = compare.map { it.toCache() },
         allFiat = allFiat.map { it.toCache() },
@@ -219,6 +226,7 @@ private fun CachedLiveRatesPayload.toState(errorMessage: String?): LiveRatesStat
         updatedLabel = "$updatedLabel · cached ${staleAgeLabel(cachedAtMillis)}",
         autoRefreshLabel = "Offline · retry when connected",
         favorites = favorites.map { it.toFxRate() },
+        crypto = crypto.map { it.toFxRate() }.ifEmpty { CryptoRates },
         converter = converter.map { it.toFxRate() },
         compare = compare.map { it.toFxRate() },
         allFiat = allFiat.map { it.toFxRate() },
@@ -240,6 +248,25 @@ private fun CachedFxRate.toFxRate(): FxRate =
         caption = caption,
     )
 
+private fun CryptoMarketAssetDto.toFxRate(base: String): FxRate? {
+    if (code.isBlank() || name.isBlank() || value <= 0.0) return null
+    val sparklineValues = sparkline
+        .filter { it.isFinite() && it > 0.0 }
+        .map { it.toFloat() }
+        .takeIf { it.size >= 2 }
+        ?: listOf(value.toFloat(), value.toFloat())
+    return FxRate(
+        code = code,
+        name = name,
+        glyph = glyph.ifBlank { "◆" },
+        kind = CurrencyKind.Crypto,
+        rate = value,
+        change24h = change24h,
+        sparkline = sparklineValues,
+        caption = "1 $base = ${formatCaptionRate(value)} $code",
+    )
+}
+
 private data class LiveRateDefinition(
     val code: String,
     val name: String,
@@ -253,6 +280,7 @@ private data class LiveRateDefinition(
 private val favoriteCodes = listOf("EUR", "GBP", "JPY", "CHF", "MXN", "USD")
 private val converterCodes = listOf("EUR", "GBP", "JPY", "USD")
 private val compareCodes = listOf("EUR", "GBP", "JPY", "CHF", "MXN", "BRL", "CAD", "AUD", "USD")
+private val coreCryptoCodes = listOf("BTC", "ETH", "USDT", "USDC")
 private val historyCodes = (favoriteCodes + compareCodes).distinct()
 
 private val liveDefinitions = listOf(
@@ -284,7 +312,7 @@ private fun targetDefinitions(base: String, catalog: List<CurrencyInfo>, availab
     val knownDefinitions = liveDefinitions.associateBy { it.code }
     return catalog
         .asSequence()
-        .filter { it.code != base && it.code in availableCodes }
+        .filter { it.region != "Crypto" && it.code != base && it.code in availableCodes }
         .map { info ->
             val known = knownDefinitions[info.code]
             LiveRateDefinition(
@@ -315,6 +343,11 @@ private fun basePriority(base: String, codes: List<String>, rates: List<FxRate>)
     val byCode = rates.associateBy { it.code }
     return (codes.filterNot { it == base }.mapNotNull { byCode[it] } +
         rates.filterNot { it.code == base || it.code in codes }).distinctBy { it.code }
+}
+
+private fun coreCryptoRates(rates: List<FxRate>): List<FxRate> {
+    val byCode = rates.associateBy { it.code }
+    return coreCryptoCodes.mapNotNull { byCode[it] }
 }
 
 private fun formatCaptionRate(rate: Double): String =

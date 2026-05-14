@@ -9,6 +9,7 @@ initializeApp();
 const db = getFirestore();
 const region = "us-central1";
 const frankfurterBaseUrl = process.env.FRANKFURTER_BASE_URL ?? "https://api.frankfurter.dev/v2";
+const coinPaprikaBaseUrl = process.env.COINPAPRIKA_BASE_URL ?? "https://api.coinpaprika.com/v1";
 const exchangeRateApiKey = process.env.EXCHANGE_RATE_API_KEY ?? "";
 const marketauxApiKey = defineSecret("MARKETAUX_API_KEY");
 const supportedBases = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD"];
@@ -57,6 +58,29 @@ type HistoricalResponse = {
   quote: string;
   points: Array<{ date: string; value: number }>;
   provider: string;
+};
+
+type CryptoMarketsResponse = {
+  base: string;
+  provider: string;
+  refreshedAt: string;
+  assets: CryptoMarketAsset[];
+};
+
+type CryptoMarketAsset = {
+  code: string;
+  name: string;
+  glyph: string;
+  kind: "Crypto";
+  stable: boolean;
+  rank: number | null;
+  priceUsd: number;
+  priceBase: number;
+  value: number;
+  change24h: number;
+  marketCapUsd: number | null;
+  volume24hUsd: number | null;
+  sparkline: number[];
 };
 
 type NewsImpact = "high" | "med" | "low";
@@ -135,6 +159,26 @@ type ExchangeRateApiLatestResponse = {
   time_last_update_utc?: string;
   conversion_rates?: Record<string, number>;
   "error-type"?: string;
+};
+
+type CoinPaprikaQuote = {
+  price?: number;
+  volume_24h?: number;
+  market_cap?: number;
+  percent_change_1h?: number;
+  percent_change_6h?: number;
+  percent_change_12h?: number;
+  percent_change_24h?: number;
+};
+
+type CoinPaprikaTicker = {
+  id?: string;
+  name?: string;
+  symbol?: string;
+  rank?: number;
+  quotes?: {
+    USD?: CoinPaprikaQuote;
+  };
 };
 
 function currency(
@@ -313,10 +357,59 @@ const currencyCatalog: CurrencyInfo[] = [
   currency("ZAR", "South African Rand", "R", "🇿🇦", "South Africa", "Africa"),
   currency("ZMW", "Zambian Kwacha", "ZK", "🇿🇲", "Zambia", "Africa"),
   currency("ZWL", "Zimbabwean Dollar", "Z$", "🇿🇼", "Zimbabwe", "Africa"),
-  currency("BTC", "Bitcoin", "₿", "₿", "Bitcoin", "Crypto"),
-  currency("ETH", "Ethereum", "Ξ", "Ξ", "Ethereum", "Crypto"),
-  currency("SOL", "Solana", "◎", "◎", "Solana", "Crypto"),
+  currency("BTC", "Bitcoin", "₿", "₿", "Bitcoin", "Crypto", true),
+  currency("ETH", "Ethereum", "Ξ", "Ξ", "Ethereum", "Crypto", true),
+  currency("USDT", "Tether", "₮", "₮", "Tether", "Crypto", true),
+  currency("BNB", "BNB", "◆", "◆", "BNB", "Crypto", true),
+  currency("XRP", "XRP", "✕", "✕", "XRP", "Crypto", true),
+  currency("USDC", "USD Coin", "$", "$", "USD Coin", "Crypto", true),
+  currency("SOL", "Solana", "◎", "◎", "Solana", "Crypto", true),
+  currency("TRX", "TRON", "◆", "◆", "TRON", "Crypto"),
+  currency("DOGE", "Dogecoin", "Ð", "Ð", "Dogecoin", "Crypto"),
+  currency("ADA", "Cardano", "₳", "₳", "Cardano", "Crypto"),
+  currency("HYPE", "Hyperliquid", "H", "H", "Hyperliquid", "Crypto"),
+  currency("ZEC", "Zcash", "ⓩ", "ⓩ", "Zcash", "Crypto"),
+  currency("BCH", "Bitcoin Cash", "₿", "₿", "Bitcoin Cash", "Crypto"),
+  currency("LINK", "Chainlink", "◆", "◆", "Chainlink", "Crypto"),
+  currency("XMR", "Monero", "ɱ", "ɱ", "Monero", "Crypto"),
+  currency("TON", "Toncoin", "◆", "◆", "Toncoin", "Crypto"),
+  currency("XLM", "Stellar", "*", "*", "Stellar", "Crypto"),
+  currency("SUI", "Sui", "◆", "◆", "Sui", "Crypto"),
+  currency("LTC", "Litecoin", "Ł", "Ł", "Litecoin", "Crypto"),
+  currency("DAI", "Dai", "◈", "◈", "Dai", "Crypto"),
+  currency("AVAX", "Avalanche", "▲", "▲", "Avalanche", "Crypto"),
+  currency("HBAR", "Hedera", "ℏ", "ℏ", "Hedera", "Crypto"),
+  currency("SHIB", "Shiba Inu", "◆", "◆", "Shiba Inu", "Crypto"),
+  currency("CRO", "Cronos", "◆", "◆", "Cronos", "Crypto"),
+  currency("TAO", "Bittensor", "τ", "τ", "Bittensor", "Crypto"),
+  currency("XAUT", "Tether Gold", "Au", "Au", "Tether Gold", "Crypto"),
+  currency("DOT", "Polkadot", "●", "●", "Polkadot", "Crypto"),
+  currency("UNI", "Uniswap", "U", "U", "Uniswap", "Crypto"),
+  currency("AAVE", "Aave", "A", "A", "Aave", "Crypto"),
+  currency("NEAR", "NEAR Protocol", "N", "N", "NEAR Protocol", "Crypto"),
+  currency("ETC", "Ethereum Classic", "Ξ", "Ξ", "Ethereum Classic", "Crypto"),
+  currency("OKB", "OKB", "O", "O", "OKB", "Crypto"),
+  currency("ICP", "Internet Computer", "∞", "∞", "Internet Computer", "Crypto"),
+  currency("KAS", "Kaspa", "K", "K", "Kaspa", "Crypto"),
+  currency("POL", "Polygon Ecosystem Token", "◇", "◇", "Polygon", "Crypto"),
+  currency("ATOM", "Cosmos", "⚛", "⚛", "Cosmos", "Crypto"),
+  currency("FIL", "Filecoin", "⨎", "⨎", "Filecoin", "Crypto"),
+  currency("ARB", "Arbitrum", "A", "A", "Arbitrum", "Crypto"),
+  currency("OP", "Optimism", "O", "O", "Optimism", "Crypto"),
+  currency("INJ", "Injective", "I", "I", "Injective", "Crypto"),
+  currency("RENDER", "Render", "R", "R", "Render", "Crypto"),
+  currency("VET", "VeChain", "V", "V", "VeChain", "Crypto"),
+  currency("ALGO", "Algorand", "A", "A", "Algorand", "Crypto"),
+  currency("SEI", "Sei", "S", "S", "Sei", "Crypto"),
+  currency("FET", "Artificial Superintelligence Alliance", "F", "F", "ASI Alliance", "Crypto"),
+  currency("JUP", "Jupiter", "J", "J", "Jupiter", "Crypto"),
+  currency("BONK", "Bonk", "B", "B", "Bonk", "Crypto"),
+  currency("WIF", "dogwifhat", "W", "W", "dogwifhat", "Crypto"),
+  currency("PEPE", "Pepe", "P", "P", "Pepe", "Crypto"),
+  currency("PYUSD", "PayPal USD", "$", "$", "PayPal USD", "Crypto"),
 ];
+
+const stablecoinSymbols = new Set(["USDT", "USDC", "DAI", "PYUSD", "USDS", "BUSD"]);
 
 export const latestRates = onRequest({ region, cors: true }, async (request, response) => {
   try {
@@ -343,6 +436,17 @@ export const historicalRates = onRequest({ region, cors: true }, async (request,
     const quote = normalizeCurrency(request.query.quote, "EUR");
     const days = normalizeDays(request.query.days);
     const payload = await getHistoricalRates(base, quote, days);
+    response.status(200).json(payload);
+  } catch (error) {
+    response.status(500).json({ message: errorMessage(error) });
+  }
+});
+
+export const cryptoMarkets = onRequest({ region, cors: true }, async (request, response) => {
+  try {
+    const base = normalizeCurrency(request.query.base, "USD");
+    const limit = normalizeLimit(request.query.limit, 200, 5, 200);
+    const payload = await getCryptoMarkets(base, limit);
     response.status(200).json(payload);
   } catch (error) {
     response.status(500).json({ message: errorMessage(error) });
@@ -386,6 +490,17 @@ export const refreshNewsCache = onSchedule(
       getNewsFeed("es", "AR", ["USD", "EUR", "BRL", "BTC"], true),
       getNewsFeed("pt", "BR", ["USD", "BRL", "EUR", "BTC"], true),
     ]);
+  },
+);
+
+export const refreshCryptoCache = onSchedule(
+  {
+    region,
+    schedule: "every 10 minutes",
+    timeZone: "Etc/UTC",
+  },
+  async () => {
+    await getCryptoMarkets("USD", 200, true);
   },
 );
 
@@ -519,6 +634,88 @@ async function getHistoricalRates(
   });
 
   return payload;
+}
+
+async function getCryptoMarkets(base: string, limit: number, forceRefresh = false): Promise<CryptoMarketsResponse> {
+  const docId = `${base}_${limit}`;
+  const ref = db.collection("crypto_markets").doc(docId);
+  const cached = await ref.get();
+  const cachedData = cached.data() as (CryptoMarketsResponse & { expiresAt?: Timestamp }) | undefined;
+
+  if (!forceRefresh && cachedData?.expiresAt && cachedData.expiresAt.toMillis() > Date.now()) {
+    return stripExpiry(cachedData);
+  }
+
+  try {
+    const payload = await fetchCoinPaprikaMarkets(base, limit);
+    await ref.set({
+      ...payload,
+      expiresAt: Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+    });
+    return payload;
+  } catch (error) {
+    if (cachedData) {
+      return stripExpiry(cachedData);
+    }
+    throw error;
+  }
+}
+
+async function fetchCoinPaprikaMarkets(base: string, limit: number): Promise<CryptoMarketsResponse> {
+  const url = new URL(`${coinPaprikaBaseUrl}/tickers`);
+  url.searchParams.set("quotes", "USD");
+  const upstream = await fetchJson<CoinPaprikaTicker[]>(url);
+  const usdToBase = await getUsdToBaseRate(base);
+  const catalogByCode = new Map(currencyCatalog.filter((item) => item.region === "Crypto").map((item) => [item.code, item]));
+  const seen = new Set<string>();
+  const assets: CryptoMarketAsset[] = [];
+  const rankedTickers = upstream
+    .slice()
+    .sort((left, right) => (left.rank ?? Number.MAX_SAFE_INTEGER) - (right.rank ?? Number.MAX_SAFE_INTEGER));
+
+  for (const ticker of rankedTickers) {
+    const code = ticker.symbol?.toUpperCase();
+    const quote = ticker.quotes?.USD;
+    const priceUsd = quote?.price;
+    if (!code || seen.has(code) || typeof priceUsd !== "number" || !Number.isFinite(priceUsd) || priceUsd <= 0) {
+      continue;
+    }
+    const catalog = catalogByCode.get(code);
+    const priceBase = priceUsd * usdToBase;
+    assets.push({
+      code,
+      name: catalog?.name ?? ticker.name ?? code,
+      glyph: catalog?.flag ?? catalog?.symbol ?? "◆",
+      kind: "Crypto",
+      stable: stablecoinSymbols.has(code),
+      rank: typeof ticker.rank === "number" ? ticker.rank : null,
+      priceUsd,
+      priceBase,
+      value: 1 / priceBase,
+      change24h: finiteOrZero(quote?.percent_change_24h),
+      marketCapUsd: finiteOrNull(quote?.market_cap),
+      volume24hUsd: finiteOrNull(quote?.volume_24h),
+      sparkline: cryptoSparkline(priceBase, quote),
+    });
+    seen.add(code);
+    if (assets.length >= limit) {
+      break;
+    }
+  }
+
+  return {
+    base,
+    provider: "CoinPaprika",
+    refreshedAt: new Date().toISOString(),
+    assets: assets.sort((left, right) => (left.rank ?? Number.MAX_SAFE_INTEGER) - (right.rank ?? Number.MAX_SAFE_INTEGER)),
+  };
+}
+
+async function getUsdToBaseRate(base: string): Promise<number> {
+  if (base === "USD") return 1;
+  const latest = await getLatestRates("USD");
+  const rate = latest.rates.find((item) => item.code === base)?.value;
+  return typeof rate === "number" && Number.isFinite(rate) && rate > 0 ? rate : 1;
 }
 
 function normalizeHistoricalResponse(payload: HistoricalResponse): HistoricalResponse {
@@ -991,8 +1188,34 @@ function normalizeDays(value: unknown): number {
   return Math.min(Math.max(parsed, 7), 1825);
 }
 
+function normalizeLimit(value: unknown, fallback: number, min: number, max: number): number {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = typeof raw === "string" ? Number.parseInt(raw, 10) : fallback;
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(parsed, min), max);
+}
+
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function finiteOrZero(value: number | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function finiteOrNull(value: number | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function cryptoSparkline(currentPrice: number, quote: CoinPaprikaQuote | undefined): number[] {
+  const pct24h = finiteOrZero(quote?.percent_change_24h);
+  const pct12h = finiteOrZero(quote?.percent_change_12h);
+  const pct6h = finiteOrZero(quote?.percent_change_6h);
+  const pct1h = finiteOrZero(quote?.percent_change_1h);
+  return [pct24h, pct12h, pct6h, pct1h, 0].map((percent) => {
+    const divisor = 1 + percent / 100;
+    return divisor > 0 ? currentPrice / divisor : currentPrice;
+  });
 }
 
 function stripExpiry<T extends { expiresAt?: Timestamp }>(value: T): Omit<T, "expiresAt"> {
