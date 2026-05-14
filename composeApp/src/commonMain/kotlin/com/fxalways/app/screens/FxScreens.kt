@@ -28,6 +28,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,12 +53,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1425,37 +1432,37 @@ fun MoreScreen(
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 MoreRow(
-                    glyph = "◐",
+                    icon = MoreFeatureIcon.Traveler,
                     title = "Traveler",
                     subtitle = "Local cheat sheets and offline rates",
                     onClick = onOpenTraveler,
                 )
                 MoreRow(
-                    glyph = "≋",
+                    icon = MoreFeatureIcon.News,
                     title = "News",
                     subtitle = "Market stream and sentiment",
                     onClick = onOpenNews,
                 )
                 MoreRow(
-                    glyph = "🔔",
+                    icon = MoreFeatureIcon.Alerts,
                     title = "Alerts",
                     subtitle = "$alertsCount active · price targets and breakouts",
                     onClick = onOpenAlerts,
                 )
                 MoreRow(
-                    glyph = "⌁",
+                    icon = MoreFeatureIcon.Watchlist,
                     title = "Watchlist",
                     subtitle = "$watchlistCount currencies · custom tracking",
                     onClick = onOpenWatchlist,
                 )
                 MoreRow(
-                    glyph = "⚙",
+                    icon = MoreFeatureIcon.Settings,
                     title = "Settings",
                     subtitle = "Theme mode, base currency and version",
                     onClick = onOpenSettings,
                 )
                 MoreRow(
-                    glyph = "∞",
+                    icon = MoreFeatureIcon.Pro,
                     title = if (subscriptionState.isPremium) "FX/ Pro active" else "Upgrade to Pro",
                     subtitle = subscriptionState.proStatusLabel(),
                     onClick = onOpenPaywall,
@@ -1683,9 +1690,9 @@ fun WatchlistScreen(
         }
         ScreenHeader("Watchlist", sub = "CUSTOM TRACKING", subtitle = "$limitLabel currencies · ${liveState.baseCurrency} base")
 
-        BentoCard(Modifier.fillMaxWidth().height(138.dp), padding = 14.dp) {
+        BentoCard(Modifier.fillMaxWidth().heightIn(min = 148.dp), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.12f))
-            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Eyebrow(if (subscriptionState.isPremium) "FX/ PRO" else "FX/ FREE")
                     Pill("${holdings.size} tracked", variant = if (holdings.isNotEmpty()) PillVariant.Accent else PillVariant.Ghost)
@@ -1694,9 +1701,11 @@ fun WatchlistScreen(
                 if (nonZeroHoldings == 0) {
                     BigValueText("${holdings.size}", " tracked")
                     Text(
-                        "Add amounts below to turn this into a portfolio value.",
+                        "Add amounts below to value your portfolio.",
                         style = FxTheme.typography.caption,
                         color = FxTheme.colors.textDim,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 } else {
                     BigValueText("${liveState.baseCurrency} ${formatMoneyValue(portfolioValue)}")
@@ -1779,7 +1788,9 @@ private fun PortfolioHoldingRow(
 ) {
     val rate = holding.rate
     val amount = holding.amount
+    val focusManager = LocalFocusManager.current
     var amountText by remember(rate.code, amount) { mutableStateOf(if (amount > 0.0) formatRate(amount) else "") }
+    var amountFocused by remember(rate.code) { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1803,24 +1814,51 @@ private fun PortfolioHoldingRow(
                 color = if (amount <= 0.0) FxTheme.colors.textFaint else if (holding.dailyChangeInBase >= 0.0) FxTheme.colors.up else FxTheme.colors.down,
             )
         }
-        BasicTextField(
-            value = amountText,
-            onValueChange = { raw ->
-                val next = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)
-                amountText = next
-                onAmountChange(next.replace(",", "").toDoubleOrNull() ?: 0.0)
-            },
-            singleLine = true,
-            textStyle = FxTheme.typography.numberBody.copy(color = FxTheme.colors.text, textAlign = TextAlign.End),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.width(92.dp),
-            decorationBox = { innerTextField ->
-                if (amountText.isBlank()) {
-                    Text("amount", style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
-                }
-                innerTextField()
-            },
-        )
+        Column(
+            modifier = Modifier.width(104.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            BasicTextField(
+                value = amountText,
+                onValueChange = { raw ->
+                    val next = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)
+                    amountText = next
+                    onAmountChange(parseAmountInput(next))
+                },
+                singleLine = true,
+                textStyle = FxTheme.typography.numberBody.copy(color = FxTheme.colors.text, textAlign = TextAlign.End),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(FxTheme.shapes.field)
+                    .background(if (amountFocused) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
+                    .border(1.dp, if (amountFocused) FxTheme.colors.accent else FxTheme.colors.border, FxTheme.shapes.field)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .onFocusChanged { amountFocused = it.isFocused },
+                decorationBox = { innerTextField ->
+                    if (amountText.isBlank()) {
+                        Text(
+                            "amount",
+                            style = FxTheme.typography.captionMono,
+                            color = FxTheme.colors.textGhost,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.End,
+                        )
+                    }
+                    innerTextField()
+                },
+            )
+            if (amountFocused) {
+                Text(
+                    "done",
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.accent,
+                    modifier = Modifier.clickable { focusManager.clearFocus() },
+                )
+            }
+        }
     }
 }
 
@@ -1982,7 +2020,7 @@ private fun AlertCard(
 
 @Composable
 private fun MoreRow(
-    glyph: String,
+    icon: MoreFeatureIcon,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -1998,18 +2036,122 @@ private fun MoreRow(
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(48.dp)
                 .clip(FxTheme.shapes.icon)
                 .background(FxTheme.colors.accentSoft),
             contentAlignment = Alignment.Center,
         ) {
-            Text(glyph, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.accent)
+            MoreFeatureIconView(icon)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
             Text(subtitle, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
         }
         Text("→", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+    }
+}
+
+private enum class MoreFeatureIcon {
+    Traveler,
+    News,
+    Alerts,
+    Watchlist,
+    Settings,
+    Pro,
+}
+
+@Composable
+private fun MoreFeatureIconView(icon: MoreFeatureIcon) {
+    val accent = FxTheme.colors.accent
+    Canvas(Modifier.size(30.dp)) {
+        val lineWidth = 2.2.dp.toPx()
+        val stroke = Stroke(width = 2.4.dp.toPx(), cap = StrokeCap.Round)
+        val thinStroke = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round)
+        val w = size.width
+        val h = size.height
+        fun iconLine(startX: Float, startY: Float, endX: Float, endY: Float, strokeWidth: Float = lineWidth) {
+            drawLine(
+                color = accent,
+                start = Offset(w * startX, h * startY),
+                end = Offset(w * endX, h * endY),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
+            )
+        }
+
+        when (icon) {
+            MoreFeatureIcon.Traveler -> {
+                iconLine(0.34f, 0.22f, 0.66f, 0.22f)
+                iconLine(0.34f, 0.22f, 0.34f, 0.32f)
+                iconLine(0.66f, 0.22f, 0.66f, 0.32f)
+                drawRoundRect(
+                    color = accent,
+                    topLeft = Offset(w * 0.22f, h * 0.32f),
+                    size = Size(w * 0.56f, h * 0.46f),
+                    cornerRadius = CornerRadius(w * 0.08f, w * 0.08f),
+                    style = stroke,
+                )
+                iconLine(0.36f, 0.44f, 0.36f, 0.66f, thinStroke.width)
+                iconLine(0.64f, 0.44f, 0.64f, 0.66f, thinStroke.width)
+            }
+            MoreFeatureIcon.News -> {
+                drawRoundRect(
+                    color = accent,
+                    topLeft = Offset(w * 0.24f, h * 0.16f),
+                    size = Size(w * 0.52f, h * 0.68f),
+                    cornerRadius = CornerRadius(w * 0.05f, w * 0.05f),
+                    style = stroke,
+                )
+                iconLine(0.34f, 0.36f, 0.66f, 0.36f, thinStroke.width)
+                iconLine(0.34f, 0.50f, 0.66f, 0.50f, thinStroke.width)
+                iconLine(0.34f, 0.64f, 0.56f, 0.64f, thinStroke.width)
+            }
+            MoreFeatureIcon.Alerts -> {
+                val bell = Path().apply {
+                    moveTo(w * 0.31f, h * 0.60f)
+                    quadraticTo(w * 0.32f, h * 0.34f, w * 0.50f, h * 0.30f)
+                    quadraticTo(w * 0.68f, h * 0.34f, w * 0.69f, h * 0.60f)
+                    lineTo(w * 0.76f, h * 0.70f)
+                    lineTo(w * 0.24f, h * 0.70f)
+                    close()
+                }
+                drawPath(bell, accent, style = stroke)
+                iconLine(0.45f, 0.22f, 0.55f, 0.22f)
+                drawArc(accent, 15f, 150f, false, Offset(w * 0.42f, h * 0.68f), Size(w * 0.16f, h * 0.16f), style = thinStroke)
+            }
+            MoreFeatureIcon.Watchlist -> {
+                drawCircle(accent, radius = w * 0.30f, center = Offset(w * 0.50f, h * 0.50f), style = stroke)
+                val chart = Path().apply {
+                    moveTo(w * 0.30f, h * 0.58f)
+                    lineTo(w * 0.43f, h * 0.46f)
+                    lineTo(w * 0.52f, h * 0.54f)
+                    lineTo(w * 0.70f, h * 0.36f)
+                }
+                drawPath(chart, accent, style = thinStroke)
+                drawCircle(accent, radius = w * 0.035f, center = Offset(w * 0.70f, h * 0.36f))
+            }
+            MoreFeatureIcon.Settings -> {
+                drawCircle(accent, radius = w * 0.17f, center = Offset(w * 0.50f, h * 0.50f), style = stroke)
+                listOf(
+                    Offset(w * 0.50f, h * 0.18f) to Offset(w * 0.50f, h * 0.28f),
+                    Offset(w * 0.50f, h * 0.72f) to Offset(w * 0.50f, h * 0.82f),
+                    Offset(w * 0.18f, h * 0.50f) to Offset(w * 0.28f, h * 0.50f),
+                    Offset(w * 0.72f, h * 0.50f) to Offset(w * 0.82f, h * 0.50f),
+                    Offset(w * 0.28f, h * 0.28f) to Offset(w * 0.35f, h * 0.35f),
+                    Offset(w * 0.65f, h * 0.65f) to Offset(w * 0.72f, h * 0.72f),
+                    Offset(w * 0.72f, h * 0.28f) to Offset(w * 0.65f, h * 0.35f),
+                    Offset(w * 0.35f, h * 0.65f) to Offset(w * 0.28f, h * 0.72f),
+                ).forEach { (start, end) ->
+                    drawLine(accent, start, end, strokeWidth = lineWidth, cap = StrokeCap.Round)
+                }
+            }
+            MoreFeatureIcon.Pro -> {
+                drawCircle(accent, radius = w * 0.18f, center = Offset(w * 0.36f, h * 0.50f), style = stroke)
+                drawCircle(accent, radius = w * 0.18f, center = Offset(w * 0.64f, h * 0.50f), style = stroke)
+                iconLine(0.44f, 0.38f, 0.56f, 0.62f)
+                iconLine(0.44f, 0.62f, 0.56f, 0.38f)
+            }
+        }
     }
 }
 
@@ -2693,6 +2835,15 @@ private data class PortfolioHolding(
 
 private fun amountInBase(rate: FxRate, amount: Double): Double =
     if (rate.rate == 0.0) 0.0 else amount / rate.rate
+
+private fun parseAmountInput(value: String): Double {
+    val normalized = if (value.count { it == ',' } == 1 && '.' !in value) {
+        value.replace(',', '.')
+    } else {
+        value.replace(",", "")
+    }
+    return normalized.toDoubleOrNull() ?: 0.0
+}
 
 private fun PortfolioHolding.weightLabel(portfolioValue: Double): String =
     if (portfolioValue <= 0.0 || baseValue <= 0.0) {
