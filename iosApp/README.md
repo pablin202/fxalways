@@ -18,20 +18,16 @@ The project links:
 - RevenueCat `PurchasesHybridCommon` `17.55.1` through SwiftPM
 - RevenueCat iOS SDK `5.67.1`, resolved transitively by SwiftPM
 
-`project.yml` also copies Compose resources into the app bundle. Without this step iOS crashes on startup because fonts and generated Compose resources are missing.
+`project.yml` builds the correct Compose framework automatically for the active Xcode destination:
+
+- `iosArm64` for a physical iPhone
+- `iosSimulatorArm64` for Apple Silicon simulators
+
+It also copies Compose resources into the app bundle. Without this step iOS crashes on startup because fonts and generated Compose resources are missing.
 
 ## Local Build
 
-Build the shared framework first:
-
-```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./gradlew --no-daemon \
-  :composeApp:compileKotlinIosSimulatorArm64 \
-  :composeApp:linkDebugFrameworkIosSimulatorArm64 \
-  -Pkotlin.native.cacheKind=none
-```
-
-Then build the host app:
+Build the host app. Xcode will run the shared framework Gradle task through the `Build Compose framework` script phase.
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
@@ -42,11 +38,24 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
   build
 ```
 
+For a physical iPhone:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
+  -project FXAlways.xcodeproj \
+  -scheme iosApp \
+  -configuration Debug \
+  -destination 'id=00008150-00052DDA343A401C' \
+  build
+```
+
 If iOS simulators are missing:
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -downloadPlatform iOS
 ```
+
+If Kotlin/Native cache errors appear, keep the script phase flag `-Pkotlin.native.cacheKind=none`.
 
 ## Smoke Test
 

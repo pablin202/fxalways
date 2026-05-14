@@ -15,11 +15,43 @@ targets:
     sources:
       - path: iosApp/iosApp
     dependencies:
-      - framework: composeApp/build/bin/iosArm64/debugFramework/ComposeApp.framework
+      - framework: composeApp/build/xcode-frameworks/$(CONFIGURATION)/ComposeApp.framework
       - package: purchases-hybrid-common
         product: PurchasesHybridCommon
+    preBuildScripts:
+      - name: Build Compose framework
+        basedOnDependencyAnalysis: false
+        script: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+
+          CONFIG_DIR="$(echo "$CONFIGURATION" | tr '[:upper:]' '[:lower:]')"
+          case "$SDK_NAME" in
+            iphoneos*)
+              KOTLIN_TARGET="iosArm64"
+              GRADLE_TARGET="IosArm64"
+              ;;
+            iphonesimulator*)
+              KOTLIN_TARGET="iosSimulatorArm64"
+              GRADLE_TARGET="IosSimulatorArm64"
+              ;;
+            *)
+              echo "Unsupported SDK_NAME: $SDK_NAME"
+              exit 1
+              ;;
+          esac
+
+          DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
+            ./gradlew --no-daemon ":composeApp:link${CONFIGURATION}Framework${GRADLE_TARGET}" -Pkotlin.native.cacheKind=none
+
+          SRC="$PROJECT_DIR/composeApp/build/bin/$KOTLIN_TARGET/${CONFIG_DIR}Framework/ComposeApp.framework"
+          DST="$PROJECT_DIR/composeApp/build/xcode-frameworks/$CONFIGURATION/ComposeApp.framework"
+          rm -rf "$DST"
+          mkdir -p "$(dirname "$DST")"
+          rsync -a "$SRC/" "$DST/"
     postBuildScripts:
       - name: Copy Compose resources
+        basedOnDependencyAnalysis: false
         script: |
           set -e
           RESOURCES_SRC="$PROJECT_DIR/composeApp/build/intermediates/assets/debug/mergeDebugAssets/composeResources"
@@ -41,7 +73,7 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         FRAMEWORK_SEARCH_PATHS:
           - $(inherited)
-          - $(PROJECT_DIR)/composeApp/build/bin/iosArm64/debugFramework
+          - $(PROJECT_DIR)/composeApp/build/xcode-frameworks/$(CONFIGURATION)
     info:
       path: iosApp/iosApp/Info.plist
       properties:
@@ -49,4 +81,12 @@ targets:
         CFBundleDisplayName: FX Always
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.finance
         UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
