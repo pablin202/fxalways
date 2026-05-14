@@ -2143,7 +2143,7 @@ fun WatchlistScreen(
         if (!access.hasUnlimitedWatchlistCurrencies && watchlistState.watchlist.codes.size >= access.watchlistCurrencyLimit) {
             ProUpsellCard(
                 title = "Track unlimited currencies",
-                subtitle = "Free includes ${access.watchlistCurrencyLimit}; Pro unlocks bigger watchlists for alerts and widgets.",
+                subtitle = "Free includes ${access.watchlistCurrencyLimit}; Pro unlocks bigger watchlists across rates, alerts and portfolio tracking.",
                 onClick = onOpenPaywall,
             )
         }
@@ -2722,7 +2722,7 @@ fun SettingsScreen(
 ) {
     val access = subscriptionState.featureAccess()
     val fullBaseCurrencies = availableBaseCurrencies.ifEmpty { SettingsBaseCurrencies }
-    val canUseAllBaseCurrencies = access.baseCurrencyLimit == Int.MAX_VALUE
+    val canUseAllBaseCurrencies = access.hasUnlimitedBaseCurrencies
     val baseCurrencyLimit = if (canUseAllBaseCurrencies) 12 else access.baseCurrencyLimit.cap(fullBaseCurrencies.size)
     val baseCurrencies = remember(fullBaseCurrencies, baseCurrency, baseCurrencyLimit) {
         compactCurrencyChoices(fullBaseCurrencies, baseCurrency, baseCurrencyLimit)
@@ -3089,7 +3089,7 @@ private fun CurrencyListPickerSheet(
                     if (isPremium) {
                         "${draftCodes.size} selected · every supported currency available"
                     } else {
-                        "${draftCodes.size}/$effectiveLimit selected · Pro unlocks more currencies"
+                        "${draftCodes.size}/$effectiveLimit selected · Pro unlocks the full list"
                     },
                     style = FxTheme.typography.caption,
                     color = FxTheme.colors.textFaint,
@@ -3749,9 +3749,9 @@ fun PaywallScreen(
             Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onClose))
         }
         Eyebrow("FX/ PRO", color = FxTheme.colors.accent)
-        Text("The full picture.\nEvery rate. Every market.", style = FxTheme.typography.display, color = FxTheme.colors.text)
+        Text("The full picture.\nMore rates. More context.", style = FxTheme.typography.display, color = FxTheme.colors.text)
         Text(
-            "Unlimited alerts, deep history, fee comparison, Watch + widget. All on one membership.",
+            "Unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists on one membership.",
             style = FxTheme.typography.body,
             color = FxTheme.colors.textDim,
         )
@@ -3760,12 +3760,12 @@ fun PaywallScreen(
         }
         BentoCard(padding = 12.dp) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BenefitRow("⌖", "Live to the second", "Aggregated mid-market from 14 exchanges.")
+                BenefitRow("⌖", "Fresh market rates", "Backend-backed mid-market rates with automatic refresh.")
                 BenefitRow("⬡", "Unlimited alerts", "Price, range, daily and weekly targets.")
                 BenefitRow("◐", "Traveler mode", "Auto-location, cheat sheets and offline rates.")
-                BenefitRow("⌘", "Real fee comparator", "Wise, Revolut and banks in one place.")
-                BenefitRow("⌬", "Watch + widget", "Your favorite pair always one glance away.")
-                BenefitRow("∞", "Unlimited history", "Down to the minute, back to 2008.")
+                BenefitRow("⌘", "Fee comparison", "Expanded provider estimates by amount and currency pair.")
+                BenefitRow("⌬", "Bigger watchlists", "Track more currencies across converter, compare and portfolio.")
+                BenefitRow("∞", "Long-range history", "Unlock 1Y and all-time detail views where history is available.")
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3930,14 +3930,14 @@ fun OnboardingScreen(onComplete: () -> Unit = {}) {
         listOf(
             OnboardingStep(
                 tag = "STEP 01 · LIVE RATES",
-                title = "Every rate.\nEvery second.",
-                body = "Tap any currency to see the live mid-market rate, refreshed from 14 exchanges every second.",
+                title = "Fresh rates.\nAlways ready.",
+                body = "Tap any currency to see backend-backed mid-market rates with automatic refresh.",
                 glyph = "⌖",
             ),
             OnboardingStep(
                 tag = "STEP 02 · FEES THAT MATTER",
-                title = "See what your\nbank really charges.",
-                body = "Compare Wise, Revolut, Western Union and 30+ banks side-by-side — fees, FX margin, total cost.",
+                title = "See the cost\nbefore you send.",
+                body = "Compare estimated provider fees by amount and currency pair, then unlock deeper comparisons with Pro.",
                 glyph = "⬢",
             ),
             OnboardingStep(

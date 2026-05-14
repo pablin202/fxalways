@@ -17,6 +17,9 @@ data class FeatureAccessPolicy(
 ) {
     val hasUnlimitedAlerts: Boolean get() = alertLimit == Int.MAX_VALUE
     val hasUnlimitedWatchlistCurrencies: Boolean get() = watchlistCurrencyLimit == Int.MAX_VALUE
+    val hasUnlimitedCompareCurrencies: Boolean get() = compareLimit == Int.MAX_VALUE
+    val hasUnlimitedConverterCurrencies: Boolean get() = converterCurrencyLimit == Int.MAX_VALUE
+    val hasUnlimitedBaseCurrencies: Boolean get() = baseCurrencyLimit == Int.MAX_VALUE
 }
 
 fun SubscriptionState.featureAccess(): FeatureAccessPolicy =
