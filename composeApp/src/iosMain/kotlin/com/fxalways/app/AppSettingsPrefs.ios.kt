@@ -7,6 +7,7 @@ actual object AppSettingsPrefs {
     private const val KEY_BASE_CURRENCY = "base_currency"
     private const val KEY_TRAVELER_CURRENCY = "traveler_currency"
     private const val KEY_TRAVELER_BUDGET_BASE = "traveler_budget_base"
+    private const val KEY_CONVERTER_CURRENCY_CODES = "converter_currency_codes"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
 
     actual fun themeMode(): ThemeMode {
@@ -39,6 +40,17 @@ actual object AppSettingsPrefs {
 
     actual fun setTravelerBudgetBase(amount: Double) {
         NSUserDefaults.standardUserDefaults.setDouble(amount, KEY_TRAVELER_BUDGET_BASE)
+    }
+
+    actual fun converterCurrencyCodes(): List<String> =
+        NSUserDefaults.standardUserDefaults.stringForKey(KEY_CONVERTER_CURRENCY_CODES)
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+
+    actual fun setConverterCurrencyCodes(codes: List<String>) {
+        NSUserDefaults.standardUserDefaults.setObject(codes.distinct().joinToString(","), KEY_CONVERTER_CURRENCY_CODES)
     }
 
     actual fun cachedPremium(): Boolean? =

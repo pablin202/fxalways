@@ -85,8 +85,6 @@ import com.fxalways.app.data.mock.ConverterRates
 import com.fxalways.app.data.mock.CryptoRates
 import com.fxalways.app.data.mock.DetailSeries
 import com.fxalways.app.data.mock.FavoriteRates
-import com.fxalways.app.data.mock.FeeQuote
-import com.fxalways.app.data.mock.FeeQuotes
 import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.data.AlertsState
 import com.fxalways.app.data.AlertsStore
@@ -162,6 +160,7 @@ fun FxAppShell() {
     var baseCurrency by remember { mutableStateOf(AppSettingsPrefs.baseCurrency()) }
     var travelerCurrency by remember { mutableStateOf(AppSettingsPrefs.travelerCurrency()) }
     var travelerBudgetBase by remember { mutableStateOf(AppSettingsPrefs.travelerBudgetBase()) }
+    var converterCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.converterCurrencyCodes()) }
     val liveStore = remember { LiveRatesStore(initialBaseCurrency = baseCurrency) }
     val newsStore = remember { NewsStore() }
     val alertsStore = remember { AlertsStore() }
@@ -206,7 +205,15 @@ fun FxAppShell() {
         backupState = UserBackupGateway.ensureUser()
         if (backupState.isAvailable) {
             runCatching {
-                val localSnapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
+                val localSnapshot = buildUserBackupSnapshot(
+                    themeMode,
+                    baseCurrency,
+                    travelerCurrency,
+                    travelerBudgetBase,
+                    converterCurrencyCodes,
+                    alertsState,
+                    watchlistState,
+                )
                 val remoteSnapshot = UserBackupGateway.pullSnapshot()
                 if (remoteSnapshot != null && localSnapshot.isDefaultLocalBackup()) {
                     themeMode = applyUserBackupSnapshot(
@@ -214,6 +221,7 @@ fun FxAppShell() {
                         alertsStore = alertsStore,
                         watchlistStore = watchlistStore,
                         liveStore = liveStore,
+                        onConverterCurrencyCodes = { converterCurrencyCodes = it },
                         onTravelerCurrency = { travelerCurrency = it },
                         onTravelerBudgetBase = { travelerBudgetBase = it },
                     )
@@ -231,10 +239,18 @@ fun FxAppShell() {
         backupReady = backupState.isAvailable
         startupReady = true
     }
-    LaunchedEffect(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState, backupReady) {
+    LaunchedEffect(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, alertsState, watchlistState, backupReady) {
         if (backupReady) {
             runCatching {
-                val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
+                val snapshot = buildUserBackupSnapshot(
+                    themeMode,
+                    baseCurrency,
+                    travelerCurrency,
+                    travelerBudgetBase,
+                    converterCurrencyCodes,
+                    alertsState,
+                    watchlistState,
+                )
                 UserBackupGateway.pushSnapshot(snapshot)
                 lastSyncedAtMillis = snapshot.updatedAtMillis
             }.onFailure { error ->
@@ -334,6 +350,11 @@ fun FxAppShell() {
                         FxTab.Convert -> ConverterScreen(
                             liveState = liveState,
                             subscriptionState = subscriptionState,
+                            selectedCurrencyCodes = converterCurrencyCodes,
+                            onCurrencyCodesChange = { codes ->
+                                converterCurrencyCodes = codes
+                                AppSettingsPrefs.setConverterCurrencyCodes(codes)
+                            },
                             onOpenPaywall = { showPaywall = true },
                         )
                         FxTab.Compare -> CompareScreen(
@@ -443,7 +464,15 @@ fun FxAppShell() {
                                     scope.launch {
                                         backupSyncing = true
                                         runCatching {
-                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
+                                            val snapshot = buildUserBackupSnapshot(
+                                                themeMode,
+                                                baseCurrency,
+                                                travelerCurrency,
+                                                travelerBudgetBase,
+                                                converterCurrencyCodes,
+                                                alertsState,
+                                                watchlistState,
+                                            )
                                             UserBackupGateway.pushSnapshot(snapshot)
                                             backupState = UserBackupGateway.ensureUser()
                                             lastSyncedAtMillis = snapshot.updatedAtMillis
@@ -458,7 +487,15 @@ fun FxAppShell() {
                                         backupSyncing = true
                                         backupReady = false
                                         runCatching {
-                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
+                                            val snapshot = buildUserBackupSnapshot(
+                                                themeMode,
+                                                baseCurrency,
+                                                travelerCurrency,
+                                                travelerBudgetBase,
+                                                converterCurrencyCodes,
+                                                alertsState,
+                                                watchlistState,
+                                            )
                                             val result = when (PlatformConfig.platform) {
                                                 Platform.Android -> UserBackupGateway.linkWithGoogle(snapshot)
                                                 Platform.Ios -> UserBackupGateway.linkWithApple(snapshot)
@@ -469,6 +506,7 @@ fun FxAppShell() {
                                                 alertsStore = alertsStore,
                                                 watchlistStore = watchlistStore,
                                                 liveStore = liveStore,
+                                                onConverterCurrencyCodes = { converterCurrencyCodes = it },
                                                 onTravelerCurrency = { travelerCurrency = it },
                                                 onTravelerBudgetBase = { travelerBudgetBase = it },
                                             )
@@ -488,7 +526,15 @@ fun FxAppShell() {
                                         backupSyncing = true
                                         backupReady = false
                                         runCatching {
-                                            val snapshot = buildUserBackupSnapshot(themeMode, baseCurrency, travelerCurrency, travelerBudgetBase, alertsState, watchlistState)
+                                            val snapshot = buildUserBackupSnapshot(
+                                                themeMode,
+                                                baseCurrency,
+                                                travelerCurrency,
+                                                travelerBudgetBase,
+                                                converterCurrencyCodes,
+                                                alertsState,
+                                                watchlistState,
+                                            )
                                             val result = UserBackupGateway.signOutToAnonymous(snapshot)
                                             backupState = result.state
                                             lastSyncedAtMillis = result.snapshot.updatedAtMillis
@@ -651,37 +697,162 @@ private fun HeroRateCard(rate: FxRate, baseCurrency: String) {
 fun ConverterScreen(
     liveState: LiveRatesState,
     subscriptionState: SubscriptionState,
+    selectedCurrencyCodes: List<String> = emptyList(),
+    onCurrencyCodesChange: (List<String>) -> Unit = {},
     onOpenPaywall: () -> Unit,
 ) {
-    var focusedCode by remember(liveState.baseCurrency) { mutableStateOf(liveState.baseCurrency) }
     val access = subscriptionState.featureAccess()
-    val visibleQuotes = FeeQuotes.take(access.feeQuoteLimit.cap(FeeQuotes.size))
+    val focusManager = LocalFocusManager.current
+    var showCurrencyPicker by remember { mutableStateOf(false) }
+    val availableRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat, liveState.crypto) {
+        liveState.converterAvailableRates()
+    }
+    val targetCodes = remember(liveState.baseCurrency, selectedCurrencyCodes, availableRates, access.converterCurrencyLimit) {
+        converterTargetCodes(
+            selectedCurrencyCodes = selectedCurrencyCodes,
+            availableRates = availableRates,
+            baseCurrency = liveState.baseCurrency,
+            limit = access.converterCurrencyLimit,
+        )
+    }
+    val rates = remember(liveState.baseCurrency, liveState.converter, availableRates, targetCodes) {
+        val byCode = (availableRates + liveState.converter.ifEmpty { ConverterRates }).distinctBy { it.code }.associateBy { it.code }
+        (listOfNotNull(byCode[liveState.baseCurrency]) + targetCodes.mapNotNull { byCode[it] })
+            .distinctBy { it.code }
+    }
+    val initialTarget = remember(liveState.baseCurrency, rates) {
+        rates.firstOrNull { it.code != liveState.baseCurrency }?.code ?: liveState.baseCurrency
+    }
+    var sourceCode by remember(liveState.baseCurrency) { mutableStateOf(liveState.baseCurrency) }
+    var targetCode by remember(liveState.baseCurrency, initialTarget) { mutableStateOf(initialTarget) }
+    var amountText by remember(liveState.baseCurrency) { mutableStateOf("1000") }
+    var amountFocused by remember { mutableStateOf(false) }
+    val sourceRate = rates.firstOrNull { it.code == sourceCode }
+        ?: rates.firstOrNull { it.code == liveState.baseCurrency }
+        ?: rates.first()
+    val targetRate = rates.firstOrNull { it.code == targetCode && it.code != sourceRate.code }
+        ?: rates.firstOrNull { it.code != sourceRate.code }
+        ?: sourceRate
+    val amountValue = parseAmountInput(amountText)
+    val feeQuotes = estimatedFeeQuotes(sourceRate, targetRate, amountValue)
+        .take(access.feeQuoteLimit.cap(EstimatedFeeQuoteCount))
+    if (showCurrencyPicker) {
+        ConverterCurrencyPickerSheet(
+            currencies = availableRates.filterNot { it.code == liveState.baseCurrency },
+            selectedCodes = targetCodes,
+            limit = access.converterCurrencyLimit,
+            isPremium = subscriptionState.isPremium,
+            onDismiss = { showCurrencyPicker = false },
+            onOpenPaywall = {
+                showCurrencyPicker = false
+                onOpenPaywall()
+            },
+            onApply = { codes ->
+                showCurrencyPicker = false
+                onCurrencyCodesChange(codes)
+                if (targetCode !in codes && codes.isNotEmpty()) {
+                    targetCode = codes.first()
+                }
+            },
+        )
+    }
     ScreenScaffold {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LiveDot()
             Eyebrow("MID", color = FxTheme.colors.accent)
-            Text("14:32 · mid-market", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            Text(
+                liveState.updatedLabel,
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.textFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         ScreenHeader("Convert", subtitle = "Multi-currency · live to 4 decimals")
+        BentoCard(padding = 14.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Eyebrow("YOU SEND")
+                    Pill(sourceRate.code, variant = PillVariant.Accent)
+                }
+                BasicTextField(
+                    value = amountText,
+                    onValueChange = { raw ->
+                        amountText = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(14)
+                    },
+                    singleLine = true,
+                    textStyle = FxTheme.typography.numberXL.copy(color = FxTheme.colors.text, fontSize = 38.sp, lineHeight = 40.sp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(FxTheme.shapes.field)
+                        .background(if (amountFocused) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
+                        .border(1.dp, if (amountFocused) FxTheme.colors.accentLine else FxTheme.colors.border, FxTheme.shapes.field)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                        .onFocusChanged { amountFocused = it.isFocused },
+                    decorationBox = { innerTextField ->
+                        if (amountText.isBlank()) {
+                            Text(
+                                "0.00",
+                                style = FxTheme.typography.numberXL.copy(fontSize = 38.sp, lineHeight = 40.sp),
+                                color = FxTheme.colors.textGhost,
+                            )
+                        }
+                        innerTextField()
+                    },
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Converted to ${targetRate.code}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                    Text(
+                        formatConvertedAmount(targetRate, convertedAmount(amountValue, sourceRate, targetRate)),
+                        style = FxTheme.typography.numberBody,
+                        color = FxTheme.colors.accent,
+                    )
+                }
+            }
+        }
         BentoCard(padding = 8.dp) {
             Column {
-                liveState.converter.forEach { rate ->
-                    ConverterRow(rate, focusedCode == rate.code) { focusedCode = rate.code }
+                rates.forEach { rate ->
+                    ConverterRow(
+                        rate = rate,
+                        amount = if (rate.code == sourceRate.code) amountValue else convertedAmount(amountValue, sourceRate, rate),
+                        selected = rate.code == targetRate.code,
+                        source = rate.code == sourceRate.code,
+                        onClick = {
+                            if (rate.code != sourceRate.code) {
+                                targetCode = rate.code
+                                focusManager.clearFocus()
+                            }
+                        },
+                    )
                 }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            GhostButton("⇄  Reverse", Modifier.weight(1f))
-            GhostButton("≡  Edit list", Modifier.weight(1f))
+            GhostButton(
+                "⇄  Reverse",
+                Modifier.weight(1f),
+                onClick = {
+                    val previousSource = sourceRate
+                    val previousTarget = targetRate
+                    sourceCode = previousTarget.code
+                    targetCode = previousSource.code
+                    amountText = formatInputAmount(convertedAmount(amountValue, previousSource, previousTarget))
+                    focusManager.clearFocus()
+                },
+            )
+            GhostButton("≡  Edit list", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
         }
-        SectionLabel("FEES · ${liveState.baseCurrency} → ${liveState.favorites.firstOrNull()?.code ?: "EUR"}", right = if (access.canUseFullFeeComparison) "Full" else "Preview")
+        SectionLabel("FEES · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) "Estimated" else "Preview")
         BentoCard(padding = 0.dp) {
-            Column { visibleQuotes.forEach { FeeComparisonRow(it) } }
+            Column { feeQuotes.forEach { FeeComparisonRow(it) } }
         }
         if (!access.canUseFullFeeComparison) {
             ProUpsellCard(
                 title = "See the real transfer cost",
-                subtitle = "Pro unlocks complete bank and provider fee comparisons.",
+                subtitle = "Pro unlocks the complete provider list; estimates update with your amount.",
                 onClick = onOpenPaywall,
             )
         }
@@ -689,15 +860,34 @@ fun ConverterScreen(
 }
 
 @Composable
-private fun ConverterRow(rate: FxRate, focused: Boolean, onClick: () -> Unit) {
-    val bg = if (focused) FxTheme.colors.accentSoft else Color.Transparent
-    val border = if (focused) FxTheme.colors.accentLine else Color.Transparent
+private fun ConverterRow(
+    rate: FxRate,
+    amount: Double,
+    selected: Boolean,
+    source: Boolean,
+    onClick: () -> Unit,
+) {
+    val bg = when {
+        selected -> FxTheme.colors.accentSoft
+        source -> FxTheme.colors.surface2
+        else -> Color.Transparent
+    }
+    val border = when {
+        selected -> FxTheme.colors.accentLine
+        source -> FxTheme.colors.border
+        else -> Color.Transparent
+    }
+    val contentColor = when {
+        selected -> FxTheme.colors.accent
+        source -> FxTheme.colors.textDim
+        else -> FxTheme.colors.text
+    }
     Row(
         Modifier
             .fillMaxWidth()
             .clip(FxTheme.shapes.field)
             .background(bg)
-            .border(if (focused) 1.dp else 0.dp, border, FxTheme.shapes.field)
+            .border(if (selected || source) 1.dp else 0.dp, border, FxTheme.shapes.field)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -705,26 +895,26 @@ private fun ConverterRow(rate: FxRate, focused: Boolean, onClick: () -> Unit) {
     ) {
         FlagDot(rate.glyph, rate.kind, 32.dp)
         Column(Modifier.weight(1f)) {
-            Text(rate.code, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-            Text(rate.name, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
-        }
-        val amount = if (focused) {
-            "1,000.00"
-        } else if (rate.code == "BTC") {
-            "0.01540"
-        } else {
-            formatRate(rate.rate * 1000)
+            Text(rate.code, style = FxTheme.typography.bodyStrong, color = if (source) FxTheme.colors.textDim else FxTheme.colors.text)
+            Text(
+                if (source) "Base currency · source amount" else if (selected) "Selected destination" else rate.name,
+                style = FxTheme.typography.caption,
+                color = if (selected) FxTheme.colors.accent else FxTheme.colors.textFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         Text(
-            amount,
-            style = if (focused) FxTheme.typography.numberL.copy(fontSize = 24.sp) else FxTheme.typography.numberL,
-            color = if (focused) FxTheme.colors.accent else FxTheme.colors.text,
+            formatConvertedAmount(rate, amount),
+            style = if (source || selected) FxTheme.typography.numberL.copy(fontSize = 24.sp) else FxTheme.typography.numberL,
+            color = contentColor,
+            maxLines = 1,
         )
     }
 }
 
 @Composable
-private fun FeeComparisonRow(quote: FeeQuote) {
+private fun FeeComparisonRow(quote: EstimatedFeeQuote) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -732,10 +922,89 @@ private fun FeeComparisonRow(quote: FeeQuote) {
     ) {
         Text(quote.provider, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, modifier = Modifier.weight(1f))
         if (quote.badge != null) Pill(quote.badge, variant = if (quote.isHighFee) PillVariant.Down else PillVariant.Up)
-        Text(quote.amount, style = FxTheme.typography.numberBody, color = FxTheme.colors.text, modifier = Modifier.widthIn(min = 70.dp), textAlign = TextAlign.End)
-        Text(quote.fee, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, modifier = Modifier.widthIn(min = 48.dp), textAlign = TextAlign.End)
+        Text(
+            quote.amount,
+            style = FxTheme.typography.numberBody,
+            color = FxTheme.colors.text,
+            modifier = Modifier.widthIn(min = 70.dp),
+            textAlign = TextAlign.End,
+        )
+        Text(
+            quote.fee,
+            style = FxTheme.typography.captionMono,
+            color = FxTheme.colors.textFaint,
+            modifier = Modifier.widthIn(min = 48.dp),
+            textAlign = TextAlign.End,
+        )
     }
 }
+
+private const val EstimatedFeeQuoteCount = 4
+
+private data class EstimatedFeeQuote(
+    val provider: String,
+    val badge: String?,
+    val amount: String,
+    val fee: String,
+    val isHighFee: Boolean = false,
+)
+
+private fun estimatedFeeQuotes(
+    sourceRate: FxRate,
+    targetRate: FxRate,
+    amount: Double,
+): List<EstimatedFeeQuote> {
+    val safeAmount = amount.coerceAtLeast(0.0)
+
+    fun quote(
+        provider: String,
+        badge: String?,
+        feeAmount: Double,
+        isHighFee: Boolean = false,
+    ): EstimatedFeeQuote {
+        val netSource = (safeAmount - feeAmount).coerceAtLeast(0.0)
+        return EstimatedFeeQuote(
+            provider = provider,
+            badge = badge,
+            amount = formatConvertedAmount(targetRate, convertedAmount(netSource, sourceRate, targetRate)),
+            fee = "${sourceRate.code} ${formatMoneyValue(feeAmount.coerceAtLeast(0.0))}",
+            isHighFee = isHighFee,
+        )
+    }
+
+    return listOf(
+        quote("Mid-market", "best", 0.0),
+        quote("Wise", null, maxOf(0.35, safeAmount * 0.0045)),
+        quote("Revolut", null, safeAmount * 0.008),
+        quote("Bank transfer", "high fee", 5.0 + safeAmount * 0.032, isHighFee = true),
+    )
+}
+
+private fun convertedAmount(amount: Double, sourceRate: FxRate, targetRate: FxRate): Double =
+    if (sourceRate.rate == 0.0) {
+        0.0
+    } else {
+        amount / sourceRate.rate * targetRate.rate
+    }
+
+private fun formatConvertedAmount(rate: FxRate, amount: Double): String =
+    "${rate.code} ${if (rate.kind == CurrencyKind.Crypto) formatCryptoAmount(amount) else formatMoneyValue(amount)}"
+
+private fun formatCryptoAmount(value: Double): String =
+    when {
+        value <= 0.0 -> "0"
+        value < 0.000001 -> "<0.000001"
+        value < 1.0 -> formatRate(value)
+        else -> formatMoneyValue(value)
+    }
+
+private fun formatInputAmount(value: Double): String =
+    when {
+        value <= 0.0 -> ""
+        value >= 100.0 -> formatMoneyValue(value).replace(",", "")
+        value >= 1.0 -> formatRate(value)
+        else -> formatRate(value)
+    }
 
 @Composable
 fun DetailScreen(
@@ -2696,6 +2965,115 @@ private fun CurrencyPickerSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConverterCurrencyPickerSheet(
+    currencies: List<FxRate>,
+    selectedCodes: List<String>,
+    limit: Int,
+    isPremium: Boolean,
+    onDismiss: () -> Unit,
+    onOpenPaywall: () -> Unit,
+    onApply: (List<String>) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    var draftCodes by remember(selectedCodes) { mutableStateOf(selectedCodes) }
+    val effectiveLimit = limit.cap(currencies.size).coerceAtLeast(1)
+    val rows = remember(currencies, query) {
+        val term = query.trim()
+        currencies
+            .distinctBy { it.code }
+            .filter { currency ->
+                term.isBlank() ||
+                    currency.code.contains(term, ignoreCase = true) ||
+                    currency.name.contains(term, ignoreCase = true)
+            }
+            .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
+    }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = FxTheme.colors.surface1,
+        contentColor = FxTheme.colors.text,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = 660.dp)
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("Edit converter list", style = FxTheme.typography.titleL, color = FxTheme.colors.text)
+                Text(
+                    if (isPremium) {
+                        "${draftCodes.size} selected · every supported currency available"
+                    } else {
+                        "${draftCodes.size}/$effectiveLimit selected · Pro unlocks more currencies"
+                    },
+                    style = FxTheme.typography.caption,
+                    color = FxTheme.colors.textFaint,
+                )
+            }
+            BentoCard(padding = 12.dp) {
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it.take(24) },
+                    singleLine = true,
+                    textStyle = FxTheme.typography.body.copy(color = FxTheme.colors.text),
+                    modifier = Modifier.fillMaxWidth(),
+                    decorationBox = { innerTextField ->
+                        if (query.isBlank()) {
+                            Text("Search currency", style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
+                        }
+                        innerTextField()
+                    },
+                )
+            }
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 430.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                rows.forEach { currency ->
+                    val selected = currency.code in draftCodes
+                    val locked = !selected && draftCodes.size >= effectiveLimit
+                    SettingChoiceRow(
+                        title = "${currency.glyph}  ${currency.code}",
+                        subtitle = if (locked && !isPremium) "Pro unlocks more converter currencies" else currency.name,
+                        selected = selected,
+                        actionLabel = if (selected) "added" else if (locked) "pro" else "add",
+                        onClick = {
+                            when {
+                                selected -> draftCodes = draftCodes.filterNot { it == currency.code }
+                                locked -> onOpenPaywall()
+                                else -> draftCodes = (draftCodes + currency.code).distinct()
+                            }
+                        },
+                    )
+                }
+                if (rows.isEmpty()) {
+                    Text("No currencies found", style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                GhostButton("Cancel", Modifier.weight(1f), onClick = onDismiss)
+                PrimaryButton(
+                    "Apply",
+                    Modifier.weight(1f),
+                    onClick = {
+                        if (draftCodes.isNotEmpty()) {
+                            onApply(draftCodes.take(effectiveLimit))
+                        }
+                    },
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
 private val PopularCurrencyCodes = listOf("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD")
 
 private fun compactCurrencyChoices(
@@ -2925,6 +3303,34 @@ private fun LiveRatesState.portfolioRates(): List<FxRate> =
         .distinctBy { it.code }
         .sortedWith(compareByDescending<FxRate> { it.code == baseCurrency }.thenBy { it.code })
 
+private fun LiveRatesState.converterAvailableRates(): List<FxRate> =
+    (allFiat + favorites + compare + converter + crypto)
+        .distinctBy { it.code }
+        .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
+
+private fun converterTargetCodes(
+    selectedCurrencyCodes: List<String>,
+    availableRates: List<FxRate>,
+    baseCurrency: String,
+    limit: Int,
+): List<String> {
+    val availableCodes = availableRates.map { it.code }.toSet()
+    val selected = selectedCurrencyCodes
+        .filter { it != baseCurrency && it in availableCodes }
+        .distinct()
+    val defaults = PopularCurrencyCodes
+        .filter { it != baseCurrency && it in availableCodes && it !in selected }
+    val targetLimit = limit.cap(availableRates.size).coerceAtLeast(1)
+    return (selected + defaults)
+        .take(targetLimit)
+        .ifEmpty {
+            availableRates
+                .map { it.code }
+                .filter { it != baseCurrency }
+                .take(targetLimit)
+        }
+}
+
 private data class PortfolioHolding(
     val rate: FxRate,
     val amount: Double,
@@ -2974,6 +3380,7 @@ private fun buildUserBackupSnapshot(
     baseCurrency: String,
     travelerCurrency: String,
     travelerBudgetBase: Double,
+    converterCurrencyCodes: List<String>,
     alertsState: AlertsState,
     watchlistState: WatchlistState,
 ): UserBackupSnapshot =
@@ -2984,6 +3391,7 @@ private fun buildUserBackupSnapshot(
             baseCurrency = baseCurrency,
             travelerCurrency = travelerCurrency,
             travelerBudgetBase = travelerBudgetBase,
+            converterCurrencyCodes = converterCurrencyCodes,
         ),
         alerts = alertsState.alerts,
         watchlist = watchlistState.watchlist,
@@ -2994,6 +3402,7 @@ private fun applyUserBackupSnapshot(
     alertsStore: AlertsStore,
     watchlistStore: WatchlistStore,
     liveStore: LiveRatesStore,
+    onConverterCurrencyCodes: (List<String>) -> Unit,
     onTravelerCurrency: (String) -> Unit,
     onTravelerBudgetBase: (Double) -> Unit,
 ): ThemeMode {
@@ -3002,7 +3411,9 @@ private fun applyUserBackupSnapshot(
     AppSettingsPrefs.setBaseCurrency(snapshot.settings.baseCurrency)
     AppSettingsPrefs.setTravelerCurrency(snapshot.settings.travelerCurrency)
     AppSettingsPrefs.setTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
+    AppSettingsPrefs.setConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
     liveStore.setBaseCurrency(snapshot.settings.baseCurrency)
+    onConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
     onTravelerCurrency(snapshot.settings.travelerCurrency)
     onTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     alertsStore.replaceAll(snapshot.alerts)
