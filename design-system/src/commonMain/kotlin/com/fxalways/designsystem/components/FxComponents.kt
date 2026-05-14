@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -562,6 +563,7 @@ fun SegmentedPeriods(selected: Period, onSelected: (Period) -> Unit, modifier: M
             Box(
                 Modifier
                     .weight(1f)
+                    .testTag("period_${period.name}")
                     .clip(FxTheme.shapes.field)
                     .background(if (active) FxTheme.colors.bg else Color.Transparent)
                     .border(if (active) 1.dp else 0.dp, if (active) FxTheme.colors.accentLine else Color.Transparent, FxTheme.shapes.field)

@@ -2163,7 +2163,7 @@ fun DetailScreen(
             Text(formatChange(selected.change24h), style = FxTheme.typography.numberBody, color = if (selected.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down, modifier = Modifier.padding(bottom = 7.dp))
         }
         Text("${selected.caption?.let { ui(it) } ?: ui("mid-market")} · ${localizedRuntimeLabel(liveState.updatedLabel)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
-        BentoCard {
+        BentoCard(Modifier.testTag("detail_history_card")) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Eyebrow(if (detailState.isLoading && detailMatches) ui("LOADING HISTORY") else "${ui("HISTORY")} · ${period.label}")
@@ -2200,11 +2200,12 @@ fun DetailScreen(
             ProUpsellCard(
                 title = ui("Unlock long-range history"),
                 subtitle = ui("Pro adds 1Y and all-time detail, full event context and deeper market overlays."),
+                modifier = Modifier.testTag("detail_history_upsell"),
                 onClick = onOpenPaywall,
             )
         }
         SectionLabel("${ui("STATISTICS")} · ${period.label}")
-        BentoCard {
+        BentoCard(Modifier.testTag("detail_statistics")) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 KeyValueRow(ui("Open"), formatRate(stats.open))
                 KeyValueRow(ui("High"), formatRate(stats.high))
@@ -2226,7 +2227,7 @@ fun DetailScreen(
             )
         } else {
             relatedStories.take(if (effectivePremium) relatedStories.size else 2).forEach { story ->
-                StoryCard(story, onClick = { onOpenStory(story) })
+                StoryCard(story, modifier = Modifier.testTag("detail_story_${story.safeTestTagKey()}"), onClick = { onOpenStory(story) })
             }
         }
         SectionLabel(ui("EVENTS · ANNOTATED"), right = if (effectivePremium) ui("Derived") else ui("Preview"))
@@ -2239,7 +2240,7 @@ fun DetailScreen(
             BentoCard(padding = 0.dp) {
                 Column {
                     relatedStories.take(if (effectivePremium) relatedStories.size else 2).forEach { story ->
-                        DetailEventRow(story, onOpenUrl = onOpenUrl)
+                        DetailEventRow(story, modifier = Modifier.testTag("detail_event_${story.safeTestTagKey()}"), onOpenUrl = onOpenUrl)
                     }
                 }
             }
@@ -2247,6 +2248,7 @@ fun DetailScreen(
         GhostIconButton(
             icon = MoreFeatureIcon.Alerts,
             text = if (activeForPair > 0) "${ui("Add another alert")} ${selected.code} · $alertLabel" else "${ui("Alert me above")} ${formatRate(selected.rate * 1.01)} · $alertLabel",
+            modifier = Modifier.fillMaxWidth().testTag("detail_alert_cta"),
             onClick = { onCreateAlert(selected) },
         )
     }
@@ -2300,9 +2302,9 @@ private fun DetailChartLoadingOverlay(data: List<Float>, modifier: Modifier = Mo
 }
 
 @Composable
-private fun DetailEventRow(story: NewsStory, onOpenUrl: (String) -> Unit) {
+private fun DetailEventRow(story: NewsStory, modifier: Modifier = Modifier, onOpenUrl: (String) -> Unit) {
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clickable(enabled = story.sourceUrl.isNotBlank()) { onOpenUrl(story.sourceUrl) }
             .padding(16.dp),
@@ -5201,10 +5203,10 @@ private fun BackNavButton(label: String?, onClick: () -> Unit) {
 }
 
 @Composable
-private fun StoryCard(story: NewsStory, onClick: () -> Unit = {}) {
+private fun StoryCard(story: NewsStory, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     BentoCard(
         padding = 12.dp,
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = onClick),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -5506,9 +5508,9 @@ private fun settingsCopy(language: String): SettingsCopy =
     }
 
 @Composable
-private fun ProUpsellCard(title: String, subtitle: String, onClick: () -> Unit) {
+private fun ProUpsellCard(title: String, subtitle: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     BentoCard(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card)
             .clickable(onClick = onClick),
@@ -5525,6 +5527,12 @@ private fun ProUpsellCard(title: String, subtitle: String, onClick: () -> Unit) 
         }
     }
 }
+
+private fun NewsStory.safeTestTagKey(): String =
+    title
+        .filter { it.isLetterOrDigit() }
+        .take(18)
+        .ifBlank { tag }
 
 @Composable
 fun PaywallScreen(
