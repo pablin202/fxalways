@@ -1013,6 +1013,23 @@ fun FxAppShell() {
                                     },
                                     onOpenPaywall = { openPaywall("dashboard") },
                                     onOpenDetail = { openDetail(it, "dashboard") },
+                                    onEditFavorites = {
+                                        if (subscriptionState.isPremium) {
+                                            selectTab(FxTab.More)
+                                            openMoreRoute(MoreRoute.Watchlist)
+                                        } else {
+                                            openPaywall("dashboard_favorites")
+                                        }
+                                    },
+                                    onSeeAllCrypto = {
+                                        val cryptoCodes = liveState.crypto.map { it.code }
+                                        if (cryptoCodes.isNotEmpty()) {
+                                            Observability.event("dashboard_crypto_see_all", mapOf("count" to cryptoCodes.size.toString()))
+                                            compareCurrencyCodes = cryptoCodes
+                                            AppSettingsPrefs.setCompareCurrencyCodes(cryptoCodes)
+                                            selectTab(FxTab.Compare)
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -1338,6 +1355,8 @@ fun DashboardScreen(
     onRefresh: () -> Unit,
     onOpenPaywall: () -> Unit,
     onOpenDetail: (FxRate) -> Unit,
+    onEditFavorites: () -> Unit,
+    onSeeAllCrypto: () -> Unit,
 ) {
     val access = subscriptionState.featureAccess()
     val visibleFavorites = liveState.favorites.take(access.favoriteLimit.cap(liveState.favorites.size))
@@ -1366,7 +1385,11 @@ fun DashboardScreen(
             liveState.favorites.firstOrNull { it.code == "JPY" }?.let { MetricTile("JPY · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
             liveState.favorites.firstOrNull { it.code == "MXN" }?.let { MetricTile("MXN · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
         }
-        SectionLabel("${ui("FAVORITES")} · ${visibleFavorites.size}", right = if (subscriptionState.isPremium) ui("Edit") else ui("Pro"))
+        SectionLabel(
+            "${ui("FAVORITES")} · ${visibleFavorites.size}",
+            right = if (subscriptionState.isPremium) ui("Edit") else ui("Pro"),
+            onRightClick = onEditFavorites,
+        )
         BentoCard(padding = 0.dp) {
             Column {
                 visibleFavorites.forEach { rate ->
@@ -1381,7 +1404,7 @@ fun DashboardScreen(
                 onClick = onOpenPaywall,
             )
         }
-        SectionLabel(ui("CRYPTO"), right = ui("See all"))
+        SectionLabel(ui("CRYPTO"), right = ui("See all"), onRightClick = onSeeAllCrypto)
         BentoCard(padding = 0.dp) {
             Column { liveState.crypto.forEach { rate -> CurrencyRow(localizedRate(rate), dense = true, onClick = { onOpenDetail(rate) }) } }
         }
@@ -1447,7 +1470,7 @@ fun ConverterScreen(
     }
     var sourceCode by remember(liveState.baseCurrency) { mutableStateOf(liveState.baseCurrency) }
     var targetCode by remember(liveState.baseCurrency, initialTarget) { mutableStateOf(initialTarget) }
-    var amountText by remember(liveState.baseCurrency) { mutableStateOf("1000") }
+    var amountText by remember { mutableStateOf(sanitizeAmountInput(AppSettingsPrefs.converterAmountText())) }
     var amountFocused by remember { mutableStateOf(false) }
     val sourceRate = rates.firstOrNull { it.code == sourceCode }
         ?: rates.firstOrNull { it.code == liveState.baseCurrency }
@@ -1502,7 +1525,8 @@ fun ConverterScreen(
                 BasicTextField(
                     value = amountText,
                     onValueChange = { raw ->
-                        amountText = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(14)
+                        amountText = sanitizeAmountInput(raw)
+                        AppSettingsPrefs.setConverterAmountText(amountText)
                     },
                     singleLine = true,
                     textStyle = FxTheme.typography.numberXL.copy(color = FxTheme.colors.text, fontSize = 38.sp, lineHeight = 40.sp),
@@ -1547,6 +1571,10 @@ fun ConverterScreen(
                         onClick = {
                             if (rate.code != sourceRate.code) {
                                 targetCode = rate.code
+                                Observability.event(
+                                    "converter_target_selected",
+                                    mapOf("source" to sourceRate.code, "target" to rate.code),
+                                )
                                 focusManager.clearFocus()
                             }
                         },
@@ -1564,6 +1592,11 @@ fun ConverterScreen(
                     sourceCode = previousTarget.code
                     targetCode = previousSource.code
                     amountText = formatInputAmount(convertedAmount(amountValue, previousSource, previousTarget))
+                    AppSettingsPrefs.setConverterAmountText(amountText)
+                    Observability.event(
+                        "converter_reversed",
+                        mapOf("source" to previousSource.code, "target" to previousTarget.code),
+                    )
                     focusManager.clearFocus()
                 },
             )
@@ -1729,6 +1762,16 @@ private fun formatInputAmount(value: Double): String =
         value >= 1.0 -> formatRate(value)
         else -> formatRate(value)
     }
+
+private fun sanitizeAmountInput(value: String): String {
+    val filtered = value.filter { it.isDigit() || it == '.' || it == ',' }.take(14)
+    val decimalIndex = filtered.indexOfLast { it == '.' || it == ',' }
+    if (decimalIndex < 0) return filtered
+    val decimal = filtered[decimalIndex]
+    val before = filtered.take(decimalIndex).filter { it.isDigit() }
+    val after = filtered.drop(decimalIndex + 1).filter { it.isDigit() }
+    return "$before$decimal$after"
+}
 
 @Composable
 fun DetailScreen(

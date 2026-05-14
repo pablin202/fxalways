@@ -7,6 +7,7 @@ actual object AppSettingsPrefs {
     private const val KEY_BASE_CURRENCY = "base_currency"
     private const val KEY_TRAVELER_CURRENCY = "traveler_currency"
     private const val KEY_TRAVELER_BUDGET_BASE = "traveler_budget_base"
+    private const val KEY_CONVERTER_AMOUNT_TEXT = "converter_amount_text"
     private const val KEY_CONVERTER_CURRENCY_CODES = "converter_currency_codes"
     private const val KEY_COMPARE_CURRENCY_CODES = "compare_currency_codes"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
@@ -46,6 +47,13 @@ actual object AppSettingsPrefs {
 
     actual fun setTravelerBudgetBase(amount: Double) {
         prefs().edit().putFloat(KEY_TRAVELER_BUDGET_BASE, amount.toFloat()).apply()
+    }
+
+    actual fun converterAmountText(): String =
+        prefs().getString(KEY_CONVERTER_AMOUNT_TEXT, null)?.takeIf { it.isNotBlank() } ?: "1000"
+
+    actual fun setConverterAmountText(amount: String) {
+        prefs().edit().putString(KEY_CONVERTER_AMOUNT_TEXT, amount).apply()
     }
 
     actual fun converterCurrencyCodes(): List<String> =

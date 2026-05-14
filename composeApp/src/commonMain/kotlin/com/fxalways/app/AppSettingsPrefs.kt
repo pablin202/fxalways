@@ -17,6 +17,8 @@ expect object AppSettingsPrefs {
     fun setTravelerCurrency(code: String)
     fun travelerBudgetBase(): Double
     fun setTravelerBudgetBase(amount: Double)
+    fun converterAmountText(): String
+    fun setConverterAmountText(amount: String)
     fun converterCurrencyCodes(): List<String>
     fun setConverterCurrencyCodes(codes: List<String>)
     fun compareCurrencyCodes(): List<String>

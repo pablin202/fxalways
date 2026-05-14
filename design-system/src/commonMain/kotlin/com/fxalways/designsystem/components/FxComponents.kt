@@ -364,14 +364,21 @@ fun ScreenHeader(
 }
 
 @Composable
-fun SectionLabel(text: String, modifier: Modifier = Modifier, right: String? = null) {
+fun SectionLabel(text: String, modifier: Modifier = Modifier, right: String? = null, onRightClick: (() -> Unit)? = null) {
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Eyebrow(text)
-        if (right != null) Text(right, style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
+        if (right != null) {
+            Text(
+                right,
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.accent,
+                modifier = if (onRightClick != null) Modifier.clickable(onClick = onRightClick) else Modifier,
+            )
+        }
     }
 }
 
