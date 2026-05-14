@@ -1,8 +1,10 @@
 package com.fxalways.app.screens
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -10,6 +12,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.subscription.SubscriptionPlanKind
+import com.fxalways.app.subscription.SubscriptionPlan
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.theme.FxTheme
 import kotlin.test.Test
@@ -43,11 +46,60 @@ class PaywallScreenTest {
         compose.onNodeWithTag("paywall_selected_plan").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_start_button").performScrollTo().performClick()
         compose.onNodeWithTag("paywall_restore").performScrollTo().performClick()
+        compose.onNodeWithTag("paywall_terms").performScrollTo().performClick()
+        compose.onNodeWithTag("paywall_privacy").performScrollTo().performClick()
+        compose.onNodeWithTag("paywall_close").performScrollTo().performClick()
 
         compose.runOnIdle {
             assertEquals(listOf(SubscriptionPlanKind.Yearly), harness.startedPlans)
             assertEquals(1, harness.restoreClicks)
+            assertEquals(listOf("https://fxalways.app/terms", "https://fxalways.app/privacy"), harness.openedUrls)
+            assertEquals(1, harness.closeClicks)
         }
+    }
+
+    @Test
+    fun planSelectionIgnoresUnavailablePlansAndCanStartLifetime() {
+        val harness = renderPaywall(
+            SubscriptionState(
+                isPremium = false,
+                plans = listOf(
+                    SubscriptionPlan(
+                        kind = SubscriptionPlanKind.Monthly,
+                        title = "Monthly",
+                        priceLabel = "$2.99",
+                        cadenceLabel = "Paid every month",
+                        isAvailable = false,
+                    ),
+                    SubscriptionPlan(
+                        kind = SubscriptionPlanKind.Yearly,
+                        title = "Yearly",
+                        priceLabel = "$29.99",
+                        cadenceLabel = "Best long-term value",
+                        badge = "BEST VALUE",
+                        isAvailable = false,
+                    ),
+                    SubscriptionPlan(
+                        kind = SubscriptionPlanKind.Lifetime,
+                        title = "Lifetime",
+                        priceLabel = "$79.99",
+                        cadenceLabel = "One payment, permanent access",
+                        badge = "FOREVER",
+                        isAvailable = true,
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("paywall_plan_Monthly").performScrollTo().performClick()
+        compose.onNodeWithTag("paywall_plan_Yearly").performScrollTo().performClick()
+        compose.onNodeWithTag("paywall_selected_plan").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Lifetime").assertCountEquals(2)
+        compose.onAllNodesWithText("Not configured").assertCountEquals(2)
+
+        compose.onNodeWithTag("paywall_start_button").performScrollTo().performClick()
+
+        compose.runOnIdle { assertEquals(listOf(SubscriptionPlanKind.Lifetime), harness.startedPlans) }
     }
 
     @Test
@@ -81,8 +133,27 @@ class PaywallScreenTest {
         )
 
         compose.onNodeWithText("Purchases unavailable").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("paywall_status_message").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("RevenueCat unavailable.").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_start_button").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(emptyList(), unavailableHarness.startedPlans) }
+    }
+
+    @Test
+    fun revenueCatPackageErrorIsLocalizedAndDoesNotStartUnavailablePurchase() {
+        val harness = renderPaywall(
+            SubscriptionState(
+                isPremium = false,
+                canPurchase = false,
+                statusMessage = "No RevenueCat package is configured for yearly.",
+            ),
+        )
+
+        compose.onNodeWithTag("paywall_status_message").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("No RevenueCat package is configured for yearly.").assertIsDisplayed()
+        compose.onNodeWithTag("paywall_start_button").performScrollTo().performClick()
+
+        compose.runOnIdle { assertEquals(emptyList(), harness.startedPlans) }
     }
 
     @Test
@@ -112,6 +183,7 @@ class PaywallScreenTest {
                     onClose = { harness.closeClicks += 1 },
                     onStart = { harness.startedPlans += it },
                     onRestore = { harness.restoreClicks += 1 },
+                    onOpenUrl = { harness.openedUrls += it },
                 )
             }
         }
@@ -122,5 +194,6 @@ class PaywallScreenTest {
         var closeClicks = 0
         var restoreClicks = 0
         val startedPlans = mutableListOf<SubscriptionPlanKind>()
+        val openedUrls = mutableListOf<String>()
     }
 }

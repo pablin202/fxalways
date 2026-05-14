@@ -1037,6 +1037,7 @@ fun FxAppShell() {
                                 }
                             }
                         },
+                        onOpenUrl = ExternalUrlOpener::open,
                     )
                 } else if (detailNewsStory != null) {
                     NewsDetailScreen(
@@ -5541,6 +5542,7 @@ fun PaywallScreen(
     onClose: () -> Unit = {},
     onStart: (SubscriptionPlanKind) -> Unit = {},
     onRestore: () -> Unit = {},
+    onOpenUrl: (String) -> Unit = {},
 ) {
     var selectedKind by remember { mutableStateOf(SubscriptionPlanKind.Monthly) }
     val selectedPlan = subscriptionState.plans.firstOrNull { it.kind == selectedKind && it.isAvailable }
@@ -5621,7 +5623,12 @@ fun PaywallScreen(
             }
         }
         subscriptionState.statusMessage?.let {
-            Text(localizedSubscriptionMessage(it), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
+            Text(
+                localizedSubscriptionMessage(it),
+                modifier = Modifier.testTag("paywall_status_message"),
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.down,
+            )
         }
         PrimaryButton(
             when {
@@ -5641,12 +5648,26 @@ fun PaywallScreen(
             },
             modifier = Modifier.fillMaxWidth().testTag("paywall_start_button"),
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             Text(
-	                ui("Restore purchase  ·  Terms  ·  Privacy"),
+	                ui("Restore purchase"),
                 style = FxTheme.typography.captionMono,
                 color = if (actionInProgress) FxTheme.colors.textGhost else FxTheme.colors.textFaint,
                 modifier = Modifier.testTag("paywall_restore").clickable(enabled = !actionInProgress, onClick = onRestore),
+            )
+            Text("  ·  ", style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost)
+            Text(
+                ui("Terms"),
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.textFaint,
+                modifier = Modifier.testTag("paywall_terms").clickable { onOpenUrl(TERMS_OF_USE_URL) },
+            )
+            Text("  ·  ", style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost)
+            Text(
+                ui("Privacy"),
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.textFaint,
+                modifier = Modifier.testTag("paywall_privacy").clickable { onOpenUrl(PRIVACY_POLICY_URL) },
             )
         }
     }
