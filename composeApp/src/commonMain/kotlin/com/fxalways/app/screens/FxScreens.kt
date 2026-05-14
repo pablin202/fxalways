@@ -101,6 +101,7 @@ import com.fxalways.app.data.PriceAlert
 import com.fxalways.app.data.SettingsBaseCurrencies
 import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.data.WatchlistStore
+import com.fxalways.app.data.matchesDefinition
 import com.fxalways.app.subscription.SubscriptionPlan
 import com.fxalways.app.subscription.SubscriptionPlanKind
 import com.fxalways.app.subscription.SubscriptionState
@@ -157,6 +158,7 @@ fun FxAppShell() {
     var detailRate by remember { mutableStateOf<FxRate?>(null) }
     var detailNewsStory by remember { mutableStateOf<NewsStory?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
+    var subscriptionActionInProgress by remember { mutableStateOf(false) }
     var themeMode by remember { mutableStateOf(AppSettingsPrefs.themeMode()) }
     var baseCurrency by remember { mutableStateOf(AppSettingsPrefs.baseCurrency()) }
     var travelerCurrency by remember { mutableStateOf(AppSettingsPrefs.travelerCurrency()) }
@@ -291,21 +293,32 @@ fun FxAppShell() {
                 } else if (showPaywall) {
                     PaywallScreen(
                         subscriptionState = subscriptionState,
+                        actionInProgress = subscriptionActionInProgress,
                         onClose = { showPaywall = false },
                         onStart = { planKind ->
                             scope.launch {
-                                subscriptionState = subscriptionGateway.purchasePlan(planKind)
-                                AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
-                                subscriptionReady = true
-                                showPaywall = !subscriptionState.isPremium
+                                subscriptionActionInProgress = true
+                                try {
+                                    subscriptionState = subscriptionGateway.purchasePlan(planKind)
+                                    AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
+                                    subscriptionReady = true
+                                    showPaywall = !subscriptionState.isPremium
+                                } finally {
+                                    subscriptionActionInProgress = false
+                                }
                             }
                         },
                         onRestore = {
                             scope.launch {
-                                subscriptionState = subscriptionGateway.restore()
-                                AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
-                                subscriptionReady = true
-                                showPaywall = !subscriptionState.isPremium
+                                subscriptionActionInProgress = true
+                                try {
+                                    subscriptionState = subscriptionGateway.restore()
+                                    AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
+                                    subscriptionReady = true
+                                    showPaywall = !subscriptionState.isPremium
+                                } finally {
+                                    subscriptionActionInProgress = false
+                                }
                             }
                         },
                     )
@@ -330,7 +343,10 @@ fun FxAppShell() {
                         onOpenUrl = ExternalUrlOpener::open,
                         onOpenStory = { detailNewsStory = it },
                         onCreateAlert = { rate ->
-                            if (canCreateAlert(subscriptionState, alertsState.alerts.size)) {
+                            if (
+                                canCreateAlert(subscriptionState, alertsState.alerts.size) ||
+                                alertsState.alerts.findQuickAlert(liveState.baseCurrency, rate) != null
+                            ) {
                                 alertsStore.addQuickAlert(liveState.baseCurrency, rate)
                             } else {
                                 showPaywall = true
@@ -401,14 +417,20 @@ fun FxAppShell() {
                                 onBack = { moreRoute = MoreRoute.Menu },
                                 onOpenPaywall = { showPaywall = true },
                                 onCreateAlert = { rate ->
-                                    if (canCreateAlert(subscriptionState, alertsState.alerts.size)) {
+                                    if (
+                                        canCreateAlert(subscriptionState, alertsState.alerts.size) ||
+                                        alertsState.alerts.findQuickAlert(liveState.baseCurrency, rate) != null
+                                    ) {
                                         alertsStore.addQuickAlert(liveState.baseCurrency, rate)
                                     } else {
                                         showPaywall = true
                                     }
                                 },
                                 onCreateManualAlert = { rate, direction, target, kind ->
-                                    if (canCreateAlert(subscriptionState, alertsState.alerts.size)) {
+                                    if (
+                                        canCreateAlert(subscriptionState, alertsState.alerts.size) ||
+                                        alertsState.alerts.findMatchingAlert(liveState.baseCurrency, rate.code, target, direction, kind) != null
+                                    ) {
                                         alertsStore.addAlert(liveState.baseCurrency, rate.code, target, direction, kind)
                                     } else {
                                         showPaywall = true
@@ -1337,19 +1359,26 @@ fun CompareScreen(
                 Modifier.weight(1f).height(76.dp),
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            compareRates.chunked(2).forEach { rowRates ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    rowRates.forEach { rate ->
-                        CompareTile(
-                            rate = rate,
-                            baseCurrency = liveState.baseCurrency,
-                            onOpenDetail = onOpenDetail,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if (rowRates.size == 1) {
-                        Spacer(Modifier.weight(1f))
+        if (compareRates.isEmpty()) {
+            EmptyDetailSection(
+                title = "No comparison currencies",
+                subtitle = "The saved list is unavailable for ${liveState.baseCurrency}. Edit the comparison set to choose active currencies.",
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                compareRates.chunked(2).forEach { rowRates ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowRates.forEach { rate ->
+                            CompareTile(
+                                rate = rate,
+                                baseCurrency = liveState.baseCurrency,
+                                onOpenDetail = onOpenDetail,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (rowRates.size == 1) {
+                            Spacer(Modifier.weight(1f))
+                        }
                     }
                 }
             }
@@ -1365,13 +1394,15 @@ fun CompareScreen(
                 onClick = onOpenPaywall,
             )
         }
-        BentoCard(padding = 12.dp) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Eyebrow("OVERLAY · 1M")
-                OverlayChart(compareRates.take(4))
-                Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                    compareRates.take(4).forEachIndexed { index, rate ->
-                        LegendDot(rate.code, compareOverlayColor(index, rate.kind))
+        if (compareRates.isNotEmpty()) {
+            BentoCard(padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Eyebrow("OVERLAY · 1M")
+                    OverlayChart(compareRates.take(4))
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                        compareRates.take(4).forEachIndexed { index, rate ->
+                            LegendDot(rate.code, compareOverlayColor(index, rate.kind))
+                        }
                     }
                 }
             }
@@ -1860,6 +1891,18 @@ fun AlertsScreen(
     }
     val targetValue = parseAmountInput(targetText)
     val selectedDailyChange = selectedRate.change24h
+    val matchingCustomAlert = alertsState.alerts.findMatchingAlert(
+        baseCurrency = liveState.baseCurrency,
+        quote = selectedRate.code,
+        target = targetValue,
+        direction = selectedDirection,
+        kind = selectedKind,
+    )
+    val canCreateOrUpdate = canCreate || matchingCustomAlert != null
+    var customAlertFeedback by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(liveState.baseCurrency, selectedRate.code, selectedDirection, selectedKind, targetText) {
+        customAlertFeedback = null
+    }
     ScreenScaffold {
         if (onBack != null) {
             BackNavButton(label = "More", onClick = onBack)
@@ -1956,15 +1999,32 @@ fun AlertsScreen(
                     label = if (selectedKind == AlertKind.Target) "Target rate" else "Daily move %",
                 )
                 PrimaryButton(
-                    text = if (canCreate) "Create ${selectedDirection.label(selectedKind).lowercase()} alert" else "Unlock custom alerts",
+                    text = when {
+                        matchingCustomAlert?.enabled == true -> "Keep existing alert active"
+                        matchingCustomAlert != null -> "Reactivate existing alert"
+                        canCreate -> "Create ${selectedDirection.label(selectedKind).lowercase()} alert"
+                        else -> "Unlock custom alerts"
+                    },
                     onClick = {
-                        if (!canCreate) {
+                        if (!canCreateOrUpdate) {
                             onOpenPaywall()
                         } else if (targetValue > 0.0) {
                             onCreateManualAlert(selectedRate, selectedDirection, targetValue, selectedKind)
+                            customAlertFeedback = if (matchingCustomAlert != null) {
+                                "Existing ${liveState.baseCurrency}/${selectedRate.code} alert reactivated."
+                            } else {
+                                "${liveState.baseCurrency}/${selectedRate.code} alert created."
+                            }
                         }
                     },
                 )
+                customAlertFeedback?.let { feedback ->
+                    Text(
+                        feedback,
+                        style = FxTheme.typography.captionMono,
+                        color = FxTheme.colors.accent,
+                    )
+                }
                 Text(
                     alertSummaryLine(selectedKind, selectedRate, selectedDirection, targetValue, selectedDailyChange),
                     style = FxTheme.typography.captionMono,
@@ -2903,15 +2963,17 @@ fun SettingsScreen(
             )
         }
 
-        SectionLabel("DEV")
-        BentoCard(padding = 8.dp) {
-            SettingChoiceRow(
-                title = "Simulate ${if (subscriptionState.isPremium) "Free" else "Pro"}",
-                subtitle = "Temporary tester switch before RevenueCat is connected",
-                selected = subscriptionState.isPremium,
-                actionLabel = if (subscriptionState.isPremium) "set free" else "set pro",
-                onClick = { onDevPremiumChange(!subscriptionState.isPremium) },
-            )
+        if (PlatformConfig.isDebug) {
+            SectionLabel("DEV")
+            BentoCard(padding = 8.dp) {
+                SettingChoiceRow(
+                    title = "Simulate ${if (subscriptionState.isPremium) "Free" else "Pro"}",
+                    subtitle = "Debug-only local gate override",
+                    selected = subscriptionState.isPremium,
+                    actionLabel = if (subscriptionState.isPremium) "set free" else "set pro",
+                    onClick = { onDevPremiumChange(!subscriptionState.isPremium) },
+                )
+            }
         }
 
         Spacer(Modifier.height(8.dp))
@@ -3307,17 +3369,34 @@ private val alertPresets = listOf(
 
 private fun List<PriceAlert>.findQuickAlert(baseCurrency: String, rate: FxRate): PriceAlert? {
     val target = quickAlertTarget(rate)
-    return firstOrNull {
-        it.base == baseCurrency &&
-            it.quote == rate.code &&
-            it.kind == AlertKind.Target &&
-            it.direction == AlertDirection.Above &&
-            kotlin.math.abs(it.target - target) < ALERT_TARGET_TOLERANCE
-    }
+    return findMatchingAlert(
+        baseCurrency = baseCurrency,
+        quote = rate.code,
+        target = target,
+        direction = AlertDirection.Above,
+        kind = AlertKind.Target,
+    )
 }
 
 private fun quickAlertTarget(rate: FxRate): Double =
     rate.rate * 1.01
+
+private fun List<PriceAlert>.findMatchingAlert(
+    baseCurrency: String,
+    quote: String,
+    target: Double,
+    direction: AlertDirection,
+    kind: AlertKind,
+): PriceAlert? =
+    firstOrNull {
+        it.matchesDefinition(
+            base = baseCurrency,
+            quote = quote,
+            target = target,
+            direction = direction,
+            kind = kind,
+        )
+    }
 
 private fun PriceAlert.isHit(currentRate: Double?, currentChangePct: Double?): Boolean =
     when (kind) {
@@ -3588,8 +3667,6 @@ private fun canCreateAlert(subscriptionState: SubscriptionState, currentCount: I
     return access.hasUnlimitedAlerts || currentCount < access.alertLimit
 }
 
-private const val ALERT_TARGET_TOLERANCE = 0.0000001
-
 private data class DetailStats(
     val open: Double,
     val high: Double,
@@ -3776,6 +3853,7 @@ private fun ProUpsellCard(title: String, subtitle: String, onClick: () -> Unit) 
 @Composable
 fun PaywallScreen(
     subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
+    actionInProgress: Boolean = false,
     onClose: () -> Unit = {},
     onStart: (SubscriptionPlanKind) -> Unit = {},
     onRestore: () -> Unit = {},
@@ -3844,12 +3922,15 @@ fun PaywallScreen(
         }
         PrimaryButton(
             when {
+                actionInProgress -> "Processing..."
                 subscriptionState.isPremium -> "Continue"
                 !subscriptionState.canPurchase -> "Purchases unavailable"
                 else -> "Start FX/ Pro"
             },
             onClick = {
-                if (subscriptionState.isPremium) {
+                if (actionInProgress) {
+                    return@PrimaryButton
+                } else if (subscriptionState.isPremium) {
                     onClose()
                 } else if (subscriptionState.canPurchase) {
                     onStart(selectedPlan.kind)
@@ -3860,8 +3941,8 @@ fun PaywallScreen(
             Text(
                 "Restore purchase  ·  Terms  ·  Privacy",
                 style = FxTheme.typography.captionMono,
-                color = FxTheme.colors.textFaint,
-                modifier = Modifier.clickable(onClick = onRestore),
+                color = if (actionInProgress) FxTheme.colors.textGhost else FxTheme.colors.textFaint,
+                modifier = Modifier.clickable(enabled = !actionInProgress, onClick = onRestore),
             )
         }
     }

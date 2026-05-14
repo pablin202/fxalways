@@ -5,4 +5,5 @@ actual object PlatformConfig {
     actual val revenueCatApiKey: String = "test_aDOfCCMYLDGOStPsXdDkPJFanUC"
     actual val platform: Platform = Platform.Ios
     actual val versionName: String = "1.0.0"
+    actual val isDebug: Boolean = false
 }

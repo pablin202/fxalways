@@ -42,6 +42,25 @@ data class AlertsState(
     val activeCount: Int get() = alerts.count { it.enabled }
 }
 
+fun PriceAlert.matchesDefinition(
+    base: String,
+    quote: String,
+    target: Double,
+    direction: AlertDirection,
+    kind: AlertKind,
+): Boolean =
+    this.base == base &&
+        this.quote == quote &&
+        this.kind == kind &&
+        this.direction == direction &&
+        kotlin.math.abs(this.target - target) < duplicateTolerance(kind)
+
+fun duplicateTolerance(kind: AlertKind): Double =
+    when (kind) {
+        AlertKind.Target -> DUPLICATE_TARGET_TOLERANCE
+        AlertKind.DailyChange -> DUPLICATE_PERCENT_TOLERANCE
+    }
+
 class AlertsStore {
     private val json = Json { ignoreUnknownKeys = true }
     private val _state = MutableStateFlow(AlertsState(alerts = loadAlerts()))
@@ -69,11 +88,13 @@ class AlertsStore {
             createdAtMillis = now,
         )
         val existing = _state.value.alerts.firstOrNull {
-            it.base == base &&
-                it.quote == quote &&
-                it.kind == kind &&
-                it.direction == direction &&
-                kotlin.math.abs(it.target - target) < duplicateTolerance(kind)
+            it.matchesDefinition(
+                base = base,
+                quote = quote,
+                target = target,
+                direction = direction,
+                kind = kind,
+            )
         }
         val nextAlerts = if (existing != null) {
             _state.value.alerts.map {
@@ -126,17 +147,10 @@ class AlertsStore {
         AlertsPrefs.setAlertsJson(AlertsCodec.encode(alerts, json))
     }
 
-    private companion object {
-        const val DUPLICATE_TARGET_TOLERANCE = 0.0000001
-        const val DUPLICATE_PERCENT_TOLERANCE = 0.01
-
-        fun duplicateTolerance(kind: AlertKind): Double =
-            when (kind) {
-                AlertKind.Target -> DUPLICATE_TARGET_TOLERANCE
-                AlertKind.DailyChange -> DUPLICATE_PERCENT_TOLERANCE
-            }
-    }
 }
+
+private const val DUPLICATE_TARGET_TOLERANCE = 0.0000001
+private const val DUPLICATE_PERCENT_TOLERANCE = 0.01
 
 object AlertsCodec {
     fun decode(raw: String?, json: Json = Json { ignoreUnknownKeys = true }): List<PriceAlert> =

@@ -10,4 +10,5 @@ expect object PlatformConfig {
     val revenueCatApiKey: String
     val platform: Platform
     val versionName: String
+    val isDebug: Boolean
 }

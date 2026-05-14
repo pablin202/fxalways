@@ -5,4 +5,5 @@ actual object PlatformConfig {
     actual val revenueCatApiKey: String = BuildConfig.REVENUECAT_API_KEY
     actual val platform: Platform = Platform.Android
     actual val versionName: String = BuildConfig.VERSION_NAME
+    actual val isDebug: Boolean = BuildConfig.DEBUG
 }
