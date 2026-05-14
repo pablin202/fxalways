@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import com.fxalways.app.AppSettingsPrefs
 import com.fxalways.app.AlertTestNotifier
 import com.fxalways.app.BackupSettings
+import com.fxalways.app.DeviceLocale
 import com.fxalways.app.ExternalUrlOpener
 import com.fxalways.app.Platform
 import com.fxalways.app.PlatformConfig
@@ -601,11 +602,14 @@ private fun StartupLoadingScreen(baseCurrency: String) {
             .padding(18.dp),
         contentAlignment = Alignment.Center,
     ) {
-        GridBg(Modifier.matchParentSize().alpha(0.18f))
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            LiveDot(Modifier.size(10.dp))
-            Text("Preparing $baseCurrency rates", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-            Text("Syncing preferences", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+        GridBg(Modifier.matchParentSize().alpha(0.10f), radialMask = false)
+        GridBg(Modifier.matchParentSize().alpha(0.22f))
+        BentoCard(padding = 18.dp) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                LiveDot(Modifier.size(10.dp))
+                Text("Preparing $baseCurrency workspace", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text("Loading account, preferences and rates", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            }
         }
     }
 }
@@ -3961,30 +3965,44 @@ private data class OnboardingStep(
     val title: String,
     val body: String,
     val glyph: String,
+    val signal: String,
 )
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(onComplete: () -> Unit = {}) {
+    val localCurrency = remember { DeviceLocale.currencyCode }
+    val localRegion = remember { DeviceLocale.region.uppercase() }
+    val localLanguage = remember { DeviceLocale.language.uppercase() }
     val steps = remember {
         listOf(
             OnboardingStep(
                 tag = "STEP 01 · LIVE RATES",
                 title = "Fresh rates.\nAlways ready.",
-                body = "Tap any currency to see backend-backed mid-market rates with automatic refresh.",
+                body = "The app starts with your local base currency and keeps rates refreshed from the backend.",
                 glyph = "⌖",
+                signal = "Local base · $localCurrency",
             ),
             OnboardingStep(
                 tag = "STEP 02 · FEES THAT MATTER",
                 title = "See the cost\nbefore you send.",
                 body = "Compare estimated provider fees by amount and currency pair, then unlock deeper comparisons with Pro.",
                 glyph = "⬢",
+                signal = "Converter · fees · Pro gates",
             ),
             OnboardingStep(
                 tag = "STEP 03 · TRAVEL READY",
                 title = "Your wallet\nfollows the map.",
                 body = "Auto-detect local currency on landing. Offline-safe last rates. Per-country tipping built in.",
                 glyph = "◐",
+                signal = "Region · $localRegion",
+            ),
+            OnboardingStep(
+                tag = "STEP 04 · BACKUP",
+                title = "Start private.\nRestore later.",
+                body = "A guest backup is created silently. You can connect Google on Android or Apple on iOS when you want portability.",
+                glyph = "∞",
+                signal = "Language · $localLanguage",
             ),
         )
     }
@@ -4010,15 +4028,18 @@ fun OnboardingScreen(onComplete: () -> Unit = {}) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("FX/", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                Text(
-                    "Skip",
-                    style = FxTheme.typography.caption,
-                    color = FxTheme.colors.textDim,
-                    modifier = Modifier
-                        .clip(FxTheme.shapes.field)
-                        .clickable(onClick = onComplete)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Pill(localCurrency, variant = PillVariant.Ghost)
+                    Text(
+                        "Skip",
+                        style = FxTheme.typography.caption,
+                        color = FxTheme.colors.textDim,
+                        modifier = Modifier
+                            .clip(FxTheme.shapes.field)
+                            .clickable(onClick = onComplete)
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                    )
+                }
             }
 
             HorizontalPager(
@@ -4082,7 +4103,25 @@ private fun OnboardingPage(step: OnboardingStep) {
         Text(step.title, style = FxTheme.typography.titleXL, color = FxTheme.colors.text)
         Spacer(Modifier.height(18.dp))
         Text(step.body, style = FxTheme.typography.body, color = FxTheme.colors.textDim)
+        Spacer(Modifier.height(18.dp))
+        OnboardingSignal(step.signal)
         Spacer(Modifier.weight(0.22f))
+    }
+}
+
+@Composable
+private fun OnboardingSignal(text: String) {
+    Row(
+        modifier = Modifier
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2)
+            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LiveDot(Modifier.size(8.dp))
+        Text(text, style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
     }
 }
 

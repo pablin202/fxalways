@@ -84,6 +84,10 @@ actual object UserBackupGateway {
         val finalUser = try {
             currentUser.linkWithCredential(credential).await().user
         } catch (collision: FirebaseAuthUserCollisionException) {
+            if (currentUser.isAnonymous) {
+                runCatching { deleteAnonymousBackup(currentUser.uid) }
+                runCatching { currentUser.delete().await() }
+            }
             auth.signInWithCredential(credential).await().user
         } ?: error("Google account link failed")
 
@@ -127,6 +131,22 @@ actual object UserBackupGateway {
     private suspend fun requireUid(): String {
         val state = ensureUser()
         return state.uid ?: error(state.errorMessage ?: "Firebase user is unavailable")
+    }
+
+    private suspend fun deleteAnonymousBackup(uid: String) {
+        val firestore = FirebaseFirestore.getInstance()
+        firestore
+            .collection(COLLECTION_USERS)
+            .document(uid)
+            .collection(COLLECTION_BACKUPS)
+            .document(DOCUMENT_DEFAULT)
+            .delete()
+            .await()
+        firestore
+            .collection(COLLECTION_USERS)
+            .document(uid)
+            .delete()
+            .await()
     }
 
     private fun String.toProviderLabel(): String =

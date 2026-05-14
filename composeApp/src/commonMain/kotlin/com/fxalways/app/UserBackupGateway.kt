@@ -63,10 +63,12 @@ expect object UserBackupGateway {
 
 fun mergeBackupSnapshots(local: UserBackupSnapshot, remote: UserBackupSnapshot?): UserBackupSnapshot {
     if (remote == null) return local
+    val settings = if (local.isDefaultLocalBackup()) remote.settings else local.settings
     val alerts = (remote.alerts + local.alerts).distinctBy { it.id }
     val codes = (remote.watchlist.codes + local.watchlist.codes).distinct()
     val holdings = remote.watchlist.holdings + local.watchlist.holdings
     return local.copy(
+        settings = settings,
         alerts = alerts,
         watchlist = local.watchlist.copy(
             codes = codes,
