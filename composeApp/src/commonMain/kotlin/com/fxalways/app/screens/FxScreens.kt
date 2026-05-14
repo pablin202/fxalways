@@ -286,6 +286,11 @@ private val uiTranslations = mapOf(
         "Edit the comparison set to choose active currencies." to "Edita el set de comparación para elegir monedas activas.",
         "Compare every tracked currency" to "Comparar todas las monedas seguidas",
         "Free compares" to "Free compara",
+        "COMPARE BOARD" to "TABLERO",
+        "Average move" to "Movimiento promedio",
+        "Momentum spread" to "Spread momentum",
+        "Asset mix" to "Mix de activos",
+        "crypto" to "crypto",
         "Pro unlocks the full board and advanced overlays." to "Pro desbloquea el panel completo y overlays avanzados.",
         "OVERLAY · 1M" to "OVERLAY · 1M",
         "per 1" to "por 1",
@@ -2211,6 +2216,9 @@ fun CompareScreen(
     }
     val bestRate = compareRates.maxByOrNull { it.change24h }
     val weakestRate = compareRates.minByOrNull { it.change24h }
+    val averageAbsMove = if (compareRates.isEmpty()) 0.0 else compareRates.sumOf { kotlin.math.abs(it.change24h) } / compareRates.size
+    val momentumSpread = if (bestRate != null && weakestRate != null) bestRate.change24h - weakestRate.change24h else 0.0
+    val cryptoCount = compareRates.count { it.kind == CurrencyKind.Crypto }
     if (showCurrencyPicker) {
         CurrencyListPickerSheet(
             title = ui("Edit comparison"),
@@ -2241,7 +2249,9 @@ fun CompareScreen(
                 Pill(
                     ui(mode.label),
                     variant = if (mode == sortMode) PillVariant.Accent else PillVariant.Ghost,
-                    modifier = Modifier.clickable { sortMode = mode },
+                    modifier = Modifier
+                        .testTag("compare_sort_${mode.name}")
+                        .clickable { sortMode = mode },
                 )
             }
         }
@@ -2258,6 +2268,16 @@ fun CompareScreen(
                 weakestRate?.let { formatChange(it.change24h) } ?: ui("No data"),
                 Modifier.weight(1f).height(76.dp),
             )
+        }
+        BentoCard(Modifier.fillMaxWidth().testTag("compare_board"), padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Eyebrow(ui("COMPARE BOARD"))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetricTile(ui("Average move"), formatPercentValue(averageAbsMove) + "%", ui(sortMode.label), Modifier.weight(1f).height(76.dp))
+                    MetricTile(ui("Momentum spread"), formatPercentValue(momentumSpread) + "%", "${bestRate?.code ?: "--"} / ${weakestRate?.code ?: "--"}", Modifier.weight(1f).height(76.dp))
+                }
+                KeyValueRow(ui("Asset mix"), "${compareRates.size} ${ui("currencies")} · $cryptoCount ${ui("crypto")}")
+            }
         }
         if (compareRates.isEmpty()) {
             EmptyDetailSection(
@@ -2284,8 +2304,8 @@ fun CompareScreen(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            GhostButton("≡  ${ui("Edit comparison")}", Modifier.weight(1f), onClick = { showCurrencyPicker = true })
-            GhostButton("↗  ${ui("Open strongest")}", Modifier.weight(1f), onClick = { bestRate?.let(onOpenDetail) })
+            GhostButton("≡  ${ui("Edit comparison")}", Modifier.weight(1f).testTag("compare_edit_button"), onClick = { showCurrencyPicker = true })
+            GhostButton("↗  ${ui("Open strongest")}", Modifier.weight(1f).testTag("compare_open_strongest"), onClick = { bestRate?.let(onOpenDetail) })
         }
         if (!subscriptionState.isPremium) {
             ProUpsellCard(
@@ -2295,7 +2315,7 @@ fun CompareScreen(
             )
         }
         if (compareRates.isNotEmpty()) {
-            BentoCard(padding = 12.dp) {
+            BentoCard(modifier = Modifier.testTag("compare_overlay"), padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Eyebrow(ui("OVERLAY · 1M"))
                     OverlayChart(compareRates.take(4))
@@ -2313,7 +2333,9 @@ fun CompareScreen(
 @Composable
 private fun CompareTile(rate: FxRate, baseCurrency: String, onOpenDetail: (FxRate) -> Unit, modifier: Modifier = Modifier) {
     BentoTile(
-        modifier = modifier.clickable { onOpenDetail(rate) },
+        modifier = modifier
+            .testTag("compare_tile_${rate.code}")
+            .clickable { onOpenDetail(rate) },
         padding = 10.dp,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -4095,10 +4117,11 @@ private fun SettingChoiceRow(
     subtitle: String,
     selected: Boolean,
 	    actionLabel: String = if (selected) ui("active") else ui("select"),
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(FxTheme.shapes.field)
             .background(if (selected) FxTheme.colors.accentSoft else Color.Transparent)
@@ -4160,7 +4183,7 @@ private fun CurrencyPickerSheet(
                     onValueChange = { query = it.take(24) },
                     singleLine = true,
                     textStyle = FxTheme.typography.body.copy(color = FxTheme.colors.text),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("currency_list_search"),
                     decorationBox = { innerTextField ->
                         if (query.isBlank()) {
 	                            Text(ui("Search currency"), style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
@@ -4273,6 +4296,7 @@ private fun CurrencyListPickerSheet(
                         subtitle = if (locked && !isPremium) lockedSubtitle else localizedCurrencyName(currency.name),
                         selected = selected,
 	                        actionLabel = if (selected) ui("added") else if (locked) ui("pro") else ui("add"),
+                        modifier = Modifier.testTag("currency_list_${currency.code}"),
                         onClick = {
                             when {
                                 selected -> draftCodes = draftCodes.filterNot { it == currency.code }
@@ -4288,9 +4312,9 @@ private fun CurrencyListPickerSheet(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
 	                GhostButton(ui("Cancel"), Modifier.weight(1f), onClick = onDismiss)
-                PrimaryButton(
-	                    ui("Apply"),
-                    Modifier.weight(1f),
+	                PrimaryButton(
+		                    ui("Apply"),
+	                    Modifier.weight(1f).testTag("currency_list_apply"),
                     onClick = {
                         if (draftCodes.isNotEmpty()) {
                             onApply(draftCodes.take(effectiveLimit))
