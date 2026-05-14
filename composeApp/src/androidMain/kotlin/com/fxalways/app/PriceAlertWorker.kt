@@ -14,9 +14,11 @@ import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.fxalways.app.data.AlertDirection
+import com.fxalways.app.data.AlertKind
 import com.fxalways.app.data.AlertsCodec
 import com.fxalways.app.data.ExchangeApi
 import com.fxalways.app.data.PriceAlert
+import com.fxalways.app.domain.HistoricalPoint
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 
@@ -38,8 +40,15 @@ class PriceAlertWorker(
                 .map { it.base }
                 .distinct()
                 .associateWith { base -> api.latest(base) }
+            val dailyMovesByPair = activeAlerts
+                .filter { it.kind == AlertKind.DailyChange }
+                .associate { alert ->
+                    "${alert.base}/${alert.quote}" to runCatching {
+                        api.history(alert.base, alert.quote, days = 2).points.dailyChangePct()
+                    }.getOrNull()
+                }
             val now = Clock.System.now().toEpochMilliseconds()
-            val updatedAlerts = alerts.toMutableTriggeredCopy(now, ratesByBase)
+            val updatedAlerts = alerts.toMutableTriggeredCopy(now, ratesByBase, dailyMovesByPair)
 
             prefs.edit()
                 .putString(KEY_ALERTS_JSON, AlertsCodec.encode(updatedAlerts, json))
@@ -50,27 +59,38 @@ class PriceAlertWorker(
         }
     }
 
-    private fun List<PriceAlert>.toMutableTriggeredCopy(now: Long, ratesByBase: Map<String, com.fxalways.app.domain.LatestRates>): List<PriceAlert> =
+    private fun List<PriceAlert>.toMutableTriggeredCopy(
+        now: Long,
+        ratesByBase: Map<String, com.fxalways.app.domain.LatestRates>,
+        dailyMovesByPair: Map<String, Double?>,
+    ): List<PriceAlert> =
         map { alert ->
             val currentRate = ratesByBase[alert.base]?.rates?.firstOrNull { it.code == alert.quote }?.value
-            if (currentRate != null && alert.shouldTrigger(currentRate, now)) {
-                notifyTriggered(alert, currentRate)
+            val currentDailyChange = dailyMovesByPair["${alert.base}/${alert.quote}"]
+            if (alert.shouldTrigger(currentRate, currentDailyChange, now)) {
+                notifyTriggered(alert, currentRate, currentDailyChange)
                 alert.copy(lastTriggeredAtMillis = now)
             } else {
                 alert
             }
         }
 
-    private fun PriceAlert.shouldTrigger(currentRate: Double, now: Long): Boolean {
-        val crossed = when (direction) {
-            AlertDirection.Above -> currentRate >= target
-            AlertDirection.Below -> currentRate <= target
+    private fun PriceAlert.shouldTrigger(currentRate: Double?, currentDailyChange: Double?, now: Long): Boolean {
+        val crossed = when (kind) {
+            AlertKind.Target -> currentRate != null && when (direction) {
+                AlertDirection.Above -> currentRate >= target
+                AlertDirection.Below -> currentRate <= target
+            }
+            AlertKind.DailyChange -> currentDailyChange != null && when (direction) {
+                AlertDirection.Above -> currentDailyChange >= target
+                AlertDirection.Below -> currentDailyChange <= -target
+            }
         }
         val outsideCooldown = lastTriggeredAtMillis?.let { now - it >= TRIGGER_COOLDOWN_MILLIS } ?: true
         return crossed && outsideCooldown
     }
 
-    private fun notifyTriggered(alert: PriceAlert, currentRate: Double) {
+    private fun notifyTriggered(alert: PriceAlert, currentRate: Double?, currentDailyChange: Double?) {
         if (!canPostNotifications()) return
         ensureChannel()
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
@@ -85,10 +105,10 @@ class PriceAlertWorker(
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("${alert.base}/${alert.quote} alert hit")
-            .setContentText("${alert.direction.label} ${formatRate(alert.target)} · now ${formatRate(currentRate)}")
+            .setContentText(alert.notificationBody(currentRate, currentDailyChange))
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("${alert.base}/${alert.quote} is ${formatRate(currentRate)}. Your target was ${alert.direction.label.lowercase()} ${formatRate(alert.target)}."),
+                    .bigText("${alert.base}/${alert.quote}: ${alert.notificationBody(currentRate, currentDailyChange)}"),
             )
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -121,6 +141,34 @@ class PriceAlertWorker(
             AlertDirection.Above -> "Above"
             AlertDirection.Below -> "Below"
         }
+
+    private fun PriceAlert.notificationBody(currentRate: Double?, currentDailyChange: Double?): String =
+        when (kind) {
+            AlertKind.Target -> "${direction.label} ${formatRate(target)} · now ${currentRate?.let(::formatRate) ?: "--"}"
+            AlertKind.DailyChange -> "${direction.dailyLabel} ${formatPercentValue(target)}% · 24h ${currentDailyChange?.let(::formatSignedPercent) ?: "--"}"
+        }
+
+    private val AlertDirection.dailyLabel: String
+        get() = when (this) {
+            AlertDirection.Above -> "Up"
+            AlertDirection.Below -> "Down"
+        }
+
+    private fun List<HistoricalPoint>.dailyChangePct(): Double? {
+        val sorted = sortedBy { it.date }
+        val previous = sorted.getOrNull(sorted.lastIndex - 1)?.value ?: return null
+        val current = sorted.lastOrNull()?.value ?: return null
+        if (previous == 0.0) return null
+        return ((current - previous) / previous) * 100.0
+    }
+
+    private fun formatPercentValue(value: Double): String =
+        ((value * 10.0).toInt() / 10.0).toString()
+
+    private fun formatSignedPercent(value: Double): String {
+        val sign = if (value >= 0.0) "+" else "-"
+        return "$sign${formatPercentValue(kotlin.math.abs(value))}%"
+    }
 
     private companion object {
         const val PREFS_NAME = "fx_always_prefs"

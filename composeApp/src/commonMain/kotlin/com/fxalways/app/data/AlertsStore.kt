@@ -18,12 +18,19 @@ enum class AlertDirection {
 }
 
 @Serializable
+enum class AlertKind {
+    Target,
+    DailyChange,
+}
+
+@Serializable
 data class PriceAlert(
     val id: String,
     val base: String,
     val quote: String,
     val target: Double,
     val direction: AlertDirection,
+    val kind: AlertKind = AlertKind.Target,
     val enabled: Boolean = true,
     val createdAtMillis: Long = 0L,
     val lastTriggeredAtMillis: Long? = null,
@@ -46,10 +53,11 @@ class AlertsStore {
             quote = rate.code,
             target = rate.rate * 1.01,
             direction = AlertDirection.Above,
+            kind = AlertKind.Target,
         )
     }
 
-    fun addAlert(base: String, quote: String, target: Double, direction: AlertDirection) {
+    fun addAlert(base: String, quote: String, target: Double, direction: AlertDirection, kind: AlertKind = AlertKind.Target) {
         val now = Clock.System.now().toEpochMilliseconds()
         val alert = PriceAlert(
             id = "$base-$quote-$now",
@@ -57,13 +65,15 @@ class AlertsStore {
             quote = quote,
             target = target,
             direction = direction,
+            kind = kind,
             createdAtMillis = now,
         )
         val existing = _state.value.alerts.firstOrNull {
             it.base == base &&
                 it.quote == quote &&
+                it.kind == kind &&
                 it.direction == direction &&
-                kotlin.math.abs(it.target - target) < DUPLICATE_TARGET_TOLERANCE
+                kotlin.math.abs(it.target - target) < duplicateTolerance(kind)
         }
         val nextAlerts = if (existing != null) {
             _state.value.alerts.map {
@@ -118,6 +128,13 @@ class AlertsStore {
 
     private companion object {
         const val DUPLICATE_TARGET_TOLERANCE = 0.0000001
+        const val DUPLICATE_PERCENT_TOLERANCE = 0.01
+
+        fun duplicateTolerance(kind: AlertKind): Double =
+            when (kind) {
+                AlertKind.Target -> DUPLICATE_TARGET_TOLERANCE
+                AlertKind.DailyChange -> DUPLICATE_PERCENT_TOLERANCE
+            }
     }
 }
 

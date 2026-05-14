@@ -91,6 +91,7 @@ import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.data.AlertsState
 import com.fxalways.app.data.AlertsStore
 import com.fxalways.app.data.AlertDirection
+import com.fxalways.app.data.AlertKind
 import com.fxalways.app.data.DetailStore
 import com.fxalways.app.data.DetailUiState
 import com.fxalways.app.data.LiveRatesState
@@ -375,9 +376,9 @@ fun FxAppShell() {
                                         showPaywall = true
                                     }
                                 },
-                                onCreateManualAlert = { rate, direction, target ->
+                                onCreateManualAlert = { rate, direction, target, kind ->
                                     if (canCreateAlert(subscriptionState, alertsState.alerts.size)) {
-                                        alertsStore.addAlert(liveState.baseCurrency, rate.code, target, direction)
+                                        alertsStore.addAlert(liveState.baseCurrency, rate.code, target, direction, kind)
                                     } else {
                                         showPaywall = true
                                     }
@@ -1485,7 +1486,7 @@ fun AlertsScreen(
     onBack: (() -> Unit)? = null,
     onOpenPaywall: () -> Unit = {},
     onCreateAlert: (FxRate) -> Unit = {},
-    onCreateManualAlert: (FxRate, AlertDirection, Double) -> Unit = { _, _, _ -> },
+    onCreateManualAlert: (FxRate, AlertDirection, Double, AlertKind) -> Unit = { _, _, _, _ -> },
     onResumeAlert: (String) -> Unit = {},
     onToggleAlert: (String) -> Unit = {},
     onDeleteAlert: (String) -> Unit = {},
@@ -1500,27 +1501,34 @@ fun AlertsScreen(
     }
     var selectedRateCode by remember(liveState.baseCurrency) { mutableStateOf(alertRates.firstOrNull()?.code ?: "EUR") }
     val selectedRate = alertRates.firstOrNull { it.code == selectedRateCode } ?: alertRates.firstOrNull() ?: FavoriteRates.first()
+    var selectedKind by remember { mutableStateOf(AlertKind.Target) }
     var selectedDirection by remember { mutableStateOf(AlertDirection.Above) }
-    var targetText by remember(selectedRate.code, selectedDirection) {
-        val multiplier = if (selectedDirection == AlertDirection.Above) 1.01 else 0.99
-        mutableStateOf(formatRate(selectedRate.rate * multiplier))
+    var targetText by remember(selectedRate.code, selectedDirection, selectedKind) {
+        mutableStateOf(defaultAlertInput(selectedRate, selectedDirection, selectedKind))
     }
-    val targetValue = targetText.replace(",", "").toDoubleOrNull()
+    val targetValue = parseAmountInput(targetText)
+    val selectedDailyChange = selectedRate.change24h
     ScreenScaffold {
         if (onBack != null) {
             BackNavButton(label = "More", onClick = onBack)
         }
         ScreenHeader("Alerts", sub = "PRICE TARGETS", subtitle = "$limitLabel alerts · ${liveState.baseCurrency} base")
 
-        BentoCard(Modifier.fillMaxWidth().height(132.dp), padding = 14.dp) {
+        BentoCard(Modifier.fillMaxWidth().heightIn(min = 144.dp), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.12f))
-            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Eyebrow(if (subscriptionState.isPremium) "FX/ PRO" else "FX/ FREE")
                     Pill("${alertsState.activeCount} active", variant = if (alertsState.activeCount > 0) PillVariant.Up else PillVariant.Ghost)
                 }
                 Text("Watch breakouts without watching charts.", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                Text("Checks run on-device every 15 min when network is available.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                Text(
+                    "Android checks every 15 min when online. iOS saves alerts now; push delivery is next.",
+                    style = FxTheme.typography.caption,
+                    color = FxTheme.colors.textDim,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
@@ -1537,8 +1545,7 @@ fun AlertsScreen(
                                     variant = if (rate.code == selectedRate.code) PillVariant.Accent else PillVariant.Ghost,
                                     modifier = Modifier.clickable {
                                         selectedRateCode = rate.code
-                                        val multiplier = if (selectedDirection == AlertDirection.Above) 1.01 else 0.99
-                                        targetText = formatRate(rate.rate * multiplier)
+                                        targetText = defaultAlertInput(rate, selectedDirection, selectedKind)
                                     },
                                 )
                             }
@@ -1546,14 +1553,25 @@ fun AlertsScreen(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AlertKind.entries.forEach { kind ->
+                        Pill(
+                            text = kind.label,
+                            variant = if (kind == selectedKind) PillVariant.Accent else PillVariant.Ghost,
+                            modifier = Modifier.clickable {
+                                selectedKind = kind
+                                targetText = defaultAlertInput(selectedRate, selectedDirection, kind)
+                            },
+                        )
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AlertDirection.entries.forEach { direction ->
                         Pill(
-                            text = direction.label,
+                            text = direction.label(selectedKind),
                             variant = if (direction == selectedDirection) PillVariant.Accent else PillVariant.Ghost,
                             modifier = Modifier.clickable {
                                 selectedDirection = direction
-                                val multiplier = if (direction == AlertDirection.Above) 1.01 else 0.99
-                                targetText = formatRate(selectedRate.rate * multiplier)
+                                targetText = defaultAlertInput(selectedRate, direction, selectedKind)
                             },
                         )
                     }
@@ -1565,7 +1583,11 @@ fun AlertsScreen(
                             variant = PillVariant.Ghost,
                             modifier = Modifier.clickable {
                                 selectedDirection = if (preset.percent >= 0.0) AlertDirection.Above else AlertDirection.Below
-                                targetText = formatRate(selectedRate.rate * (1.0 + preset.percent / 100.0))
+                                targetText = if (selectedKind == AlertKind.Target) {
+                                    formatRate(selectedRate.rate * (1.0 + preset.percent / 100.0))
+                                } else {
+                                    formatPercentValue(kotlin.math.abs(preset.percent))
+                                }
                             },
                         )
                     }
@@ -1576,19 +1598,20 @@ fun AlertsScreen(
                         targetText = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)
                     },
                     pair = "${liveState.baseCurrency}/${selectedRate.code}",
+                    label = if (selectedKind == AlertKind.Target) "Target rate" else "Daily move %",
                 )
                 PrimaryButton(
-                    text = if (canCreate) "Create ${selectedDirection.label.lowercase()} alert" else "Unlock custom alerts",
+                    text = if (canCreate) "Create ${selectedDirection.label(selectedKind).lowercase()} alert" else "Unlock custom alerts",
                     onClick = {
                         if (!canCreate) {
                             onOpenPaywall()
-                        } else if (targetValue != null && targetValue > 0.0) {
-                            onCreateManualAlert(selectedRate, selectedDirection, targetValue)
+                        } else if (targetValue > 0.0) {
+                            onCreateManualAlert(selectedRate, selectedDirection, targetValue, selectedKind)
                         }
                     },
                 )
                 Text(
-                    "Current ${formatRate(selectedRate.rate)} · target ${targetValue?.let(::formatRate) ?: "--"}",
+                    alertSummaryLine(selectedKind, selectedRate, selectedDirection, targetValue, selectedDailyChange),
                     style = FxTheme.typography.captionMono,
                     color = FxTheme.colors.textFaint,
                 )
@@ -1647,6 +1670,7 @@ fun AlertsScreen(
                     AlertCard(
                         alert = alert,
                         currentRate = currentRate,
+                        currentChangePct = currentRatesByCode[alert.quote]?.change24h.takeIf { alert.base == liveState.baseCurrency },
                         onToggle = onToggleAlert,
                         onDelete = onDeleteAlert,
                         onTest = onTestAlert,
@@ -1906,7 +1930,9 @@ private fun AlertTargetField(
     value: String,
     onValueChange: (String) -> Unit,
     pair: String,
+    label: String,
 ) {
+    val focusManager = LocalFocusManager.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1916,13 +1942,14 @@ private fun AlertTargetField(
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(pair, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            Text("$label · $pair", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
                 textStyle = FxTheme.typography.numberL.copy(color = FxTheme.colors.text),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 decorationBox = { innerTextField ->
                     if (value.isBlank()) {
                         Text("0.0000", style = FxTheme.typography.numberL, color = FxTheme.colors.textGhost)
@@ -1965,29 +1992,31 @@ private fun AlertQuickRow(
 private fun AlertCard(
     alert: PriceAlert,
     currentRate: Double?,
+    currentChangePct: Double?,
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit,
     onTest: (PriceAlert) -> Unit,
 ) {
+    val isHit = alert.isHit(currentRate, currentChangePct)
     BentoCard(padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                FlagDot("🔔", CurrencyKind.Fiat, 32.dp)
+                FlagDot(if (alert.kind == AlertKind.Target) "◎" else "%", CurrencyKind.Fiat, 32.dp)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text("${alert.base} / ${alert.quote}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                     Text(
-                        "${alert.direction.label} ${formatRate(alert.target)} · ${alert.statusLabel(currentRate)}",
+                        "${alert.direction.label(alert.kind)} ${alert.targetLabel()} · ${alert.statusLabel(currentRate, currentChangePct)}",
                         style = FxTheme.typography.captionMono,
-                        color = if (alert.isHit(currentRate)) FxTheme.colors.up else FxTheme.colors.textFaint,
+                        color = if (isHit) FxTheme.colors.up else FxTheme.colors.textFaint,
                     )
                 }
                 Pill(if (alert.enabled) "on" else "paused", variant = if (alert.enabled) PillVariant.Up else PillVariant.Ghost)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 MetricTile(
-                    "CURRENT",
-                    currentRate?.let(::formatRate) ?: "--",
-                    alert.distanceLabel(currentRate),
+                    if (alert.kind == AlertKind.Target) "CURRENT" else "24H MOVE",
+                    if (alert.kind == AlertKind.Target) currentRate?.let(::formatRate) ?: "--" else currentChangePct?.let(::formatSignedPercent) ?: "--",
+                    alert.distanceLabel(currentRate, currentChangePct),
                     Modifier.weight(1f).height(72.dp),
                 )
                 MetricTile(
@@ -2733,10 +2762,22 @@ private fun formatLastSynced(millis: Long): String {
 private fun formatLastSynced(millis: Long?): String =
     millis?.let(::formatLastSynced) ?: "Sync pending"
 
-private val AlertDirection.label: String
+private val AlertKind.label: String
     get() = when (this) {
-        AlertDirection.Above -> "Above"
-        AlertDirection.Below -> "Below"
+        AlertKind.Target -> "Target"
+        AlertKind.DailyChange -> "Daily move"
+    }
+
+private fun AlertDirection.label(kind: AlertKind): String =
+    when (kind) {
+        AlertKind.Target -> when (this) {
+            AlertDirection.Above -> "Above"
+            AlertDirection.Below -> "Below"
+        }
+        AlertKind.DailyChange -> when (this) {
+            AlertDirection.Above -> "Up"
+            AlertDirection.Below -> "Down"
+        }
     }
 
 private enum class QuickAlertState(
@@ -2766,6 +2807,7 @@ private fun List<PriceAlert>.findQuickAlert(baseCurrency: String, rate: FxRate):
     return firstOrNull {
         it.base == baseCurrency &&
             it.quote == rate.code &&
+            it.kind == AlertKind.Target &&
             it.direction == AlertDirection.Above &&
             kotlin.math.abs(it.target - target) < ALERT_TARGET_TOLERANCE
     }
@@ -2774,27 +2816,53 @@ private fun List<PriceAlert>.findQuickAlert(baseCurrency: String, rate: FxRate):
 private fun quickAlertTarget(rate: FxRate): Double =
     rate.rate * 1.01
 
-private fun PriceAlert.isHit(currentRate: Double?): Boolean {
-    if (currentRate == null) return false
-    return when (direction) {
-        AlertDirection.Above -> currentRate >= target
-        AlertDirection.Below -> currentRate <= target
+private fun PriceAlert.isHit(currentRate: Double?, currentChangePct: Double?): Boolean =
+    when (kind) {
+        AlertKind.Target -> {
+            if (currentRate == null) false else when (direction) {
+                AlertDirection.Above -> currentRate >= target
+                AlertDirection.Below -> currentRate <= target
+            }
+        }
+        AlertKind.DailyChange -> {
+            if (currentChangePct == null) false else when (direction) {
+                AlertDirection.Above -> currentChangePct >= target
+                AlertDirection.Below -> currentChangePct <= -target
+            }
+        }
     }
+
+private fun PriceAlert.statusLabel(currentRate: Double?, currentChangePct: Double?): String =
+    when {
+        kind == AlertKind.Target && currentRate == null -> "waiting for ${base} live rate"
+        kind == AlertKind.DailyChange && currentChangePct == null -> "waiting for 24h change"
+        isHit(currentRate, currentChangePct) -> "target hit"
+        kind == AlertKind.Target && currentRate != null -> "${distancePercent(currentRate)}% away"
+        kind == AlertKind.DailyChange && currentChangePct != null -> "${dailyChangeDistancePercent(currentChangePct)} pts away"
+        else -> "waiting"
+    }
+
+private fun PriceAlert.distanceLabel(currentRate: Double?, currentChangePct: Double?): String =
+    when {
+        kind == AlertKind.Target && currentRate == null -> "base changed"
+        kind == AlertKind.DailyChange && currentChangePct == null -> "waiting"
+        isHit(currentRate, currentChangePct) -> "target reached"
+        kind == AlertKind.Target && currentRate != null -> "${distancePercent(currentRate)}% to target"
+        kind == AlertKind.DailyChange && currentChangePct != null -> "${dailyChangeDistancePercent(currentChangePct)} pts to move"
+        else -> "waiting"
+    }
+
+private fun PriceAlert.targetLabel(): String =
+    when (kind) {
+        AlertKind.Target -> formatRate(target)
+        AlertKind.DailyChange -> "${formatPercentValue(target)}%"
+    }
+
+private fun PriceAlert.dailyChangeDistancePercent(currentChangePct: Double): String {
+    val threshold = if (direction == AlertDirection.Above) target else -target
+    val distance = kotlin.math.abs(threshold - currentChangePct).coerceAtLeast(0.0)
+    return if (distance < 0.1) "<0.1" else formatPercentValue(distance)
 }
-
-private fun PriceAlert.statusLabel(currentRate: Double?): String =
-    when {
-        currentRate == null -> "waiting for ${base} live rate"
-        isHit(currentRate) -> "target hit"
-        else -> "${distancePercent(currentRate)}% away"
-    }
-
-private fun PriceAlert.distanceLabel(currentRate: Double?): String =
-    when {
-        currentRate == null -> "base changed"
-        isHit(currentRate) -> "target reached"
-        else -> "${distancePercent(currentRate)}% to target"
-    }
 
 private fun PriceAlert.distancePercent(currentRate: Double): String {
     val distance = when (direction) {
@@ -2802,6 +2870,38 @@ private fun PriceAlert.distancePercent(currentRate: Double): String {
         AlertDirection.Below -> (currentRate - target) / currentRate
     }.coerceAtLeast(0.0) * 100.0
     return if (distance < 0.1) "<0.1" else ((distance * 10).toInt() / 10.0).toString()
+}
+
+private fun defaultAlertInput(rate: FxRate, direction: AlertDirection, kind: AlertKind): String =
+    when (kind) {
+        AlertKind.Target -> {
+            val multiplier = if (direction == AlertDirection.Above) 1.01 else 0.99
+            formatRate(rate.rate * multiplier)
+        }
+        AlertKind.DailyChange -> "1.0"
+    }
+
+private fun alertSummaryLine(
+    kind: AlertKind,
+    rate: FxRate,
+    direction: AlertDirection,
+    targetValue: Double,
+    currentChangePct: Double,
+): String =
+    when (kind) {
+        AlertKind.Target -> "Current ${formatRate(rate.rate)} · target ${if (targetValue > 0.0) formatRate(targetValue) else "--"}"
+        AlertKind.DailyChange -> {
+            val threshold = if (targetValue > 0.0) "${direction.label(kind).lowercase()} ${formatPercentValue(targetValue)}%" else "--"
+            "24h ${formatSignedPercent(currentChangePct)} · alert at $threshold"
+        }
+    }
+
+private fun formatPercentValue(value: Double): String =
+    ((value * 10.0).toInt() / 10.0).toString()
+
+private fun formatSignedPercent(value: Double): String {
+    val sign = if (value >= 0.0) "+" else "-"
+    return "$sign${formatPercentValue(kotlin.math.abs(value))}%"
 }
 
 private fun shortAgeLabel(millis: Long): String {

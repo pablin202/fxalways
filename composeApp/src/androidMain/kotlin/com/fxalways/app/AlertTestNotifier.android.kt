@@ -11,6 +11,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.fxalways.app.data.AlertDirection
+import com.fxalways.app.data.AlertKind
 import com.fxalways.app.data.PriceAlert
 
 actual object AlertTestNotifier {
@@ -32,7 +34,7 @@ actual object AlertTestNotifier {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Test alert · ${alert.base}/${alert.quote}")
-            .setContentText("${alert.direction.label} ${formatRate(alert.target)}")
+            .setContentText(alert.testBody())
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -54,4 +56,25 @@ actual object AlertTestNotifier {
             },
         )
     }
+
+    private fun PriceAlert.testBody(): String =
+        when (kind) {
+            AlertKind.Target -> "${direction.targetLabel} ${formatRate(target)}"
+            AlertKind.DailyChange -> "${direction.dailyLabel} ${formatPercentValue(target)}% daily move"
+        }
+
+    private val AlertDirection.targetLabel: String
+        get() = when (this) {
+            AlertDirection.Above -> "Above"
+            AlertDirection.Below -> "Below"
+        }
+
+    private val AlertDirection.dailyLabel: String
+        get() = when (this) {
+            AlertDirection.Above -> "Up"
+            AlertDirection.Below -> "Down"
+        }
+
+    private fun formatPercentValue(value: Double): String =
+        ((value * 10.0).toInt() / 10.0).toString()
 }
