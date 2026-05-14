@@ -3476,15 +3476,8 @@ fun NewsScreen(
             }
         }
 	        SectionLabel("${ui("RECENT LINES")} · ${filteredStories.size}")
-        if (newsState.errorMessage != null) {
-            Text(
-	                "${ui("News backend unavailable")} · ${newsState.errorMessage}",
-                style = FxTheme.typography.captionMono,
-                color = FxTheme.colors.down,
-            )
-        }
         if (visibleStories.isEmpty()) {
-            BentoCard(padding = 12.dp) {
+            BentoCard(modifier = Modifier.fillMaxWidth(), padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
 	                    Text(ui(emptyCopy.first), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
 	                    Text(ui(emptyCopy.second), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
@@ -5197,23 +5190,46 @@ fun OfflineScreen(
     liveState: LiveRatesState = LiveRatesState(),
     onRefresh: () -> Unit = {},
 ) {
+    val primaryRate = liveState.favorites.firstOrNull()
+        ?: liveState.converter.firstOrNull { it.code != liveState.baseCurrency }
+        ?: liveState.compare.firstOrNull()
     ScreenScaffold {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LiveDot(color = FxTheme.colors.down)
 	            Eyebrow(ui("OFFLINE"), color = FxTheme.colors.down)
-	            Text("${ui("cached")} · 14:32 UTC", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+	            Text(localizedRuntimeLabel(liveState.updatedLabel), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
         }
-	        ScreenHeader(ui("No connection"), subtitle = ui("Showing rates from your last sync · 4 min ago"))
-        BentoCard {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-	                Eyebrow("${ui("LAST KNOWN")} · USD → EUR", color = FxTheme.colors.down)
-                Text("0.9182", style = FxTheme.typography.numberXL, color = FxTheme.colors.textDim)
-                Text("14:28:11 UTC  ·  4 ${ui("min stale")}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+	        ScreenHeader(
+            ui("No connection"),
+            subtitle = if (liveState.isOfflineCache) {
+                ui("Showing rates from your last sync")
+            } else {
+                ui("Connect once to save rates for offline use")
+            },
+        )
+        if (primaryRate != null) {
+            BentoCard {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+	                Eyebrow("${ui("LAST KNOWN")} · ${liveState.baseCurrency} → ${primaryRate.code}", color = FxTheme.colors.down)
+                    Text(formatRate(primaryRate.rate), style = FxTheme.typography.numberXL, color = FxTheme.colors.textDim)
+                    Text(localizedRuntimeLabel(liveState.updatedLabel), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                }
+            }
+        } else {
+            BentoCard {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Eyebrow(ui("LAST KNOWN"), color = FxTheme.colors.down)
+                    Text(ui("No saved rates yet"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.textDim)
+                }
             }
         }
 	        PrimaryButton("↻  ${ui("Retry connection")}", onClick = onRefresh)
 	        SectionLabel(ui("CACHED FAVORITES"))
-        BentoCard(padding = 0.dp) { Column { liveState.favorites.take(4).forEach { CurrencyRow(localizedRate(it), dense = true, enabled = false) } } }
+        BentoCard(padding = 0.dp) {
+            Column {
+                liveState.favorites.take(4).forEach { CurrencyRow(localizedRate(it), dense = true, enabled = false) }
+            }
+        }
         Text("╌╌╌  ${ui("saved locally")}  ╌╌╌", style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
     }
 }

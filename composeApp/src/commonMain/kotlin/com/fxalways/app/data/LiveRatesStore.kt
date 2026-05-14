@@ -1,5 +1,6 @@
 package com.fxalways.app.data
 
+import com.fxalways.app.LiveRatesCachePrefs
 import com.fxalways.app.data.mock.CompareRates
 import com.fxalways.app.data.mock.ConverterRates
 import com.fxalways.app.data.mock.CryptoRates
@@ -24,10 +25,15 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 data class LiveRatesState(
     val isLoading: Boolean = true,
     val isLive: Boolean = false,
+    val isOfflineCache: Boolean = false,
     val errorMessage: String? = null,
     val baseCurrency: String = "USD",
     val updatedLabel: String = "cached · mock",
@@ -49,6 +55,7 @@ class LiveRatesStore(
     val state: StateFlow<LiveRatesState> = _state
     private var autoRefreshJob: Job? = null
     private var refreshJob: Job? = null
+    private val json = Json { ignoreUnknownKeys = true }
 
     init {
         refresh()
@@ -88,8 +95,7 @@ class LiveRatesStore(
                 val historyTargets = targets.filter { it.code in historyCodes }.take(8)
                 val histories = historyTargets.map { definition ->
                     async {
-                        val history = api.history(base, definition.code, days = 45)
-                        definition to history.points
+                        definition to runCatching { api.history(base, definition.code, days = 45).points }.getOrDefault(emptyList())
                     }
                 }.awaitAll().toMap()
 
@@ -128,26 +134,33 @@ class LiveRatesStore(
                     basePriority(base, converterCodes, liveRates).forEach(::add)
                     addAll(CryptoRates.take(1))
                 }
+                val nextState = LiveRatesState(
+                    isLoading = false,
+                    isLive = true,
+                    isOfflineCache = false,
+                    baseCurrency = base,
+                    updatedLabel = "${latest.date} · ${latest.provider} · ${refreshTimeLabel()}",
+                    autoRefreshLabel = "Auto-refresh every ${AUTO_REFRESH_INTERVAL_MILLIS / 60_000} min",
+                    favorites = favoriteRates,
+                    converter = converterRates,
+                    compare = basePriority(base, compareCodes, liveRates).take(8),
+                    allFiat = allFiatRates,
+                    detailSeries = histories.values.firstOrNull()?.toSparkline(DetailSeries) ?: DetailSeries,
+                )
+                LiveRatesCachePrefs.setCacheJson(base, json.encodeToString(nextState.toCachePayload()))
 
                 _state.update {
-                    it.copy(
-                        isLoading = false,
-                        isLive = true,
-                        baseCurrency = base,
-                        updatedLabel = "${latest.date} · ${latest.provider} · ${refreshTimeLabel()}",
-                        autoRefreshLabel = "Auto-refresh every ${AUTO_REFRESH_INTERVAL_MILLIS / 60_000} min",
-                        favorites = favoriteRates,
-                        converter = converterRates,
-                        compare = basePriority(base, compareCodes, liveRates).take(8),
-                        allFiat = allFiatRates,
-                        detailSeries = histories.values.firstOrNull()?.toSparkline(DetailSeries) ?: DetailSeries,
-                    )
+                    nextState
                 }
             }.onFailure { throwable ->
-                _state.update {
-                    it.copy(
+                val base = _state.value.baseCurrency
+                val cached = LiveRatesCachePrefs.cacheJson(base)
+                    ?.let { raw -> runCatching { json.decodeFromString<CachedLiveRatesPayload>(raw).toState(throwable.message) }.getOrNull() }
+                _state.update { current ->
+                    cached ?: current.copy(
                         isLoading = false,
                         isLive = false,
+                        isOfflineCache = false,
                         errorMessage = throwable.message,
                     )
                 }
@@ -159,6 +172,73 @@ class LiveRatesStore(
         const val AUTO_REFRESH_INTERVAL_MILLIS = 60_000L
     }
 }
+
+@Serializable
+private data class CachedLiveRatesPayload(
+    val baseCurrency: String,
+    val updatedLabel: String,
+    val cachedAtMillis: Long,
+    val favorites: List<CachedFxRate>,
+    val converter: List<CachedFxRate>,
+    val compare: List<CachedFxRate>,
+    val allFiat: List<CachedFxRate>,
+    val detailSeries: List<Float>,
+)
+
+@Serializable
+private data class CachedFxRate(
+    val code: String,
+    val name: String,
+    val glyph: String,
+    val kind: String,
+    val rate: Double,
+    val change24h: Double,
+    val sparkline: List<Float>,
+    val caption: String,
+)
+
+private fun LiveRatesState.toCachePayload(): CachedLiveRatesPayload =
+    CachedLiveRatesPayload(
+        baseCurrency = baseCurrency,
+        updatedLabel = updatedLabel,
+        cachedAtMillis = Clock.System.now().toEpochMilliseconds(),
+        favorites = favorites.map { it.toCache() },
+        converter = converter.map { it.toCache() },
+        compare = compare.map { it.toCache() },
+        allFiat = allFiat.map { it.toCache() },
+        detailSeries = detailSeries,
+    )
+
+private fun CachedLiveRatesPayload.toState(errorMessage: String?): LiveRatesState =
+    LiveRatesState(
+        isLoading = false,
+        isLive = false,
+        isOfflineCache = true,
+        errorMessage = errorMessage,
+        baseCurrency = baseCurrency,
+        updatedLabel = "$updatedLabel · cached ${staleAgeLabel(cachedAtMillis)}",
+        autoRefreshLabel = "Offline · retry when connected",
+        favorites = favorites.map { it.toFxRate() },
+        converter = converter.map { it.toFxRate() },
+        compare = compare.map { it.toFxRate() },
+        allFiat = allFiat.map { it.toFxRate() },
+        detailSeries = detailSeries,
+    )
+
+private fun FxRate.toCache(): CachedFxRate =
+    CachedFxRate(code, name, glyph, kind.name, rate, change24h, sparkline, caption)
+
+private fun CachedFxRate.toFxRate(): FxRate =
+    FxRate(
+        code = code,
+        name = name,
+        glyph = glyph,
+        kind = CurrencyKind.entries.firstOrNull { it.name == kind } ?: CurrencyKind.Fiat,
+        rate = rate,
+        change24h = change24h,
+        sparkline = sparkline,
+        caption = caption,
+    )
 
 private data class LiveRateDefinition(
     val code: String,
@@ -262,4 +342,15 @@ private fun refreshTimeLabel(): String {
     val hour = now.hour.toString().padStart(2, '0')
     val minute = now.minute.toString().padStart(2, '0')
     return "refreshed $hour:$minute"
+}
+
+private fun staleAgeLabel(cachedAtMillis: Long): String {
+    val ageMillis = (Clock.System.now().toEpochMilliseconds() - cachedAtMillis).coerceAtLeast(0)
+    val minutes = ageMillis / 60_000
+    return when {
+        minutes < 1 -> "just now"
+        minutes < 60 -> "${minutes}m ago"
+        minutes < 1_440 -> "${minutes / 60}h ago"
+        else -> "${minutes / 1_440}d ago"
+    }
 }
