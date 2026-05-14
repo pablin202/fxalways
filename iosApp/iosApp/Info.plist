@@ -22,6 +22,12 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FXAlwaysBackendUrl</key>
+	<string>$(FX_BACKEND_URL)</string>
+	<key>FXAlwaysIsDebug</key>
+	<string>$(FX_IS_DEBUG)</string>
+	<key>FXAlwaysRevenueCatApiKey</key>
+	<string>$(FX_REVENUECAT_API_KEY)</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.finance</string>
 	<key>UILaunchScreen</key>

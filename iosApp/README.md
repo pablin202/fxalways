@@ -108,7 +108,8 @@ Production still needs:
 
 ## RevenueCat
 
-The iOS KMP config currently uses the RevenueCat Test Store key:
+The iOS target injects the RevenueCat key through `FX_REVENUECAT_API_KEY` in Xcode build settings.
+Debug currently uses the RevenueCat Test Store key:
 
 ```text
 test_aDOfCCMYLDGOStPsXdDkPJFanUC
@@ -120,4 +121,4 @@ Before TestFlight/App Store:
 2. Connect the App Store Connect subscription.
 3. Attach the product to entitlement `pro`.
 4. Add products to offering `default`.
-5. Replace the Test Store key in `PlatformConfig.ios.kt` with the iOS public SDK key.
+5. Set the Release `FX_REVENUECAT_API_KEY` build setting to the iOS public SDK key.
