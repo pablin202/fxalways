@@ -4079,6 +4079,7 @@ fun SettingsScreen(
                     backupState = backupState,
                     lastSyncedAtMillis = lastSyncedAtMillis,
                     backupSyncing = backupSyncing,
+                    modifier = Modifier.testTag("settings_backup_card"),
                     onClick = onSyncNow,
                 )
                 SettingChoiceRow(
@@ -4086,6 +4087,7 @@ fun SettingsScreen(
                     subtitle = copy.syncNowSubtitle,
                     selected = false,
                     actionLabel = if (backupSyncing) copy.syncing else copy.sync,
+                    modifier = Modifier.testTag("settings_sync_now"),
                     onClick = onSyncNow,
                 )
                 if (backupState.isAnonymous) {
@@ -4102,6 +4104,7 @@ fun SettingsScreen(
                         subtitle = "${copy.signInSubtitle} $deviceLabel",
                         selected = false,
                         actionLabel = copy.connect,
+                        modifier = Modifier.testTag("settings_link_account"),
                         onClick = onLinkGoogle,
                     )
                 } else {
@@ -4110,6 +4113,7 @@ fun SettingsScreen(
                         subtitle = copy.signOutSubtitle,
                         selected = false,
                         actionLabel = copy.signOutAction,
+                        modifier = Modifier.testTag("settings_sign_out"),
                         onClick = onSignOut,
                     )
                 }
@@ -4124,6 +4128,7 @@ fun SettingsScreen(
                     subtitle = subscriptionState.statusMessage?.let { localizedSubscriptionMessage(it) } ?: subscriptionState.localizedProStatusLabel(),
                     selected = subscriptionState.isPremium,
                     actionLabel = if (subscriptionState.isPremium) copy.view else copy.upgrade,
+                    modifier = Modifier.testTag("settings_subscription"),
                     onClick = onOpenPaywall,
                 )
                 SettingChoiceRow(
@@ -4131,6 +4136,7 @@ fun SettingsScreen(
                     subtitle = copy.restorePurchaseSubtitle,
                     selected = false,
                     actionLabel = copy.restore,
+                    modifier = Modifier.testTag("settings_restore_purchase"),
                     onClick = onRestorePurchase,
                 )
                 SettingChoiceRow(
@@ -4138,6 +4144,7 @@ fun SettingsScreen(
                     subtitle = copy.manageSubscriptionSubtitle,
                     selected = false,
                     actionLabel = copy.open,
+                    modifier = Modifier.testTag("settings_manage_subscription"),
                     onClick = { onOpenUrl(subscriptionManagementUrl()) },
                 )
             }
@@ -4150,6 +4157,7 @@ fun SettingsScreen(
                 subtitle = ui(NotificationPermissionStatus.subtitle),
                 selected = false,
                 actionLabel = ui(NotificationPermissionStatus.actionLabel),
+                modifier = Modifier.testTag("settings_notifications"),
                 onClick = {},
             )
         }
@@ -4162,6 +4170,7 @@ fun SettingsScreen(
 	                        title = ui(mode.label),
 	                        subtitle = ui(mode.subtitle),
                         selected = themeMode == mode,
+                        modifier = Modifier.testTag("settings_theme_${mode.name}"),
                         onClick = { onThemeModeChange(mode) },
                     )
                 }
@@ -4183,6 +4192,7 @@ fun SettingsScreen(
                         title = language.label,
                         subtitle = if (language.code == DeviceLocale.language) copy.deviceLanguage else language.code.uppercase(),
                         selected = appLanguage == language.code,
+                        modifier = Modifier.testTag("settings_language_${language.code}"),
                         onClick = { onLanguageChange(language.code) },
                     )
                 }
@@ -4197,6 +4207,7 @@ fun SettingsScreen(
                         title = "${currency.glyph}  ${currency.code}",
                         subtitle = localizedCurrencyName(currency.name),
                         selected = baseCurrency == currency.code,
+                        modifier = Modifier.testTag("settings_base_${currency.code}"),
                         onClick = { onBaseCurrencyChange(currency.code) },
                     )
                 }
@@ -4209,6 +4220,7 @@ fun SettingsScreen(
                     },
                     selected = false,
 	                    actionLabel = ui("more +"),
+                    modifier = Modifier.testTag("settings_more_base_currencies"),
                     onClick = {
                         if (canUseAllBaseCurrencies) showBaseCurrencyPicker = true else onOpenPaywall()
                     },
@@ -4231,6 +4243,7 @@ fun SettingsScreen(
 	                    subtitle = ui("Debug-only local gate override"),
                     selected = subscriptionState.isPremium,
 	                    actionLabel = if (subscriptionState.isPremium) ui("set free") else ui("set pro"),
+                    modifier = Modifier.testTag("settings_dev_premium"),
                     onClick = { onDevPremiumChange(!subscriptionState.isPremium) },
                 )
             }
@@ -4272,6 +4285,7 @@ private fun AccountBackupCard(
     backupState: UserBackupState,
     lastSyncedAtMillis: Long?,
     backupSyncing: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val signedIn = backupState.isAvailable && !backupState.isAnonymous
@@ -4291,7 +4305,7 @@ private fun AccountBackupCard(
         else -> "G"
     }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(FxTheme.shapes.field)
             .background(if (signedIn) FxTheme.colors.accentSoft else Color.Transparent)

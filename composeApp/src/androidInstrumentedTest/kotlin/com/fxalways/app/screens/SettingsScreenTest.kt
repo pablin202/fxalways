@@ -1,0 +1,193 @@
+package com.fxalways.app.screens
+
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.fxalways.app.AndroidAppContext
+import com.fxalways.app.ThemeMode
+import com.fxalways.app.UserBackupState
+import com.fxalways.app.subscription.SubscriptionState
+import com.fxalways.designsystem.components.CurrencyKind
+import com.fxalways.designsystem.components.FxRate
+import com.fxalways.designsystem.theme.FxTheme
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import org.junit.Rule
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class SettingsScreenTest {
+    @get:Rule
+    val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun anonymousFreeUserCanSyncLinkRestoreAndOpenSubscriptionActions() {
+        val harness = renderSettings(
+            subscriptionState = SubscriptionState(isPremium = false),
+            backupState = UserBackupState(uid = "anon", isAnonymous = true, isAvailable = true),
+        )
+
+        compose.onNodeWithTag("settings_backup_card").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("settings_sync_now").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_link_account").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_subscription").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_restore_purchase").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_manage_subscription").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(2, harness.syncClicks)
+            assertEquals(1, harness.linkClicks)
+            assertEquals(1, harness.paywallClicks)
+            assertEquals(1, harness.restoreClicks)
+            assertEquals(1, harness.openedUrls.size)
+        }
+    }
+
+    @Test
+    fun signedInPremiumUserCanSignOutAndChangePreferences() {
+        val harness = renderSettings(
+            subscriptionState = SubscriptionState(isPremium = true, activePlanLabel = "Yearly"),
+            backupState = UserBackupState(
+                uid = "user",
+                isAnonymous = false,
+                isAvailable = true,
+                providerLabel = "Google",
+                email = "pablo@example.com",
+            ),
+            lastSyncedAtMillis = 1_700_000_000_000L,
+        )
+
+        compose.onNodeWithText("Signed in with Google").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("settings_sign_out").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_theme_Dark").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_language_es").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_dev_premium").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(1, harness.signOutClicks)
+            assertEquals(ThemeMode.Dark, harness.themeMode)
+            assertEquals("es", harness.language)
+            assertEquals(listOf(false), harness.devPremiumChanges)
+        }
+    }
+
+    @Test
+    fun freeBaseCurrencyMoreOpensPaywallInsteadOfFullPicker() {
+        val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = false))
+
+        compose.onNodeWithTag("settings_base_EUR").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_more_base_currencies").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals("EUR", harness.baseCurrency)
+            assertEquals(1, harness.paywallClicks)
+        }
+    }
+
+    @Test
+    fun premiumBaseCurrencyPickerSearchesAndAppliesSupportedFiat() {
+        val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = true))
+
+        compose.onNodeWithTag("settings_more_base_currencies").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_picker_search").performTextReplacement("mex")
+        compose.onNodeWithTag("currency_picker_MXN").assertIsDisplayed().performClick()
+
+        compose.runOnIdle { assertEquals("MXN", harness.baseCurrency) }
+    }
+
+    @Test
+    fun unavailableBackupShowsErrorAndStillAllowsLocalSettings() {
+        val harness = renderSettings(
+            backupState = UserBackupState(isAvailable = false, errorMessage = "Offline backup"),
+        )
+
+        compose.onNodeWithText("Backup unavailable").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Offline backup").assertIsDisplayed()
+        compose.onNodeWithTag("settings_theme_Light").performScrollTo().performClick()
+
+        compose.runOnIdle { assertEquals(ThemeMode.Light, harness.themeMode) }
+    }
+
+    private fun renderSettings(
+        subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
+        backupState: UserBackupState = UserBackupState(uid = "anon", isAnonymous = true, isAvailable = true),
+        lastSyncedAtMillis: Long? = null,
+    ): SettingsHarness {
+        val harness = SettingsHarness()
+        AndroidAppContext.init(compose.activity)
+        compose.setContent {
+            var themeMode by remember { mutableStateOf(ThemeMode.System) }
+            var appLanguage by remember { mutableStateOf("en") }
+            var baseCurrency by remember { mutableStateOf("USD") }
+
+            FxTheme {
+                SettingsScreen(
+                    themeMode = themeMode,
+                    appLanguage = appLanguage,
+                    baseCurrency = baseCurrency,
+                    availableBaseCurrencies = testBaseCurrencies(),
+                    backupState = backupState,
+                    backupSyncing = false,
+                    lastSyncedAtMillis = lastSyncedAtMillis,
+                    subscriptionState = subscriptionState,
+                    onOpenPaywall = { harness.paywallClicks += 1 },
+                    onOpenUrl = { harness.openedUrls += it },
+                    onRestorePurchase = { harness.restoreClicks += 1 },
+                    onSyncNow = { harness.syncClicks += 1 },
+                    onLinkGoogle = { harness.linkClicks += 1 },
+                    onSignOut = { harness.signOutClicks += 1 },
+                    onDevPremiumChange = { harness.devPremiumChanges += it },
+                    onThemeModeChange = {
+                        themeMode = it
+                        harness.themeMode = it
+                    },
+                    onLanguageChange = {
+                        appLanguage = it
+                        harness.language = it
+                    },
+                    onBaseCurrencyChange = {
+                        baseCurrency = it
+                        harness.baseCurrency = it
+                    },
+                )
+            }
+        }
+        return harness
+    }
+
+    private fun testBaseCurrencies(): List<FxRate> =
+        listOf(
+            FxRate("USD", "US Dollar", "$", CurrencyKind.Fiat, 1.0, 0.0, listOf(1f, 1f), "1 USD = 1.0000 USD"),
+            FxRate("EUR", "Euro", "€", CurrencyKind.Fiat, 0.92, -0.2, listOf(0.91f, 0.92f), "1 USD = 0.9200 EUR"),
+            FxRate("GBP", "British Pound", "£", CurrencyKind.Fiat, 0.78, 0.1, listOf(0.77f, 0.78f), "1 USD = 0.7800 GBP"),
+            FxRate("JPY", "Japanese Yen", "¥", CurrencyKind.Fiat, 156.0, 0.3, listOf(155f, 156f), "1 USD = 156.0000 JPY"),
+            FxRate("AUD", "Australian Dollar", "A$", CurrencyKind.Fiat, 1.52, 0.1, listOf(1.51f, 1.52f), "1 USD = 1.5200 AUD"),
+            FxRate("CAD", "Canadian Dollar", "C$", CurrencyKind.Fiat, 1.36, 0.1, listOf(1.35f, 1.36f), "1 USD = 1.3600 CAD"),
+            FxRate("CHF", "Swiss Franc", "Fr", CurrencyKind.Fiat, 0.83, -0.1, listOf(0.82f, 0.83f), "1 USD = 0.8300 CHF"),
+            FxRate("CNY", "Chinese Yuan", "¥", CurrencyKind.Fiat, 7.2, 0.0, listOf(7.1f, 7.2f), "1 USD = 7.2000 CNY"),
+            FxRate("MXN", "Mexican Peso", "$", CurrencyKind.Fiat, 18.72, 0.2, listOf(18.6f, 18.72f), "1 USD = 18.7200 MXN"),
+        )
+
+    private class SettingsHarness {
+        var syncClicks = 0
+        var linkClicks = 0
+        var signOutClicks = 0
+        var paywallClicks = 0
+        var restoreClicks = 0
+        var themeMode = ThemeMode.System
+        var language = "en"
+        var baseCurrency = "USD"
+        val openedUrls = mutableListOf<String>()
+        val devPremiumChanges = mutableListOf<Boolean>()
+    }
+}
