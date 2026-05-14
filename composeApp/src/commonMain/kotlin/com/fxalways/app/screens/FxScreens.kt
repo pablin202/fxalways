@@ -313,8 +313,19 @@ private val uiTranslations = mapOf(
         "TRIP BUDGET" to "PRESUPUESTO",
         "BUDGET" to "PRESUPUESTO",
         "LOCAL" to "LOCAL",
+        "Trip days" to "Días de viaje",
+        "Daily budget = local budget / days" to "Presupuesto diario = presupuesto local / días",
+        "Local budget" to "Presupuesto local",
         "Daily range" to "Rango diario",
         "Cash buffer" to "Reserva de efectivo",
+        "of local budget" to "del presupuesto local",
+        "SPEND PLAN" to "PLAN DE GASTO",
+        "Daily budget" to "Presupuesto diario",
+        "Card spend" to "Gasto con tarjeta",
+        "after cash buffer" to "después de reserva",
+        "Local meals" to "Comidas locales",
+        "guide estimate" to "estimado guía",
+        "Formula" to "Fórmula",
         "CHEAT SHEET" to "GUÍA RÁPIDA",
         "Unlock full traveler mode" to "Desbloquear modo viajero completo",
         "Pro adds complete cheat sheets, offline context and more local money tips." to "Pro agrega guías completas, contexto offline y más consejos locales.",
@@ -2376,7 +2387,16 @@ fun TravelerScreen(
         ?: visibleDestinations.firstOrNull()
         ?: FavoriteRates.first()
     val destination = travelerDestination(selectedRate.code)
+    var tripDays by remember { mutableStateOf(3) }
     val budgetLocal = budgetBase * selectedRate.rate
+    val dailyBudgetLocal = budgetLocal / tripDays.coerceAtLeast(1).toDouble()
+    val cashBufferLocal = budgetLocal * destination.cashBufferPct
+    val cardSpendLocal = (budgetLocal - cashBufferLocal).coerceAtLeast(0.0)
+    val anchorPrice = destination.priceGuide.firstOrNull { item ->
+        val label = item.label.lowercase()
+        label.contains("meal") || label.contains("lunch") || label.contains("ramen") || label.contains("tacos") || label.contains("pub")
+    } ?: destination.priceGuide.firstOrNull()
+    val anchorPurchases = anchorPrice?.localAmount?.takeIf { it > 0.0 }?.let { budgetLocal / it } ?: 0.0
     val cheatAmounts = listOf(1, 5, 10, 20, 50, 100, 250, 500).take(access.travelerCheatSheetLimit.cap(8))
     val baseDefinition = liveState.allFiat.firstOrNull { it.code == liveState.baseCurrency }
         ?: SettingsBaseCurrencies.firstOrNull { it.code == liveState.baseCurrency }
@@ -2404,7 +2424,7 @@ fun TravelerScreen(
             sub = "${destination.city.uppercase()} · ${selectedRate.code}",
             subtitle = if (liveState.isLive) "${ui("Live")} ${liveState.baseCurrency} ${ui("rates")} · ${localizedRuntimeLabel(liveState.updatedLabel)}" else "${ui("Offline snapshot")} · ${liveState.baseCurrency} ${ui("base")}",
         )
-        BentoCard(Modifier.fillMaxWidth().height(156.dp), padding = 14.dp) {
+        BentoCard(Modifier.fillMaxWidth().height(156.dp).testTag("traveler_hero"), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.18f))
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2429,7 +2449,9 @@ fun TravelerScreen(
                             Pill(
                                 "${item.flag} ${rate.code}",
                                 variant = if (rate.code == selectedRate.code) PillVariant.Accent else PillVariant.Ghost,
-                                modifier = Modifier.clickable { onCurrencySelected(rate.code) },
+                                modifier = Modifier
+                                    .testTag("traveler_destination_${rate.code}")
+                                    .clickable { onCurrencySelected(rate.code) },
                             )
                         }
                     }
@@ -2443,6 +2465,7 @@ fun TravelerScreen(
                     },
                     selected = false,
                     actionLabel = ui("more +"),
+                    modifier = Modifier.testTag("traveler_more_destinations"),
                     onClick = {
                         if (access.canUseAdvancedTraveler) showDestinationPicker = true else onOpenPaywall()
                     },
@@ -2454,7 +2477,7 @@ fun TravelerScreen(
         }
 
         SectionLabel(ui("TRIP BUDGET"))
-        BentoCard(padding = 12.dp) {
+        BentoCard(Modifier.testTag("traveler_budget_card"), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -2464,12 +2487,12 @@ fun TravelerScreen(
                             onValueChange = { raw ->
                                 val next = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)
                                 budgetText = next
-                                onBudgetChange(next.replace(",", "").toDoubleOrNull() ?: 0.0)
+                                onBudgetChange(parseAmountInput(next))
                             },
                             singleLine = true,
                             textStyle = FxTheme.typography.numberL.copy(color = FxTheme.colors.text),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().testTag("traveler_budget_input"),
                         )
                     }
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
@@ -2477,16 +2500,49 @@ fun TravelerScreen(
                         Text("${destination.symbol}${formatMoneyValue(budgetLocal)}", style = FxTheme.typography.numberL, color = FxTheme.colors.text)
                     }
                 }
-                KeyValueRow(ui("Daily range"), "${destination.symbol}${formatMoneyValue(budgetLocal / 3.0)} · 3 ${ui("days")}")
-                KeyValueRow(ui("Cash buffer"), "${destination.symbol}${formatMoneyValue(budgetLocal * destination.cashBufferPct)}")
+                Row(
+                    Modifier.fillMaxWidth().testTag("traveler_days_control"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(ui("Trip days"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                        Text(ui("Daily budget = local budget / days"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Pill("-", modifier = Modifier.testTag("traveler_days_decrease").clickable { tripDays = (tripDays - 1).coerceAtLeast(1) })
+                        Pill("$tripDays ${ui("days")}", variant = PillVariant.Accent, modifier = Modifier.testTag("traveler_days_value"))
+                        Pill("+", modifier = Modifier.testTag("traveler_days_increase").clickable { tripDays = (tripDays + 1).coerceAtMost(30) })
+                    }
+                }
+                KeyValueRow(ui("Local budget"), "${destination.symbol}${formatMoneyValue(budgetLocal)}")
+                KeyValueRow(ui("Daily budget"), "${destination.symbol}${formatMoneyValue(dailyBudgetLocal)} · $tripDays ${ui("days")}")
+                KeyValueRow(ui("Cash buffer"), "${destination.symbol}${formatMoneyValue(cashBufferLocal)} · ${(destination.cashBufferPct * 100).toInt()}% ${ui("of local budget")}")
+            }
+        }
+
+        SectionLabel(ui("SPEND PLAN"))
+        BentoCard(Modifier.testTag("traveler_spend_plan"), padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricTile(ui("Daily budget"), "${destination.symbol}${formatMoneyValue(dailyBudgetLocal)}", "$tripDays ${ui("days")}", Modifier.weight(1f).height(76.dp))
+                    MetricTile(ui("Card spend"), "${destination.symbol}${formatMoneyValue(cardSpendLocal)}", ui("after cash buffer"), Modifier.weight(1f).height(76.dp))
+                }
+                KeyValueRow(ui("Cash buffer"), "${destination.symbol}${formatMoneyValue(cashBufferLocal)} · ${(destination.cashBufferPct * 100).toInt()}%")
+                if (anchorPrice != null) {
+                    KeyValueRow(ui("Local meals"), "${formatMoneyValue(anchorPurchases)}x ${ui(anchorPrice.label)} · ${ui("guide estimate")}")
+                }
+                KeyValueRow(ui("Formula"), "${ui("Cash buffer")} = ${ui("Local budget")} x ${(destination.cashBufferPct * 100).toInt()}%")
             }
         }
 
         SectionLabel(ui("CHEAT SHEET"))
-        BentoCard(padding = 12.dp) {
+        BentoCard(Modifier.testTag("traveler_cheat_sheet"), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 cheatAmounts.forEach { amount ->
-                    KeyValueRow("$amount ${liveState.baseCurrency}", "${destination.symbol}${formatMoneyValue(amount * selectedRate.rate)}")
+                    Box(Modifier.testTag("traveler_cheat_$amount")) {
+                        KeyValueRow("$amount ${liveState.baseCurrency}", "${destination.symbol}${formatMoneyValue(amount * selectedRate.rate)}")
+                    }
                 }
             }
         }
@@ -2498,11 +2554,11 @@ fun TravelerScreen(
             )
         }
         SectionLabel(ui("LOCAL ETIQUETTE"))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.testTag("traveler_local_etiquette"), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             MetricTile(ui("TIPPING"), destination.tipping, ui(destination.tippingNote), Modifier.weight(1f))
             MetricTile(ui("TAX"), ui(destination.tax), ui(destination.taxNote), Modifier.weight(1f))
         }
-        BentoTile(Modifier.fillMaxWidth()) {
+        BentoTile(Modifier.fillMaxWidth().testTag("traveler_payment_rails")) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Eyebrow(ui("CARDS ACCEPTED"))
@@ -2515,7 +2571,7 @@ fun TravelerScreen(
             }
         }
         SectionLabel(ui("LOCAL PRICE GUIDE"), right = ui("Estimates"))
-        BentoCard(padding = 12.dp) {
+        BentoCard(Modifier.testTag("traveler_price_guide"), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 destination.priceGuide.forEach { item ->
                     val basePrice = item.localAmount / selectedRate.rate
@@ -4183,7 +4239,7 @@ private fun CurrencyPickerSheet(
                     onValueChange = { query = it.take(24) },
                     singleLine = true,
                     textStyle = FxTheme.typography.body.copy(color = FxTheme.colors.text),
-                    modifier = Modifier.fillMaxWidth().testTag("currency_list_search"),
+                    modifier = Modifier.fillMaxWidth().testTag("currency_picker_search"),
                     decorationBox = { innerTextField ->
                         if (query.isBlank()) {
 	                            Text(ui("Search currency"), style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
@@ -4203,6 +4259,7 @@ private fun CurrencyPickerSheet(
                         title = "${currency.glyph}  ${currency.code}",
                         subtitle = localizedCurrencyName(currency.name),
                         selected = currency.code == selectedCode,
+                        modifier = Modifier.testTag("currency_picker_${currency.code}"),
                         onClick = { onSelect(currency.code) },
                     )
                 }
