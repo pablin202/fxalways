@@ -16,4 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "CurrencyExchangeKmp"
 include(":design-system")
+include(":observability")
 include(":composeApp")

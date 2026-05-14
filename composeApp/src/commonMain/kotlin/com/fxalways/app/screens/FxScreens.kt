@@ -136,6 +136,8 @@ import com.fxalways.designsystem.components.SparkLine
 import com.fxalways.designsystem.components.formatChange
 import com.fxalways.designsystem.components.formatRate
 import com.fxalways.designsystem.theme.FxTheme
+import com.fxalways.observability.Observability
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
@@ -154,6 +156,15 @@ private enum class MoreRoute {
     Traveler,
     Settings,
 }
+
+private val MoreRoute.analyticsName: String
+    get() = when (this) {
+        MoreRoute.Menu -> "more"
+        MoreRoute.Alerts -> "alerts"
+        MoreRoute.Watchlist -> "watchlist"
+        MoreRoute.Traveler -> "traveler"
+        MoreRoute.Settings -> "settings"
+    }
 
 private val LocalAppLanguage = staticCompositionLocalOf { "en" }
 
@@ -205,6 +216,8 @@ private val uiTranslations = mapOf(
         "CRYPTO" to "CRYPTO",
         "pinned" to "fijado",
         "Edit converter list" to "Editar lista del conversor",
+        "Edit list" to "Editar lista",
+        "Reverse" to "Invertir",
         "Pro unlocks more converter currencies" to "Pro desbloquea más monedas en el conversor",
         "MID" to "MEDIO",
         "Multi-currency · live to 4 decimals" to "Multimoneda · en vivo a 4 decimales",
@@ -223,6 +236,7 @@ private val uiTranslations = mapOf(
         "mid-market" to "mercado medio",
         "LOADING HISTORY" to "CARGANDO HISTÓRICO",
         "HISTORY" to "HISTÓRICO",
+        "24H RANGE" to "RANGO 24H",
         "History unavailable · using cached preview" to "Histórico no disponible · usando vista en caché",
         "Unlock long-range history" to "Desbloquear histórico largo",
         "Pro adds 1Y and all-time detail, full event context and deeper market overlays." to "Pro agrega 1A y todo el histórico, contexto de eventos y overlays de mercado.",
@@ -238,6 +252,8 @@ private val uiTranslations = mapOf(
         "No related news" to "Sin noticias relacionadas",
         "EVENTS · ANNOTATED" to "EVENTOS · ANOTADOS",
         "No annotated events" to "Sin eventos anotados",
+        "Add another alert" to "Agregar otra alerta",
+        "Alert me above" to "Alertarme arriba de",
         "Edit comparison" to "Editar comparación",
         "Pro unlocks more comparison currencies" to "Pro desbloquea más monedas para comparar",
         "Movers" to "Movimientos",
@@ -256,6 +272,10 @@ private val uiTranslations = mapOf(
         "per 1" to "por 1",
         "Choose destination" to "Elegir destino",
         "Traveler" to "Viajes",
+        "Converter" to "Conversor",
+        "Watchlist" to "Watchlist",
+        "Settings" to "Ajustes",
+        "Alerts" to "Alertas",
         "DESTINATION" to "DESTINO",
         "More destinations" to "Más destinos",
         "Search supported live currencies" to "Buscar monedas soportadas en vivo",
@@ -286,6 +306,9 @@ private val uiTranslations = mapOf(
         "Market stream and sentiment" to "Noticias de mercado y sentimiento",
         "Theme mode, base currency and version" to "Tema, moneda base y versión",
         "Upgrade to Pro" to "Actualizar a Pro",
+        "Language" to "Idioma",
+        "Local base" to "Base local",
+        "Region" to "Región",
         "COMING NEXT" to "PRÓXIMO",
         "WIDGETS" to "WIDGETS",
         "home screen and watch glance" to "inicio y vista rápida",
@@ -337,6 +360,7 @@ private val uiTranslations = mapOf(
         "BEARISH" to "BAJISTA",
         "Feed" to "Feed",
         "Updated" to "Actualizado",
+        "Current" to "Actual",
         "REGION" to "REGIÓN",
         "CURRENCY" to "MONEDA",
         "TOPIC" to "TEMA",
@@ -356,6 +380,7 @@ private val uiTranslations = mapOf(
         "Choose base currency" to "Elegir moneda base",
         "FX/ Pro active" to "FX/ Pro activo",
         "FX/ Free" to "FX/ Free",
+        "Signed in with" to "Sesión iniciada con",
         "DEV" to "DEV",
         "Debug-only local gate override" to "Override local solo debug",
         "Version" to "Versión",
@@ -373,8 +398,14 @@ private val uiTranslations = mapOf(
         "Backup unavailable" to "Backup no disponible",
         "Preferences, alerts and watchlist sync to Firebase" to "Preferencias, alertas y watchlist sincronizan con Firebase",
         "Firebase Auth has not started on this platform" to "Firebase Auth no inició en esta plataforma",
+        "Firebase guest" to "Invitado Firebase",
+        "Local iOS guest" to "Invitado local iOS",
+        "Restores on any signed-in device" to "Se restaura en cualquier dispositivo con sesión",
+        "account" to "cuenta",
         "active" to "activo",
+        "ACTIVE" to "ACTIVO",
         "offline" to "offline",
+        "syncing" to "sincronizando",
         "Sync pending" to "Sync pendiente",
         "Target" to "Objetivo",
         "Daily move" to "Movimiento diario",
@@ -566,11 +597,31 @@ private val uiTranslations = mapOf(
         "Brazilian Real" to "Real brasileño",
         "Mexican Peso" to "Peso mexicano",
         "No connection" to "Sin conexión",
+        "OFFLINE" to "OFFLINE",
+        "LAST KNOWN" to "ÚLTIMO CONOCIDO",
+        "Retry connection" to "Reintentar conexión",
         "Showing rates from your last sync · 4 min ago" to "Mostrando rates del último sync · hace 4 min",
         "CACHED FAVORITES" to "FAVORITOS EN CACHÉ",
         "Skip" to "Saltar",
         "Get started" to "Empezar",
         "Next  →" to "Siguiente  →",
+        "Fresh rates.\nAlways ready." to "Rates frescos.\nSiempre listos.",
+        "The app starts with your local base currency and keeps rates refreshed from the backend." to "La app inicia con tu moneda local y mantiene los rates actualizados desde el backend.",
+        "See the cost\nbefore you send." to "Ve el costo\nantes de enviar.",
+        "Compare estimated provider fees by amount and currency pair, then unlock deeper comparisons with Pro." to "Compara fees estimados por monto y par de monedas, y desbloquea comparaciones más profundas con Pro.",
+        "Your wallet\nfollows the map." to "Tu billetera\nsigue el mapa.",
+        "Auto-detect local currency on landing. Offline-safe last rates. Per-country tipping built in." to "Detecta la moneda local al iniciar. Últimos rates disponibles offline. Propinas por país incluidas.",
+        "Start private.\nRestore later." to "Empieza privado.\nRestaura después.",
+        "A guest backup is created silently. You can connect Google on Android or Apple on iOS when you want portability." to "Se crea un backup invitado en silencio. Puedes conectar Google en Android o Apple en iOS cuando quieras portabilidad.",
+        "STEP 01 · LIVE RATES" to "PASO 01 · RATES EN VIVO",
+        "STEP 02 · FEES THAT MATTER" to "PASO 02 · FEES IMPORTANTES",
+        "STEP 03 · TRAVEL READY" to "PASO 03 · LISTO PARA VIAJAR",
+        "STEP 04 · BACKUP" to "PASO 04 · BACKUP",
+        "Pro unlocks the full regional stream." to "Pro desbloquea el stream regional completo.",
+        "Pro unlocks more stories and filters by region, currencies and topics." to "Pro desbloquea más noticias y filtros por región, monedas y temas.",
+        "fees" to "fees",
+        "today" to "hoy",
+        "days" to "días",
     ),
     "pt" to mapOf(
         "Rates" to "Cotações", "Convert" to "Converter", "Compare" to "Comparar", "News" to "Notícias", "More" to "Mais",
@@ -717,9 +768,49 @@ fun FxAppShell() {
         detailRate = null
         detailNewsStory = null
         selectedTab = tab
+        Observability.event("tab_selected", mapOf("tab" to tab.label))
         if (tab != FxTab.More) {
             moreRoute = MoreRoute.Menu
         }
+    }
+    fun openPaywall(source: String) {
+        Observability.event("paywall_opened", mapOf("source" to source))
+        showPaywall = true
+    }
+    fun openDetail(rate: FxRate, source: String) {
+        Observability.event("currency_detail_opened", mapOf("source" to source, "currency" to rate.code))
+        detailRate = rate
+    }
+    fun openStory(story: NewsStory, source: String) {
+        Observability.event("news_story_opened", mapOf("source" to source, "tag" to story.tag))
+        detailNewsStory = story
+    }
+    fun openMoreRoute(route: MoreRoute) {
+        Observability.event("more_route_opened", mapOf("route" to route.analyticsName))
+        moreRoute = route
+    }
+    LaunchedEffect(selectedTab, moreRoute, detailRate, detailNewsStory, showPaywall, startupReady) {
+        if (startupReady) {
+            val screenName = when {
+                showPaywall -> "paywall"
+                detailNewsStory != null -> "news_detail"
+                detailRate != null -> "currency_detail"
+                selectedTab == FxTab.More -> moreRoute.analyticsName
+                else -> selectedTab.label
+            }
+            Observability.screen(
+                screenName,
+                mapOf(
+                    "tab" to selectedTab.label,
+                    "base_currency" to baseCurrency,
+                    "language" to appLanguage,
+                ),
+            )
+        }
+    }
+    LaunchedEffect(subscriptionState.isPremium, backupState.uid) {
+        Observability.setUserId(backupState.uid)
+        Observability.setUserProperty("premium", subscriptionState.isPremium.toString())
     }
     LaunchedEffect(liveStore) {
         liveStore.startAutoRefresh()
@@ -771,6 +862,7 @@ fun FxAppShell() {
                     lastSyncedAtMillis = remoteSnapshot.updatedAtMillis
                 }
             }.onFailure { error ->
+                Observability.recordException(error, mapOf("flow" to "startup_backup"))
                 backupState = backupState.copy(isAvailable = false, errorMessage = error.message)
             }
         }
@@ -794,6 +886,7 @@ fun FxAppShell() {
                 UserBackupGateway.pushSnapshot(snapshot)
                 lastSyncedAtMillis = snapshot.updatedAtMillis
             }.onFailure { error ->
+                Observability.recordException(error, mapOf("flow" to "auto_backup_sync"))
                 backupState = backupState.copy(isAvailable = false, errorMessage = error.message)
                 backupReady = false
             }
@@ -833,10 +926,16 @@ fun FxAppShell() {
                             scope.launch {
                                 subscriptionActionInProgress = true
                                 try {
+                                    Observability.event("purchase_started", mapOf("plan" to planKind.name))
                                     subscriptionState = subscriptionGateway.purchasePlan(planKind)
                                     AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
                                     subscriptionReady = true
                                     showPaywall = !subscriptionState.isPremium
+                                    Observability.event("purchase_finished", mapOf("premium" to subscriptionState.isPremium.toString()))
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (error: Exception) {
+                                    Observability.recordException(error, mapOf("flow" to "purchase", "plan" to planKind.name))
                                 } finally {
                                     subscriptionActionInProgress = false
                                 }
@@ -846,10 +945,16 @@ fun FxAppShell() {
                             scope.launch {
                                 subscriptionActionInProgress = true
                                 try {
+                                    Observability.event("purchase_restore_started", mapOf("source" to "paywall"))
                                     subscriptionState = subscriptionGateway.restore()
                                     AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
                                     subscriptionReady = true
                                     showPaywall = !subscriptionState.isPremium
+                                    Observability.event("purchase_restore_finished", mapOf("premium" to subscriptionState.isPremium.toString()))
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (error: Exception) {
+                                    Observability.recordException(error, mapOf("flow" to "purchase_restore", "source" to "paywall"))
                                 } finally {
                                     subscriptionActionInProgress = false
                                 }
@@ -872,10 +977,10 @@ fun FxAppShell() {
                         newsState = newsState,
                         rate = detailRate,
                         onBack = { detailRate = null },
-                        onOpenPaywall = { showPaywall = true },
+                        onOpenPaywall = { openPaywall("currency_detail") },
                         onLoadHistory = detailStore::load,
                         onOpenUrl = ExternalUrlOpener::open,
-                        onOpenStory = { detailNewsStory = it },
+                        onOpenStory = { openStory(it, "currency_detail") },
                         onCreateAlert = { rate ->
                             if (
                                 canCreateAlert(subscriptionState, alertsState.alerts.size) ||
@@ -883,7 +988,7 @@ fun FxAppShell() {
                             ) {
                                 alertsStore.addQuickAlert(liveState.baseCurrency, rate)
                             } else {
-                                showPaywall = true
+                                openPaywall("currency_detail_alert_limit")
                             }
                         },
                     )
@@ -891,14 +996,23 @@ fun FxAppShell() {
                     when (selectedTab) {
                         FxTab.Rates -> {
                             if (liveState.errorMessage != null && !liveState.isLive) {
-                                OfflineScreen(liveState, onRefresh = liveStore::refresh)
+                                OfflineScreen(
+                                    liveState,
+                                    onRefresh = {
+                                        Observability.event("rates_refresh", mapOf("source" to "offline"))
+                                        liveStore.refresh()
+                                    },
+                                )
                             } else {
                                 DashboardScreen(
                                     liveState = liveState,
                                     subscriptionState = subscriptionState,
-                                    onRefresh = liveStore::refresh,
-                                    onOpenPaywall = { showPaywall = true },
-                                    onOpenDetail = { detailRate = it },
+                                    onRefresh = {
+                                        Observability.event("rates_refresh", mapOf("source" to "dashboard"))
+                                        liveStore.refresh()
+                                    },
+                                    onOpenPaywall = { openPaywall("dashboard") },
+                                    onOpenDetail = { openDetail(it, "dashboard") },
                                 )
                             }
                         }
@@ -907,57 +1021,63 @@ fun FxAppShell() {
                             subscriptionState = subscriptionState,
                             selectedCurrencyCodes = converterCurrencyCodes,
                             onCurrencyCodesChange = { codes ->
+                                Observability.event("converter_currencies_changed", mapOf("count" to codes.size.toString()))
                                 converterCurrencyCodes = codes
                                 AppSettingsPrefs.setConverterCurrencyCodes(codes)
                             },
-                            onOpenPaywall = { showPaywall = true },
+                            onOpenPaywall = { openPaywall("converter") },
                         )
                         FxTab.Compare -> CompareScreen(
                             liveState = liveState,
                             subscriptionState = subscriptionState,
                             selectedCurrencyCodes = compareCurrencyCodes,
                             onCurrencyCodesChange = { codes ->
+                                Observability.event("compare_currencies_changed", mapOf("count" to codes.size.toString()))
                                 compareCurrencyCodes = codes
                                 AppSettingsPrefs.setCompareCurrencyCodes(codes)
                             },
-                            onOpenPaywall = { showPaywall = true },
-                            onOpenDetail = { detailRate = it },
+                            onOpenPaywall = { openPaywall("compare") },
+                            onOpenDetail = { openDetail(it, "compare") },
                         )
                         FxTab.News -> NewsScreen(
                             newsState = newsState,
                             subscriptionState = subscriptionState,
-                            onRefresh = newsStore::refresh,
+                            onRefresh = {
+                                Observability.event("news_refresh")
+                                newsStore.refresh()
+                            },
                             onRegionSelected = newsStore::setRegion,
                             onCurrencySelected = newsStore::setCurrency,
-                            onOpenStory = { detailNewsStory = it },
-                            onOpenPaywall = { showPaywall = true },
+                            onOpenStory = { openStory(it, "news") },
+                            onOpenPaywall = { openPaywall("news") },
                         )
                         FxTab.More -> when (moreRoute) {
                             MoreRoute.Menu -> MoreScreen(
                                 subscriptionState = subscriptionState,
                                 alertsCount = alertsState.activeCount,
                                 watchlistCount = watchlistState.watchlist.codes.size,
-                                onOpenAlerts = { moreRoute = MoreRoute.Alerts },
-                                onOpenWatchlist = { moreRoute = MoreRoute.Watchlist },
-                                onOpenTraveler = { moreRoute = MoreRoute.Traveler },
-                                onOpenSettings = { moreRoute = MoreRoute.Settings },
+                                onOpenAlerts = { openMoreRoute(MoreRoute.Alerts) },
+                                onOpenWatchlist = { openMoreRoute(MoreRoute.Watchlist) },
+                                onOpenTraveler = { openMoreRoute(MoreRoute.Traveler) },
+                                onOpenSettings = { openMoreRoute(MoreRoute.Settings) },
                                 onOpenNews = { selectTab(FxTab.News) },
-                                onOpenPaywall = { showPaywall = true },
+                                onOpenPaywall = { openPaywall("more") },
                             )
                             MoreRoute.Alerts -> AlertsScreen(
                                 liveState = liveState,
                                 alertsState = alertsState,
                                 subscriptionState = subscriptionState,
                                 onBack = { moreRoute = MoreRoute.Menu },
-                                onOpenPaywall = { showPaywall = true },
+                                onOpenPaywall = { openPaywall("alerts") },
                                 onCreateAlert = { rate ->
                                     if (
                                         canCreateAlert(subscriptionState, alertsState.alerts.size) ||
                                         alertsState.alerts.findQuickAlert(liveState.baseCurrency, rate) != null
                                     ) {
+                                        Observability.event("alert_created", mapOf("type" to "quick", "currency" to rate.code))
                                         alertsStore.addQuickAlert(liveState.baseCurrency, rate)
                                     } else {
-                                        showPaywall = true
+                                        openPaywall("alert_limit")
                                     }
                                 },
                                 onCreateManualAlert = { rate, direction, target, kind ->
@@ -965,9 +1085,10 @@ fun FxAppShell() {
                                         canCreateAlert(subscriptionState, alertsState.alerts.size) ||
                                         alertsState.alerts.findMatchingAlert(liveState.baseCurrency, rate.code, target, direction, kind) != null
                                     ) {
+                                        Observability.event("alert_created", mapOf("type" to "manual", "currency" to rate.code))
                                         alertsStore.addAlert(liveState.baseCurrency, rate.code, target, direction, kind)
                                     } else {
-                                        showPaywall = true
+                                        openPaywall("alert_limit")
                                     }
                                 },
                                 onResumeAlert = alertsStore::resumeAlert,
@@ -980,18 +1101,20 @@ fun FxAppShell() {
                                 watchlistState = watchlistState,
                                 subscriptionState = subscriptionState,
                                 onBack = { moreRoute = MoreRoute.Menu },
-                                onOpenPaywall = { showPaywall = true },
+                                onOpenPaywall = { openPaywall("watchlist") },
                                 onToggleCurrency = { code ->
                                     val selected = code in watchlistState.watchlist.codes
                                     val canAdd = selected ||
                                         subscriptionState.featureAccess().hasUnlimitedWatchlistCurrencies ||
                                         watchlistState.watchlist.codes.size < subscriptionState.featureAccess().watchlistCurrencyLimit
                                     if (!watchlistStore.toggle(code, canAdd)) {
-                                        showPaywall = true
+                                        openPaywall("watchlist_limit")
+                                    } else {
+                                        Observability.event("watchlist_toggle", mapOf("currency" to code))
                                     }
                                 },
                                 onSetHolding = watchlistStore::setHolding,
-                                onOpenDetail = { detailRate = it },
+                                onOpenDetail = { openDetail(it, "watchlist") },
                             )
                             MoreRoute.Traveler -> TravelerScreen(
                                 liveState = liveState,
@@ -1000,14 +1123,16 @@ fun FxAppShell() {
                                 budgetBase = travelerBudgetBase,
                                 onBack = { moreRoute = MoreRoute.Menu },
                                 onCurrencySelected = { code ->
+                                    Observability.event("traveler_currency_changed", mapOf("currency" to code))
                                     travelerCurrency = code
                                     AppSettingsPrefs.setTravelerCurrency(code)
                                 },
                                 onBudgetChange = { amount ->
+                                    Observability.event("traveler_budget_changed")
                                     travelerBudgetBase = amount
                                     AppSettingsPrefs.setTravelerBudgetBase(amount)
                                 },
-                                onOpenPaywall = { showPaywall = true },
+                                onOpenPaywall = { openPaywall("traveler") },
                             )
                             MoreRoute.Settings -> SettingsScreen(
                                 themeMode = themeMode,
@@ -1019,13 +1144,15 @@ fun FxAppShell() {
                                 lastSyncedAtMillis = lastSyncedAtMillis,
                                 subscriptionState = subscriptionState,
                                 onBack = { moreRoute = MoreRoute.Menu },
-                                onOpenPaywall = { showPaywall = true },
+                                onOpenPaywall = { openPaywall("settings") },
                                 onOpenUrl = ExternalUrlOpener::open,
                                 onRestorePurchase = {
                                     scope.launch {
+                                        Observability.event("purchase_restore_started", mapOf("source" to "settings"))
                                         subscriptionState = subscriptionGateway.restore()
                                         AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
                                         subscriptionReady = true
+                                        Observability.event("purchase_restore_finished", mapOf("premium" to subscriptionState.isPremium.toString()))
                                     }
                                 },
                                 onSyncNow = {
@@ -1047,6 +1174,7 @@ fun FxAppShell() {
                                             backupState = UserBackupGateway.ensureUser()
                                             lastSyncedAtMillis = snapshot.updatedAtMillis
                                         }.onFailure { error ->
+                                            Observability.recordException(error, mapOf("flow" to "manual_backup_sync"))
                                             backupState = backupState.copy(errorMessage = error.message)
                                         }
                                         backupSyncing = false
@@ -1092,6 +1220,7 @@ fun FxAppShell() {
                                             lastSyncedAtMillis = result.snapshot.updatedAtMillis
                                             backupReady = true
                                         }.onFailure { error ->
+                                            Observability.recordException(error, mapOf("flow" to "link_backup_identity"))
                                             backupState = backupState.copy(errorMessage = error.message)
                                             backupReady = backupState.isAvailable
                                         }
@@ -1119,6 +1248,7 @@ fun FxAppShell() {
                                             lastSyncedAtMillis = result.snapshot.updatedAtMillis
                                             backupReady = true
                                         }.onFailure { error ->
+                                            Observability.recordException(error, mapOf("flow" to "sign_out_to_anonymous"))
                                             backupState = backupState.copy(errorMessage = error.message)
                                             backupReady = backupState.isAvailable
                                         }
@@ -1133,15 +1263,18 @@ fun FxAppShell() {
                                     }
                                 },
                                 onThemeModeChange = { mode ->
+                                    Observability.event("theme_changed", mapOf("theme" to mode.name))
                                     themeMode = mode
                                     AppSettingsPrefs.setThemeMode(mode)
                                 },
                                 onLanguageChange = { code ->
+                                    Observability.event("language_changed", mapOf("language" to code))
                                     appLanguage = code
                                     AppSettingsPrefs.setLanguage(code)
                                     newsStore.setLanguage(code)
                                 },
                                 onBaseCurrencyChange = { code ->
+                                    Observability.event("base_currency_changed", mapOf("currency" to code))
                                     baseCurrency = code
                                     AppSettingsPrefs.setBaseCurrency(code)
                                     liveStore.setBaseCurrency(code)

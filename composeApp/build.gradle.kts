@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.googleServices)
+    alias(libs.plugins.firebaseCrashlytics)
 }
 
 val localProperties = Properties().apply {
@@ -71,6 +72,7 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.purchases.core)
+            implementation(project(":observability"))
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import com.fxalways.app.screens.FxAppShell
 import com.fxalways.app.screens.OnboardingScreen
 import com.fxalways.designsystem.theme.FxTheme
+import com.fxalways.observability.Observability
 
 @Composable
 fun App() {
@@ -19,6 +20,7 @@ fun App() {
             OnboardingScreen(
                 onComplete = {
                     OnboardingPrefs.markSeen()
+                    Observability.event("onboarding_complete")
                     onboardingComplete = true
                 },
             )
