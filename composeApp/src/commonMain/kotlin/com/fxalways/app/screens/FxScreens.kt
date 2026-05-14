@@ -2981,12 +2981,26 @@ fun AlertsScreen(
     val access = subscriptionState.featureAccess()
     val canCreate = canCreateAlert(subscriptionState, alertsState.alerts.size)
 	    val limitLabel = if (access.hasUnlimitedAlerts) ui("Unlimited") else "${alertsState.alerts.size}/${access.alertLimit}"
-    val alertRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter) { liveState.alertRates() }
+    val alertRates = remember(
+        liveState.baseCurrency,
+        liveState.favorites,
+        liveState.compare,
+        liveState.converter,
+        liveState.allFiat,
+        liveState.crypto,
+        subscriptionState.isPremium,
+    ) {
+        liveState.alertRates(subscriptionState.isPremium)
+    }
     val currentRatesByCode = remember(liveState.baseCurrency, alertRates) {
         alertRates.associateBy { it.code }
     }
     var selectedRateCode by remember(liveState.baseCurrency) { mutableStateOf(alertRates.firstOrNull()?.code ?: "EUR") }
     val selectedRate = alertRates.firstOrNull { it.code == selectedRateCode } ?: alertRates.firstOrNull() ?: FavoriteRates.first()
+    val visibleAlertRates = remember(alertRates, selectedRate.code, subscriptionState.isPremium) {
+        compactCurrencyChoices(alertRates, selectedRate.code, if (subscriptionState.isPremium) 8 else 4)
+    }
+    var showAlertCurrencyPicker by remember { mutableStateOf(false) }
     var selectedKind by remember { mutableStateOf(AlertKind.Target) }
     var selectedDirection by remember { mutableStateOf(AlertDirection.Above) }
     var targetText by remember(selectedRate.code, selectedDirection, selectedKind) {
@@ -3011,6 +3025,22 @@ fun AlertsScreen(
 	        customAlertFeedback = null
         customAlertError = null
 	    }
+    if (showAlertCurrencyPicker) {
+        CurrencyPickerSheet(
+            title = ui("Choose alert pair"),
+            subtitle = "${alertRates.size} ${ui("currencies")} · ${liveState.baseCurrency} ${ui("base")}",
+            currencies = alertRates,
+            selectedCode = selectedRate.code,
+            onDismiss = { showAlertCurrencyPicker = false },
+            onSelect = { code ->
+                showAlertCurrencyPicker = false
+                selectedRateCode = code
+                alertRates.firstOrNull { it.code == code }?.let { rate ->
+                    targetText = defaultAlertInput(rate, selectedDirection, selectedKind)
+                }
+            },
+        )
+    }
     ScreenScaffold {
         if (onBack != null) {
 	            BackNavButton(label = ui("More"), onClick = onBack)
@@ -3040,7 +3070,7 @@ fun AlertsScreen(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 	                Eyebrow("${liveState.baseCurrency} ${ui("PAIR")}")
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    alertRates.chunked(2).forEach { rowRates ->
+                    visibleAlertRates.chunked(2).forEach { rowRates ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             rowRates.forEach { rate ->
 	                                AlertCurrencyChoice(
@@ -3058,6 +3088,11 @@ fun AlertsScreen(
                         }
                     }
                 }
+                GhostButton(
+                    text = "≡  ${ui("Choose alert pair")}",
+                    modifier = Modifier.fillMaxWidth().testTag("alert_choose_pair"),
+                    onClick = { showAlertCurrencyPicker = true },
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AlertKind.entries.forEach { kind ->
                         Pill(
@@ -4888,11 +4923,11 @@ private fun localizedShortAgeLabel(millis: Long): String {
     }
 }
 
-private fun LiveRatesState.alertRates(): List<FxRate> =
-    (favorites + compare + converter + allFiat)
+private fun LiveRatesState.alertRates(isPremium: Boolean): List<FxRate> =
+    (favorites + compare + converter + allFiat + availableCryptoRates(isPremium))
         .filterNot { it.code == baseCurrency }
         .distinctBy { it.code }
-        .take(24)
+        .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes || it.code in DefaultCryptoCodes }.thenBy { it.code })
 
 private fun LiveRatesState.portfolioRates(): List<FxRate> =
     (converter + favorites + compare + allFiat)

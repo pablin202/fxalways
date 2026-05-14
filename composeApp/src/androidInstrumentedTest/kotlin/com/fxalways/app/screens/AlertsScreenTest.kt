@@ -90,6 +90,36 @@ class AlertsScreenTest {
     }
 
     @Test
+    fun freeAlertPairPickerShowsCoreCryptoButLocksExpandedCryptoCatalog() {
+        renderAlerts(isPremium = false)
+
+        compose.onNodeWithTag("alert_choose_pair").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_picker_search").performTextReplacement("SOL")
+
+        compose.onAllNodesWithTag("currency_picker_SOL").assertCountEquals(0)
+
+        compose.onNodeWithTag("currency_picker_search").performTextReplacement("BTC")
+        compose.onNodeWithTag("currency_picker_BTC").assertIsDisplayed()
+        compose.onNodeWithText("Crypto · Bitcoin").assertIsDisplayed()
+    }
+
+    @Test
+    fun proAlertPairPickerSearchesExpandedCryptoAndCreatesAlert() {
+        renderAlerts(isPremium = true)
+
+        compose.onNodeWithTag("alert_choose_pair").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_picker_search").performTextReplacement("sol")
+        compose.onNodeWithTag("currency_picker_SOL").assertIsDisplayed().performClick()
+
+        compose.onNodeWithTag("alert_currency_SOL").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("0.0065")
+        compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
+
+        compose.onNodeWithTag("alert_card_manual_0").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("USD / SOL").assertIsDisplayed()
+    }
+
+    @Test
     fun activeAlertSupportsPauseTestAndDelete() {
         val harness = renderAlerts(
             isPremium = true,
@@ -232,6 +262,11 @@ class AlertsScreenTest {
         val eur = FxRate("EUR", "Euro", "🇪🇺", CurrencyKind.Fiat, 0.92, -0.2, listOf(0.91f, 0.92f), "1 USD = 0.9200 EUR")
         val gbp = FxRate("GBP", "British Pound", "🇬🇧", CurrencyKind.Fiat, 0.78, 0.1, listOf(0.77f, 0.78f), "1 USD = 0.7800 GBP")
         val jpy = FxRate("JPY", "Japanese Yen", "🇯🇵", CurrencyKind.Fiat, 156.0, 0.3, listOf(155f, 156f), "1 USD = 156.0000 JPY")
+        val btc = FxRate("BTC", "Bitcoin", "₿", CurrencyKind.Crypto, 0.000015, 2.4, listOf(0.000014f, 0.000015f), "1 USD = 0.000015 BTC")
+        val eth = FxRate("ETH", "Ethereum", "Ξ", CurrencyKind.Crypto, 0.00024, 1.2, listOf(0.00023f, 0.00024f), "1 USD = 0.000240 ETH")
+        val usdt = FxRate("USDT", "Tether", "₮", CurrencyKind.Crypto, 1.0002, 0.01, listOf(1f, 1.0002f), "1 USD = 1.0002 USDT")
+        val usdc = FxRate("USDC", "USD Coin", "$", CurrencyKind.Crypto, 0.9999, -0.01, listOf(1f, 0.9999f), "1 USD = 0.9999 USDC")
+        val sol = FxRate("SOL", "Solana", "◎", CurrencyKind.Crypto, 0.00628, -1.14, listOf(0.0068f, 0.00628f), "1 USD = 0.006280 SOL")
         return LiveRatesState(
             isLoading = false,
             isLive = true,
@@ -240,6 +275,7 @@ class AlertsScreenTest {
             favorites = listOf(eur, gbp, jpy),
             converter = listOf(usd, eur, gbp, jpy),
             compare = listOf(eur, gbp, jpy),
+            crypto = listOf(btc, eth, usdt, usdc, sol),
             allFiat = listOf(usd, eur, gbp, jpy),
         )
     }
