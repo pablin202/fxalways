@@ -343,6 +343,7 @@ private val uiTranslations = mapOf(
         "Unlock custom alerts" to "Desbloquear alertas personalizadas",
         "QUICK CREATE" to "CREACIÓN RÁPIDA",
         "Create unlimited alerts" to "Crear alertas ilimitadas",
+        "Enter a target above 0" to "Ingresa un objetivo mayor a 0",
         "ACTIVE ALERTS" to "ALERTAS ACTIVAS",
         "NO ALERTS YET" to "SIN ALERTAS",
         "Create one from a favorite currency or from any detail screen." to "Crea una desde una moneda favorita o desde detalles.",
@@ -2799,10 +2800,13 @@ fun AlertsScreen(
     )
     val canCreateOrUpdate = canCreate || matchingCustomAlert != null
 	    var customAlertFeedback by remember { mutableStateOf<String?>(null) }
+    var customAlertError by remember { mutableStateOf<String?>(null) }
 	    val existingAlertReactivatedCopy = ui("Existing alert reactivated")
 	    val alertCreatedCopy = ui("alert created")
+    val invalidTargetCopy = ui("Enter a target above 0")
 	    LaunchedEffect(liveState.baseCurrency, selectedRate.code, selectedDirection, selectedKind, targetText) {
 	        customAlertFeedback = null
+        customAlertError = null
 	    }
     ScreenScaffold {
         if (onBack != null) {
@@ -2836,14 +2840,14 @@ fun AlertsScreen(
                     alertRates.chunked(2).forEach { rowRates ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             rowRates.forEach { rate ->
-                                AlertCurrencyChoice(
-                                    rate = rate,
-                                    selected = rate.code == selectedRate.code,
-                                    modifier = Modifier.clickable {
-                                        selectedRateCode = rate.code
-                                        targetText = defaultAlertInput(rate, selectedDirection, selectedKind)
-                                    }.weight(1f),
-                                )
+	                                AlertCurrencyChoice(
+	                                    rate = rate,
+	                                    selected = rate.code == selectedRate.code,
+	                                    modifier = Modifier.clickable {
+	                                        selectedRateCode = rate.code
+	                                        targetText = defaultAlertInput(rate, selectedDirection, selectedKind)
+	                                    }.weight(1f),
+	                                )
                             }
                             if (rowRates.size == 1) {
                                 Spacer(Modifier.weight(1f))
@@ -2855,34 +2859,40 @@ fun AlertsScreen(
                     AlertKind.entries.forEach { kind ->
                         Pill(
 	                            text = ui(kind.label),
-                            variant = if (kind == selectedKind) PillVariant.Accent else PillVariant.Ghost,
-                            modifier = Modifier.clickable {
-                                selectedKind = kind
-                                targetText = defaultAlertInput(selectedRate, selectedDirection, kind)
-                            },
-                        )
+	                            variant = if (kind == selectedKind) PillVariant.Accent else PillVariant.Ghost,
+	                            modifier = Modifier
+                                    .testTag("alert_kind_${kind.name}")
+                                    .clickable {
+	                                selectedKind = kind
+	                                targetText = defaultAlertInput(selectedRate, selectedDirection, kind)
+	                            },
+	                        )
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AlertDirection.entries.forEach { direction ->
                         Pill(
-	                            text = ui(direction.label(selectedKind)),
-                            variant = if (direction == selectedDirection) PillVariant.Accent else PillVariant.Ghost,
-                            modifier = Modifier.clickable {
-                                selectedDirection = direction
-                                targetText = defaultAlertInput(selectedRate, direction, selectedKind)
-                            },
-                        )
+		                            text = ui(direction.label(selectedKind)),
+	                            variant = if (direction == selectedDirection) PillVariant.Accent else PillVariant.Ghost,
+	                            modifier = Modifier
+                                    .testTag("alert_direction_${direction.name}")
+                                    .clickable {
+	                                selectedDirection = direction
+	                                targetText = defaultAlertInput(selectedRate, direction, selectedKind)
+	                            },
+	                        )
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     alertPresets.forEach { preset ->
                         Pill(
-                            text = preset.label,
-                            variant = PillVariant.Ghost,
-                            modifier = Modifier.clickable {
-                                selectedDirection = if (preset.percent >= 0.0) AlertDirection.Above else AlertDirection.Below
-                                targetText = if (selectedKind == AlertKind.Target) {
+	                            text = preset.label,
+	                            variant = PillVariant.Ghost,
+	                            modifier = Modifier
+                                    .testTag("alert_preset_${preset.label}")
+                                    .clickable {
+	                                selectedDirection = if (preset.percent >= 0.0) AlertDirection.Above else AlertDirection.Below
+	                                targetText = if (selectedKind == AlertKind.Target) {
                                     formatRate(selectedRate.rate * (1.0 + preset.percent / 100.0))
                                 } else {
                                     formatPercentValue(kotlin.math.abs(preset.percent))
@@ -2897,33 +2907,46 @@ fun AlertsScreen(
                         targetText = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)
                     },
                     pair = "${liveState.baseCurrency}/${selectedRate.code}",
-	                    label = if (selectedKind == AlertKind.Target) ui("Target rate") else ui("Daily move %"),
-                )
-                PrimaryButton(
+		                    label = if (selectedKind == AlertKind.Target) ui("Target rate") else ui("Daily move %"),
+	                )
+	                PrimaryButton(
                     text = when {
 	                        matchingCustomAlert?.enabled == true -> ui("Keep existing alert active")
 	                        matchingCustomAlert != null -> ui("Reactivate existing alert")
 	                        canCreate -> "${ui("Create")} ${ui(selectedDirection.label(selectedKind)).lowercase()} ${ui("alert")}"
-	                        else -> ui("Unlock custom alerts")
-                    },
-                    onClick = {
-                        if (!canCreateOrUpdate) {
-                            onOpenPaywall()
-                        } else if (targetValue > 0.0) {
-                            onCreateManualAlert(selectedRate, selectedDirection, targetValue, selectedKind)
-                            customAlertFeedback = if (matchingCustomAlert != null) {
-	                                "$existingAlertReactivatedCopy ${liveState.baseCurrency}/${selectedRate.code}."
-	                            } else {
-		                                "${liveState.baseCurrency}/${selectedRate.code} $alertCreatedCopy."
-	                            }
-                        }
-                    },
-                )
-                customAlertFeedback?.let { feedback ->
+		                        else -> ui("Unlock custom alerts")
+	                    },
+                    modifier = Modifier.fillMaxWidth().testTag("alert_create_button"),
+	                    onClick = {
+	                        if (!canCreateOrUpdate) {
+	                            onOpenPaywall()
+	                        } else if (targetValue > 0.0) {
+	                            onCreateManualAlert(selectedRate, selectedDirection, targetValue, selectedKind)
+	                            customAlertFeedback = if (matchingCustomAlert != null) {
+		                                "$existingAlertReactivatedCopy ${liveState.baseCurrency}/${selectedRate.code}."
+		                            } else {
+			                                "${liveState.baseCurrency}/${selectedRate.code} $alertCreatedCopy."
+		                            }
+                                customAlertError = null
+	                        } else {
+                                customAlertError = invalidTargetCopy
+	                        }
+	                    },
+	                )
+                customAlertError?.let { error ->
                     Text(
-                        feedback,
+                        error,
+                        modifier = Modifier.testTag("alert_target_error"),
                         style = FxTheme.typography.captionMono,
-                        color = FxTheme.colors.accent,
+                        color = FxTheme.colors.down,
+                    )
+                }
+	                customAlertFeedback?.let { feedback ->
+	                    Text(
+	                        feedback,
+                            modifier = Modifier.testTag("alert_feedback"),
+	                        style = FxTheme.typography.captionMono,
+	                        color = FxTheme.colors.accent,
                     )
                 }
                 Text(
@@ -3266,6 +3289,7 @@ private fun AlertTargetField(
                 textStyle = FxTheme.typography.numberL.copy(color = FxTheme.colors.text),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                modifier = Modifier.testTag("alert_target_input"),
                 decorationBox = { innerTextField ->
                     if (value.isBlank()) {
                         Text("0.0000", style = FxTheme.typography.numberL, color = FxTheme.colors.textGhost)
@@ -3285,6 +3309,7 @@ private fun AlertCurrencyChoice(
 ) {
     Row(
         modifier = modifier
+            .testTag("alert_currency_${rate.code}")
             .heightIn(min = 54.dp)
             .clip(FxTheme.shapes.field)
             .background(if (selected) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
@@ -3326,6 +3351,7 @@ private fun AlertQuickRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("alert_quick_${rate.code}")
             .clip(FxTheme.shapes.field)
             .clickable(onClick = if (enabled) onCreate else onLocked)
             .padding(horizontal = 12.dp, vertical = 11.dp),
@@ -3351,7 +3377,7 @@ private fun AlertCard(
     onTest: (PriceAlert) -> Unit,
 ) {
     val isHit = alert.isHit(currentRate, currentChangePct)
-    BentoCard(padding = 12.dp) {
+    BentoCard(modifier = Modifier.testTag("alert_card_${alert.id}"), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 FlagDot(if (alert.kind == AlertKind.Target) "◎" else "%", CurrencyKind.Fiat, 32.dp)
@@ -3381,20 +3407,26 @@ private fun AlertCard(
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 Text(
-	                    if (alert.enabled) ui("pause") else ui("resume"),
-                    style = FxTheme.typography.captionMono,
-                    color = FxTheme.colors.textDim,
-                    modifier = Modifier.clickable { onToggle(alert.id) },
-                )
+		                    if (alert.enabled) ui("pause") else ui("resume"),
+	                    style = FxTheme.typography.captionMono,
+	                    color = FxTheme.colors.textDim,
+	                    modifier = Modifier
+                            .testTag("alert_toggle_${alert.id}")
+                            .clickable { onToggle(alert.id) },
+	                )
                 Spacer(Modifier.width(14.dp))
                 Text(
-	                    ui("test"),
-                    style = FxTheme.typography.captionMono,
-                    color = FxTheme.colors.accent,
-                    modifier = Modifier.clickable { onTest(alert) },
-                )
-                Spacer(Modifier.width(14.dp))
-                Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textFaint, modifier = Modifier.clickable { onDelete(alert.id) })
+		                    ui("test"),
+	                    style = FxTheme.typography.captionMono,
+	                    color = FxTheme.colors.accent,
+	                    modifier = Modifier
+                            .testTag("alert_test_${alert.id}")
+                            .clickable { onTest(alert) },
+	                )
+	                Spacer(Modifier.width(14.dp))
+	                Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textFaint, modifier = Modifier
+                        .testTag("alert_delete_${alert.id}")
+                        .clickable { onDelete(alert.id) })
             }
         }
     }
