@@ -2648,9 +2648,9 @@ fun NewsScreen(
 ) {
     val access = subscriptionState.featureAccess()
     var query by remember { mutableStateOf("") }
+    val normalizedQuery = query.trim()
     val filteredStories = remember(newsState.stories, query, newsState.selectedCurrency) {
         newsState.stories.filter { story ->
-            val normalizedQuery = query.trim()
             val matchesQuery = normalizedQuery.isBlank() ||
                 story.title.contains(normalizedQuery, ignoreCase = true) ||
                 story.summary.contains(normalizedQuery, ignoreCase = true) ||
@@ -2661,19 +2661,30 @@ fun NewsScreen(
                 story.moves.any { it.first == newsState.selectedCurrency } ||
                 story.tag == newsState.selectedCurrency
             matchesQuery && matchesCurrency
-        }.ifEmpty {
-            if (query.isBlank()) newsState.stories else emptyList()
         }
     }
     val visibleStories = filteredStories.take(access.newsStoryLimit.cap(filteredStories.size))
     val regionOptions = listOf("US", "AU", "GB", "EU", "BR", "MX", "JP")
     val currencyOptions = (newsState.trackedCurrencies + listOf("USD", "EUR", "GBP", "JPY", "AUD", "BTC")).distinct()
+    val emptyCopy = newsEmptyCopy(
+        hasBackendStories = newsState.stories.isNotEmpty(),
+        hasQuery = normalizedQuery.isNotBlank(),
+        region = newsState.region,
+        currency = newsState.selectedCurrency,
+    )
     ScreenScaffold {
         ScreenHeader(
             "News",
             sub = if (access.canUseAdvancedNews) "MARKET STREAM" else "MARKET PREVIEW",
-            subtitle = "${newsState.provider} · ${newsState.region} · ${newsState.selectedCurrency} focus",
-            right = { Text("↻", style = FxTheme.typography.numberL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onRefresh)) },
+            subtitle = "${newsState.provider} · ${newsState.region} · ${newsState.selectedCurrency} focus · ${newsState.refreshedLabel}",
+            right = {
+                Text(
+                    if (newsState.isLoading) "…" else "↻",
+                    style = FxTheme.typography.numberL,
+                    color = if (newsState.isLoading) FxTheme.colors.accent else FxTheme.colors.textDim,
+                    modifier = Modifier.clickable(enabled = !newsState.isLoading, onClick = onRefresh),
+                )
+            },
         )
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -2690,6 +2701,7 @@ fun NewsScreen(
                     LegendDot("BEARISH ${newsState.bearish}%", FxTheme.colors.down)
                 }
                 KeyValueRow("Feed", "${newsState.language.uppercase()} · ${newsState.trackedCurrencies.joinToString(", ")}")
+                KeyValueRow("Updated", "${newsState.provider} · ${newsState.refreshedLabel}")
             }
         }
         BentoCard(padding = 10.dp) {
@@ -2717,13 +2729,20 @@ fun NewsScreen(
         }
         SectionLabel("RECENT LINES · ${filteredStories.size}")
         if (newsState.errorMessage != null) {
-            Text("News backend unavailable", style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
+            Text(
+                "News backend unavailable · ${newsState.errorMessage}",
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.down,
+            )
         }
         if (visibleStories.isEmpty()) {
             BentoCard(padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("No matching stories", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                    Text("Try a different currency, region or search term.", style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                    Text(emptyCopy.first, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    Text(emptyCopy.second, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                    if (newsState.isLoading) {
+                        Text("Refreshing market stream…", style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
+                    }
                 }
             }
         }
@@ -3828,6 +3847,18 @@ private fun NewsFilterRow(
         }
     }
 }
+
+private fun newsEmptyCopy(
+    hasBackendStories: Boolean,
+    hasQuery: Boolean,
+    region: String,
+    currency: String,
+): Pair<String, String> =
+    when {
+        !hasBackendStories -> "No market stories yet" to "The backend did not return stories for $region. Refresh or try a broader region."
+        hasQuery -> "No search matches" to "No $currency stories match that search. Clear the query or switch currency."
+        else -> "No $currency stories in $region" to "The feed is live, but this filter has no direct currency matches right now."
+    }
 
 @Composable
 private fun ProUpsellCard(title: String, subtitle: String, onClick: () -> Unit) {

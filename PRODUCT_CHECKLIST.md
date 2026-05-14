@@ -72,8 +72,8 @@ Use this as the production readiness checklist for each feature. Mark items only
 - [x] Add user-facing region selector.
 - [x] Add currency filters.
 - [x] Open article/source links when the provider gives a URL.
-- [ ] Add empty state for region with no relevant stories.
-- [ ] Add cache age and refresh feedback.
+- [x] Add empty state for region with no relevant stories.
+- [x] Add cache age and refresh feedback.
 - [ ] Add topic filters.
 
 ## Traveler
@@ -174,7 +174,7 @@ Use this as the production readiness checklist for each feature. Mark items only
 - [x] Free: limited story count and locked filters.
 - [x] Pro: region and currency filters are enabled.
 - [x] Pro: full filtered story list is visible.
-- [ ] Edge: no stories for a selected region/currency shows a specific empty state.
+- [x] Edge: no stories for a selected region/currency shows a specific empty state.
 
 ### Traveler
 
