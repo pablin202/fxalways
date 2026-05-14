@@ -3034,15 +3034,15 @@ fun WatchlistScreen(
     val access = subscriptionState.featureAccess()
     val allRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter) { liveState.portfolioRates() }
 	    val limitLabel = if (access.hasUnlimitedWatchlistCurrencies) ui("Unlimited") else "${watchlistState.watchlist.codes.size}/${access.watchlistCurrencyLimit}"
-    val holdings = remember(liveState.baseCurrency, allRates, watchlistState.watchlist) {
-        watchlistState.watchlist.codes.mapNotNull { code ->
-            val rate = allRates.firstOrNull { it.code == code } ?: return@mapNotNull null
-            PortfolioHolding(
-                rate = rate,
-                amount = watchlistState.watchlist.holdings[rate.code] ?: 0.0,
-            )
-        }.sortedWith(compareByDescending<PortfolioHolding> { it.baseValue }.thenBy { it.rate.code })
-    }
+	    val holdings = remember(liveState.baseCurrency, allRates, watchlistState.watchlist) {
+	        watchlistState.watchlist.codes.mapNotNull { code ->
+	            val rate = allRates.firstOrNull { it.code == code } ?: return@mapNotNull null
+	            PortfolioHolding(
+	                rate = rate,
+	                amount = watchlistState.watchlist.holdings[rate.code] ?: 0.0,
+	            )
+	        }
+	    }
     val valuedHoldings = holdings.filter { it.amount > 0.0 }
     val portfolioValue = valuedHoldings.sumOf { it.baseValue }
     val portfolioDailyChange = valuedHoldings.sumOf { it.dailyChangeInBase }
@@ -3053,7 +3053,7 @@ fun WatchlistScreen(
         }
 	        ScreenHeader(ui("Watchlist"), sub = ui("CUSTOM TRACKING"), subtitle = "$limitLabel ${ui("currencies")} · ${liveState.baseCurrency} ${ui("base")}")
 
-        BentoCard(Modifier.fillMaxWidth().heightIn(min = 148.dp), padding = 14.dp) {
+        BentoCard(Modifier.fillMaxWidth().heightIn(min = 148.dp).testTag("watchlist_summary"), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.12f))
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -3157,6 +3157,7 @@ private fun PortfolioHoldingRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("watchlist_holding_${rate.code}")
             .clip(FxTheme.shapes.field)
             .background(FxTheme.colors.surface2)
             .padding(horizontal = 12.dp, vertical = 11.dp),
@@ -3165,7 +3166,14 @@ private fun PortfolioHoldingRow(
     ) {
         FlagDot(rate.glyph, rate.kind, 28.dp, modifier = Modifier.clickable(onClick = onOpenDetail))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text("${rate.code} ${ui("holding")}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, modifier = Modifier.clickable(onClick = onOpenDetail))
+            Text(
+                "${rate.code} ${ui("holding")}",
+                style = FxTheme.typography.bodyStrong,
+                color = FxTheme.colors.text,
+                modifier = Modifier
+                    .testTag("watchlist_detail_${rate.code}")
+                    .clickable(onClick = onOpenDetail),
+            )
             val holdingSubtitle = if (amount <= 0.0) {
                 "${ui("Tracking live rate")} ${formatRate(rate.rate)} · ${ui("enter amount held")}"
             } else {
@@ -3195,6 +3203,7 @@ private fun PortfolioHoldingRow(
                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .testTag("watchlist_amount_${rate.code}")
                     .clip(FxTheme.shapes.field)
                     .background(if (amountFocused) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
                     .border(1.dp, if (amountFocused) FxTheme.colors.accent else FxTheme.colors.border, FxTheme.shapes.field)
@@ -3216,10 +3225,12 @@ private fun PortfolioHoldingRow(
             if (amountFocused) {
                 Text(
 	                    ui("done"),
-                    style = FxTheme.typography.captionMono,
-                    color = FxTheme.colors.accent,
-                    modifier = Modifier.clickable { focusManager.clearFocus() },
-                )
+	                    style = FxTheme.typography.captionMono,
+	                    color = FxTheme.colors.accent,
+	                    modifier = Modifier
+                            .testTag("watchlist_amount_done_${rate.code}")
+                            .clickable { focusManager.clearFocus() },
+	                )
             }
         }
     }
@@ -3236,6 +3247,7 @@ private fun WatchlistCurrencyRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("watchlist_currency_${rate.code}")
             .clip(FxTheme.shapes.field)
             .background(if (selected) FxTheme.colors.accentSoft else Color.Transparent)
             .clickable(onClick = onToggle)
