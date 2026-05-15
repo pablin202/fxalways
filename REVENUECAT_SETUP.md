@@ -39,16 +39,18 @@ For Test Store or store-backed setup, keep these identifiers consistent:
 Entitlement: pro
 Offering: default
 Package: monthly
+Package: annual
 ```
 
-Suggested production subscription product id:
+Suggested production subscription product ids:
 
 ```text
 fxalways_pro_monthly
+fxalways_pro_annual
 ```
 
-The app reads `offerings.current.monthly`. If no monthly package exists, it falls back to the first package in the current
-offering, but production should have a monthly package.
+The app reads `offerings.current.monthly` and `offerings.current.annual`. Production should not configure a lifetime
+package for this offering; FX Always sells Pro as monthly or annual recurring subscriptions only.
 
 ## 4. Android Production
 
@@ -56,9 +58,9 @@ When moving from Test Store to Google Play:
 
 1. Create the app in RevenueCat with package `com.fxalways.app`.
 2. Connect Google Play in RevenueCat.
-3. Create a monthly Google Play subscription and base plan.
+3. Create monthly and annual Google Play subscriptions or base plans.
 4. Attach the Play product to entitlement `pro`.
-5. Add it to the current offering as the monthly package.
+5. Add them to the current offering as the monthly and annual packages.
 6. Install from an internal/test Play track for real billing tests.
 
 Raw `adb install` builds are fine for UI and Test Store checks, but Google Play billing usually needs a Play testing track,
@@ -68,10 +70,10 @@ tester account and active product setup.
 
 When preparing iOS:
 
-1. Create the App Store Connect subscription.
+1. Create monthly and annual App Store Connect subscriptions.
 2. Add the iOS app/platform in RevenueCat.
-3. Attach the iOS product to entitlement `pro`.
-4. Keep offering `default` and monthly package aligned with Android.
+3. Attach the iOS products to entitlement `pro`.
+4. Keep offering `default` and monthly/annual packages aligned with Android.
 5. Provide the iOS public SDK key through `PlatformConfig.ios.kt` or an iOS build configuration.
 
 There is no separate iOS subscription gateway in this app; purchase logic stays in `commonMain`.

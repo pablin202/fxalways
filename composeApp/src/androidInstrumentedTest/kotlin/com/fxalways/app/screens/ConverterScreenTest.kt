@@ -41,6 +41,8 @@ class ConverterScreenTest {
     fun freeUserSeesOnlyMidMarketAndCustomFeeQuotes() {
         renderConverter(isPremium = false)
 
+        compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
         compose.onNodeWithText("FEES · USD → EUR").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("CUSTOM COST").performScrollTo().assertIsDisplayed()
@@ -224,6 +226,17 @@ class ConverterScreenTest {
         compose.onNodeWithTag("currency_list_scroll").performScrollToNode(hasTestTag("currency_list_BTC"))
         compose.onNodeWithTag("currency_list_BTC").assertIsDisplayed()
         compose.onNodeWithText("Crypto · Bitcoin").assertIsDisplayed()
+    }
+
+    @Test
+    fun loadingConverterShowsSkeletonAndTrustStatus() {
+        renderConverter(
+            isPremium = false,
+            liveState = testLiveRatesState().copy(isLoading = true, isLive = false, updatedLabel = "loading"),
+        )
+
+        compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("converter_loading_skeleton").assertCountEquals(1)
     }
 
     private fun renderConverter(

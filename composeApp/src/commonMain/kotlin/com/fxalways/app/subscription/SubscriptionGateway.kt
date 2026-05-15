@@ -17,7 +17,6 @@ import com.revenuecat.purchases.kmp.models.Package
 enum class SubscriptionPlanKind {
     Monthly,
     Yearly,
-    Lifetime,
 }
 
 data class SubscriptionPlan(
@@ -215,7 +214,6 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
         buildMap {
             monthly?.let { put(SubscriptionPlanKind.Monthly, it) }
             annual?.let { put(SubscriptionPlanKind.Yearly, it) }
-            lifetime?.let { put(SubscriptionPlanKind.Lifetime, it) }
         }
 
     private fun Map<SubscriptionPlanKind, Package>.toSubscriptionPlans(): List<SubscriptionPlan> =
@@ -247,25 +245,16 @@ fun defaultSubscriptionPlans(): List<SubscriptionPlan> =
             cadenceLabel = "Best long-term value",
             badge = "BEST VALUE",
         ),
-        SubscriptionPlan(
-            kind = SubscriptionPlanKind.Lifetime,
-            title = "Lifetime",
-            priceLabel = "$79.99",
-            cadenceLabel = "One payment, permanent access",
-            badge = "FOREVER",
-        ),
     )
 
 private val SubscriptionPlanKind.label: String
     get() = when (this) {
         SubscriptionPlanKind.Monthly -> "monthly"
         SubscriptionPlanKind.Yearly -> "yearly"
-        SubscriptionPlanKind.Lifetime -> "lifetime"
     }
 
 private val SubscriptionPlanKind.periodLabel: String
     get() = when (this) {
         SubscriptionPlanKind.Monthly -> "month"
         SubscriptionPlanKind.Yearly -> "year"
-        SubscriptionPlanKind.Lifetime -> "lifetime"
     }

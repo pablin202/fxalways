@@ -19,7 +19,8 @@ Use this as the release checklist. Mark items only after Android device testing 
 ## Release Blockers
 
 - [ ] Finalize hosted legal document content for Privacy and Terms at `fxalways.com`.
-- [ ] Prepare store listing text, screenshots and metadata for Android.
+- [x] Prepare internal testing checklist and store screenshot claim set.
+- [ ] Produce final store listing text, screenshots and metadata for Android.
 - [ ] Validate all critical release strings in the 13 supported languages.
 - [ ] Run full Android instrumentation suite after the final commit.
 - [x] Run Android release build check.
@@ -58,7 +59,8 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Refresh action is available.
 - [x] Falls back gracefully when backend is unavailable.
 - [x] Home crypto snapshot uses readable spacing/padding.
-- [ ] Show explicit loading skeletons for slow networks.
+- [x] Home, Convert and Detail show rate source, freshness, cached/live status and indicative-rate disclaimer.
+- [x] Show explicit loading skeletons for slow networks.
 - [ ] Confirm stale/cached timestamp is accurate across fiat and crypto.
 - [ ] Validate unavailable currency codes are hidden or explained.
 
@@ -170,6 +172,8 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Purchase/restore in-progress state avoids duplicate taps.
 - [x] Paywall has profile-aware copy and full-width primary CTA.
 - [x] Paywall legal links are language-aware.
+- [x] Pro offering is monthly/annual only; lifetime purchase is not exposed.
+- [x] Paywall copy clearly sells monthly/annual recurring Pro value.
 - [ ] Finalize production pricing and App Store/Play Store products.
 - [ ] Test offline entitlement cache.
 - [ ] Add paywall experiment hooks only if we actually plan to A/B test before launch.
@@ -195,7 +199,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Compare tests cover edit list and Free/Pro limits.
 - [x] Traveler tests cover budget behavior.
 - [x] Watchlist/portfolio tests cover holdings and import/export behavior.
-- [ ] Add a final "launch smoke" test class that walks Home -> Convert -> Compare -> Alerts -> More.
+- [x] Add a final "launch smoke" test class that walks Home -> Convert -> Compare -> Alerts -> More.
 
 ## Recommended Next Work
 

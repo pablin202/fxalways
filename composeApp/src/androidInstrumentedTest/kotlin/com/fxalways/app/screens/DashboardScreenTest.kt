@@ -32,6 +32,8 @@ class DashboardScreenTest {
         val harness = renderDashboard(isPremium = false)
 
         compose.onNodeWithTag("dashboard_crypto_header").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_rate_trust").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_snapshot").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_stablecoins").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_avg").performScrollTo().assertIsDisplayed()
@@ -79,6 +81,17 @@ class DashboardScreenTest {
 
         compose.onNodeWithTag("dashboard_crypto_empty").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("dashboard_crypto_BTC").assertCountEquals(0)
+    }
+
+    @Test
+    fun loadingDashboardShowsSkeletonAndTrustStatus() {
+        renderDashboard(
+            isPremium = false,
+            liveState = testLiveRatesState().copy(isLoading = true, isLive = false, updatedLabel = "loading"),
+        )
+
+        compose.onNodeWithTag("dashboard_rate_trust").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("dashboard_loading_skeleton").assertCountEquals(1)
     }
 
     @Test

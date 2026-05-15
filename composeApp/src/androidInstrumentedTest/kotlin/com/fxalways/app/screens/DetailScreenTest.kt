@@ -39,6 +39,8 @@ class DetailScreenTest {
         val harness = renderDetail(isPremium = false)
 
         compose.onNodeWithText("USD / EUR").assertIsDisplayed()
+        compose.onNodeWithTag("detail_rate_trust").assertIsDisplayed()
+        compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
         compose.onNodeWithText("HISTORY · 1M").assertIsDisplayed()
         compose.onAllNodesWithText("Preview").assertCountEquals(2)
         compose.onNodeWithTag("detail_story_ECBfirstEURevent").performScrollTo().assertIsDisplayed()

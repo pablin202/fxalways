@@ -42,6 +42,8 @@ class PaywallScreenTest {
         compose.onNodeWithText("Unlimited pairs + ranges").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("BTC, ETH, USDT, USDC").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Search and add up to 200 crypto assets").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Lifetime").assertCountEquals(0)
+        compose.onAllNodesWithText("One payment, permanent access").assertCountEquals(0)
 
         compose.onNodeWithTag("paywall_plan_Yearly").performScrollTo().performClick()
         compose.onNodeWithTag("paywall_selected_plan").performScrollTo().assertIsDisplayed()
@@ -84,7 +86,7 @@ class PaywallScreenTest {
     }
 
     @Test
-    fun planSelectionIgnoresUnavailablePlansAndCanStartLifetime() {
+    fun planSelectionIgnoresUnavailablePlansAndStartsAvailableRecurringPlan() {
         val harness = renderPaywall(
             SubscriptionState(
                 isPremium = false,
@@ -102,14 +104,6 @@ class PaywallScreenTest {
                         priceLabel = "$29.99",
                         cadenceLabel = "Best long-term value",
                         badge = "BEST VALUE",
-                        isAvailable = false,
-                    ),
-                    SubscriptionPlan(
-                        kind = SubscriptionPlanKind.Lifetime,
-                        title = "Lifetime",
-                        priceLabel = "$79.99",
-                        cadenceLabel = "One payment, permanent access",
-                        badge = "FOREVER",
                         isAvailable = true,
                     ),
                 ),
@@ -119,12 +113,12 @@ class PaywallScreenTest {
         compose.onNodeWithTag("paywall_plan_Monthly").performScrollTo().performClick()
         compose.onNodeWithTag("paywall_plan_Yearly").performScrollTo().performClick()
         compose.onNodeWithTag("paywall_selected_plan").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText("Lifetime").assertCountEquals(2)
-        compose.onAllNodesWithText("Not configured").assertCountEquals(2)
+        compose.onAllNodesWithText("Yearly").assertCountEquals(2)
+        compose.onAllNodesWithText("Not configured").assertCountEquals(1)
 
         compose.onNodeWithTag("paywall_start_button").performScrollTo().performClick()
 
-        compose.runOnIdle { assertEquals(listOf(SubscriptionPlanKind.Lifetime), harness.startedPlans) }
+        compose.runOnIdle { assertEquals(listOf(SubscriptionPlanKind.Yearly), harness.startedPlans) }
     }
 
     @Test

@@ -592,6 +592,17 @@ private val uiTranslations = mapOf(
         "Long-range history" to "Histórico largo",
         "Unlock 1Y and all-time detail views where history is available." to "Desbloquea 1A y todo el histórico donde esté disponible.",
         "Billed through Google Play on Android and App Store on iOS." to "Facturado por Google Play en Android y App Store en iOS.",
+        "Recurring subscription billed through Google Play on Android and App Store on iOS." to "Suscripción recurrente facturada por Google Play en Android y App Store en iOS.",
+        "Monthly or annual Pro unlocks unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists." to "Pro mensual o anual desbloquea alertas ilimitadas, histórico profundo, comparaciones ampliadas, herramientas de viaje y watchlists.",
+        "RATE TRUST" to "CONFIANZA DEL RATE",
+        "Source" to "Fuente",
+        "Updated" to "Actualizado",
+        "Cached" to "Cache",
+        "Preview" to "Preview",
+        "Indicative mid-market rates. Final transfer or card rates can include provider fees and markups." to "Rates mid-market indicativos. Transfers o tarjetas pueden incluir fees y markups del proveedor.",
+        "Loading rates" to "Cargando rates",
+        "Preparing converter rates" to "Preparando rates del conversor",
+        "Loading market stream" to "Cargando stream de mercado",
         "Processing..." to "Procesando...",
         "Continue" to "Continuar",
         "Purchases unavailable" to "Compras no disponibles",
@@ -602,16 +613,11 @@ private val uiTranslations = mapOf(
         "Not configured" to "No configurado",
         "Monthly" to "Mensual",
         "Yearly" to "Anual",
-        "Lifetime" to "De por vida",
         "monthly" to "mensual",
         "yearly" to "anual",
-        "lifetime" to "de por vida",
         "Paid every month" to "Pago mensual",
         "Best long-term value" to "Mejor valor a largo plazo",
-        "One payment" to "Un solo pago",
-        "One payment, permanent access" to "Un solo pago, acceso permanente",
         "BEST VALUE" to "MEJOR VALOR",
-        "FOREVER" to "PARA SIEMPRE",
         "month" to "mes",
         "year" to "año",
         "Pro active" to "Pro activo",
@@ -790,10 +796,14 @@ private val uiTranslations = mapOf(
         "offline" to "offline", "Target" to "Alvo", "Daily move" to "Movimento diário", "Above" to "Acima", "Below" to "Abaixo",
         "Down" to "Baixo", "MOVES" to "MOVIMENTOS", "Continue" to "Continuar", "Processing..." to "Processando...",
         "Purchases unavailable" to "Compras indisponíveis", "Available" to "Disponível", "Not configured" to "Não configurado",
-        "Monthly" to "Mensal", "Yearly" to "Anual", "Lifetime" to "Vitalício", "monthly" to "mensal", "yearly" to "anual",
-        "lifetime" to "vitalício", "Paid every month" to "Pago todo mês", "Best long-term value" to "Melhor valor no longo prazo",
-        "One payment" to "Pagamento único", "One payment, permanent access" to "Pagamento único, acesso permanente",
-        "BEST VALUE" to "MELHOR VALOR", "FOREVER" to "PARA SEMPRE", "allowed" to "permitidas", "review" to "revisar",
+        "Monthly" to "Mensal", "Yearly" to "Anual", "monthly" to "mensal", "yearly" to "anual",
+        "Paid every month" to "Pago todo mês", "Best long-term value" to "Melhor valor no longo prazo",
+        "BEST VALUE" to "MELHOR VALOR", "allowed" to "permitidas", "review" to "revisar",
+        "Recurring subscription billed through Google Play on Android and App Store on iOS." to "Assinatura recorrente cobrada pelo Google Play no Android e pela App Store no iOS.",
+        "Monthly or annual Pro unlocks unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists." to "Pro mensal ou anual libera alertas ilimitados, histórico profundo, comparações ampliadas, ferramentas de viagem e watchlists.",
+        "RATE TRUST" to "CONFIANÇA DA COTAÇÃO", "Source" to "Fonte", "Updated" to "Atualizado", "Cached" to "Cache", "Preview" to "Prévia",
+        "Indicative mid-market rates. Final transfer or card rates can include provider fees and markups." to "Cotações mid-market indicativas. Transferências ou cartões podem incluir tarifas e margem do provedor.",
+        "Loading rates" to "Carregando cotações", "Preparing converter rates" to "Preparando cotações do conversor", "Loading market stream" to "Carregando stream de mercado",
         "Notifications allowed" to "Notificações permitidas", "Review" to "Revisar",
         "Android can deliver local price alerts while checks run in the background" to "Android pode enviar alertas locais enquanto as verificações rodam em segundo plano",
         "Android permission is required before local price alerts can be delivered" to "Android precisa de permissão antes de enviar alertas locais",
@@ -1091,6 +1101,9 @@ fun FxAppShell() {
                                     AppSettingsPrefs.setCachedPremium(subscriptionState.isPremium)
                                     subscriptionReady = true
                                     showPaywall = !subscriptionState.isPremium
+                                    if (subscriptionState.isPremium) {
+                                        Observability.event("purchase_success", mapOf("plan" to planKind.name))
+                                    }
                                     Observability.event("purchase_finished", mapOf("premium" to subscriptionState.isPremium.toString()))
                                 } catch (error: CancellationException) {
                                     throw error
@@ -1242,6 +1255,9 @@ fun FxAppShell() {
                             selectedCurrencyCodes = converterCurrencyCodes,
                             onCurrencyCodesChange = { codes ->
                                 Observability.event("converter_currencies_changed", mapOf("count" to codes.size.toString()))
+                                (codes - converterCurrencyCodes.toSet()).forEach { code ->
+                                    Observability.event("currency_added", mapOf("surface" to "converter", "currency" to code))
+                                }
                                 converterCurrencyCodes = codes
                                 AppSettingsPrefs.setConverterCurrencyCodes(codes)
                             },
@@ -1253,6 +1269,9 @@ fun FxAppShell() {
                             selectedCurrencyCodes = compareCurrencyCodes,
                             onCurrencyCodesChange = { codes ->
                                 Observability.event("compare_currencies_changed", mapOf("count" to codes.size.toString()))
+                                (codes - compareCurrencyCodes.toSet()).forEach { code ->
+                                    Observability.event("currency_added", mapOf("surface" to "compare", "currency" to code))
+                                }
                                 compareCurrencyCodes = codes
                                 AppSettingsPrefs.setCompareCurrencyCodes(codes)
                             },
@@ -1884,8 +1903,19 @@ fun DashboardScreen(
             subtitle = "${ui("base")} · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} ${ui("favorites")} · ${localizedRuntimeLabel(liveState.autoRefreshLabel)}",
             right = { Text("↻", style = FxTheme.typography.numberL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onRefresh)) },
         )
+        RateTrustCard(
+            liveState = liveState,
+            modifier = Modifier.testTag("dashboard_rate_trust"),
+        )
         if (liveState.errorMessage != null) {
             Text(ui("Live backend unavailable · using cached UI data"), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
+        }
+        if (liveState.isLoading && !liveState.isLive) {
+            LoadingSkeletonCard(
+                title = ui("Loading rates"),
+                rows = 3,
+                modifier = Modifier.testTag("dashboard_loading_skeleton"),
+            )
         }
         ProfileInsightCard(
             profile = userProfile,
@@ -1981,6 +2011,87 @@ fun DashboardScreen(
 
 private val DefaultCryptoCodes = listOf("BTC", "ETH", "USDT", "USDC")
 private val StablecoinCodes = setOf("USDT", "USDC", "DAI", "BUSD", "PYUSD", "USDS")
+
+@Composable
+private fun RateTrustCard(
+    liveState: LiveRatesState,
+    modifier: Modifier = Modifier,
+    providerOverride: String? = null,
+    updatedOverride: String? = null,
+) {
+    val source = providerOverride?.takeIf { it.isNotBlank() } ?: liveState.rateProviderLabel()
+    val updated = updatedOverride?.takeIf { it.isNotBlank() } ?: liveState.updatedLabel
+    val status = when {
+        liveState.isLoading && !liveState.isLive -> ui("Loading")
+        liveState.isOfflineCache -> ui("Cached")
+        liveState.isLive -> ui("Live")
+        else -> ui("Preview")
+    }
+    BentoCard(modifier, padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("RATE TRUST"), color = FxTheme.colors.accent)
+                Pill(status, variant = if (liveState.isLive) PillVariant.Accent else PillVariant.Ghost)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TrustMetric(ui("Source"), source, Modifier.weight(1f).testTag("rate_trust_source"))
+                TrustMetric(ui("Updated"), localizedRuntimeLabel(updated), Modifier.weight(1f).testTag("rate_trust_updated"))
+            }
+            Text(
+                ui("Indicative mid-market rates. Final transfer or card rates can include provider fees and markups."),
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textDim,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrustMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2.copy(alpha = 0.6f))
+            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(label.uppercase(), style = FxTheme.typography.eyebrow, color = FxTheme.colors.textFaint, maxLines = 1)
+        Text(value, style = FxTheme.typography.captionMono, color = FxTheme.colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun LoadingSkeletonCard(title: String, rows: Int, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "skeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.34f,
+        targetValue = 0.82f,
+        animationSpec = infiniteRepeatable(animation = tween(820), repeatMode = RepeatMode.Reverse),
+        label = "skeletonAlpha",
+    )
+    BentoCard(modifier, padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Eyebrow(title, color = FxTheme.colors.accent)
+            repeat(rows) { index ->
+                Box(
+                    Modifier
+                        .fillMaxWidth(if (index % 2 == 0) 1f else 0.78f)
+                        .height(14.dp)
+                        .clip(FxTheme.shapes.field)
+                        .background(FxTheme.colors.surface3.copy(alpha = alpha)),
+                )
+            }
+        }
+    }
+}
+
+private fun LiveRatesState.rateProviderLabel(): String {
+    val parts = updatedLabel.split("·").map { it.trim() }.filter { it.isNotBlank() }
+    return parts.getOrNull(1)
+        ?.takeUnless { it.contains("refreshed", ignoreCase = true) || it.contains("cached", ignoreCase = true) }
+        ?: if (crypto.isNotEmpty()) "FX backend / CoinPaprika" else "FX backend"
+}
 
 @Composable
 private fun CryptoMetricTile(
@@ -2178,6 +2289,17 @@ fun ConverterScreen(
             )
         }
         ScreenHeader(ui("Convert"), subtitle = ui("Multi-currency · live to 4 decimals"))
+        RateTrustCard(
+            liveState = liveState,
+            modifier = Modifier.testTag("converter_rate_trust"),
+        )
+        if (liveState.isLoading && !liveState.isLive) {
+            LoadingSkeletonCard(
+                title = ui("Preparing converter rates"),
+                rows = 2,
+                modifier = Modifier.testTag("converter_loading_skeleton"),
+            )
+        }
         BentoCard(padding = 14.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -2889,6 +3011,12 @@ fun DetailScreen(
             Text(formatChange(selected.change24h), style = FxTheme.typography.numberBody, color = if (selected.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down, modifier = Modifier.padding(bottom = 7.dp))
         }
         Text("${selected.caption?.let { ui(it) } ?: ui("mid-market")} · ${localizedRuntimeLabel(liveState.updatedLabel)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+        RateTrustCard(
+            liveState = liveState,
+            providerOverride = if (detailState.provider.isNotBlank()) detailState.provider else null,
+            updatedOverride = if (detailState.updatedLabel.isNotBlank()) detailState.updatedLabel else null,
+            modifier = Modifier.testTag("detail_rate_trust"),
+        )
         BentoCard(Modifier.testTag("detail_history_card")) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -5166,6 +5294,13 @@ fun NewsScreen(
 	                KeyValueRow(ui("Updated"), "${newsState.provider} · ${localizedRuntimeLabel(newsState.refreshedLabel)}")
             }
         }
+        if (newsState.isLoading && newsState.stories.isEmpty()) {
+            LoadingSkeletonCard(
+                title = ui("Loading market stream"),
+                rows = 4,
+                modifier = Modifier.testTag("news_loading_skeleton"),
+            )
+        }
         BentoCard(padding = 10.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 NewsSearchField(query = query, onQueryChange = { query = it })
@@ -7001,7 +7136,7 @@ fun PaywallScreen(
         Eyebrow("FX/ PRO", color = FxTheme.colors.accent)
 	        Text(ui("The full picture.\nMore rates. More context."), style = FxTheme.typography.display, color = FxTheme.colors.text)
         Text(
-	            ui("Unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists on one membership."),
+	            ui("Monthly or annual Pro unlocks unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists."),
             style = FxTheme.typography.body,
             color = FxTheme.colors.textDim,
         )
@@ -7053,6 +7188,7 @@ fun PaywallScreen(
                     modifier = Modifier.testTag("paywall_plan_${plan.kind.name}"),
                     onSelect = {
                         if (plan.isAvailable) {
+                            Observability.event("plan_selected", mapOf("plan" to plan.kind.name))
                             selectedKind = plan.kind
                         }
                     },
@@ -7067,7 +7203,7 @@ fun PaywallScreen(
                 Text(ui(selectedPlan.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 BigValueText(selectedPlan.priceLabel, ui(selectedPlan.cadenceLabel))
                 Text(
-	                    ui("Billed through Google Play on Android and App Store on iOS."),
+	                    ui("Recurring subscription billed through Google Play on Android and App Store on iOS."),
                     style = FxTheme.typography.caption,
                     color = FxTheme.colors.textDim,
                 )
@@ -7213,7 +7349,6 @@ private fun planGlyph(kind: SubscriptionPlanKind): String =
     when (kind) {
         SubscriptionPlanKind.Monthly -> "1M"
         SubscriptionPlanKind.Yearly -> "1Y"
-        SubscriptionPlanKind.Lifetime -> "∞"
     }
 
 private fun SubscriptionState.proStatusLabel(): String =
