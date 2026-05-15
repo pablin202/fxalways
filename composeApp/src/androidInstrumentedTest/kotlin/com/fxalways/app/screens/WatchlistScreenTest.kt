@@ -17,6 +17,8 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.data.LiveRatesState
+import com.fxalways.app.data.PortfolioTransaction
+import com.fxalways.app.data.PortfolioTransactionType
 import com.fxalways.app.data.Watchlist
 import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.subscription.SubscriptionState
@@ -25,6 +27,7 @@ import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.theme.FxTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
 
@@ -86,6 +89,211 @@ class WatchlistScreenTest {
     }
 
     @Test
+    fun freePortfolioKeepsCostBasisAndInsightsLockedOut() {
+        renderWatchlist(
+            isPremium = false,
+            initialWatchlist = Watchlist(codes = listOf("EUR"), holdings = mapOf("EUR" to 100.0)),
+        )
+
+        compose.onNodeWithText("holdings valued", substring = true).assertIsDisplayed()
+        compose.onAllNodesWithTag("watchlist_cost_EUR").assertCountEquals(0)
+        compose.onAllNodesWithTag("watchlist_portfolio_insights").assertCountEquals(0)
+        compose.onAllNodesWithTag("watchlist_transactions").assertCountEquals(0)
+    }
+
+    @Test
+    fun proPortfolioShowsCostBasisUnrealizedPnlAndAssetAllocation() {
+        renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(
+                codes = listOf("EUR", "BTC"),
+                holdings = mapOf("EUR" to 100.0, "BTC" to 1.0),
+                holdingCosts = mapOf("EUR" to 1.0, "BTC" to 45_000.0),
+            ),
+        )
+
+        compose.onNodeWithTag("watchlist_portfolio_insights").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_unrealized_pnl").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_cost_basis").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_allocation").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_largest_position").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_chart_range").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_portfolio_chart").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_cost_BTC").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proTransactionHistoryRecordsBuySellAndRealizedPnl() {
+        val harness = renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(
+                codes = listOf("BTC"),
+                holdings = mapOf("BTC" to 1.0),
+                holdingCosts = mapOf("BTC" to 45_000.0),
+            ),
+        )
+
+        compose.onNodeWithTag("watchlist_transactions").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_transaction_amount").performTextReplacement("0.5")
+        compose.onNodeWithTag("watchlist_transaction_price").performTextReplacement("40000")
+        compose.onNodeWithTag("watchlist_transaction_record").performClick()
+
+        compose.onNodeWithTag("watchlist_transaction_sell").performScrollTo().performClick()
+        compose.onNodeWithTag("watchlist_transaction_amount").performTextReplacement("0.5")
+        compose.onNodeWithTag("watchlist_transaction_price").performTextReplacement("50000")
+        compose.onNodeWithTag("watchlist_transaction_record").performClick()
+
+        compose.runOnIdle {
+            assertEquals(1.0, harness.holdings["BTC"])
+            assertTrue(kotlin.math.abs((harness.holdingCosts["BTC"] ?: 0.0) - 43_333.333) < 0.01)
+            assertEquals(2, harness.transactions.size)
+            assertTrue(kotlin.math.abs(harness.transactions.last().realizedPnlBase - 3_333.333) < 0.01)
+        }
+        compose.onNodeWithTag("watchlist_realized_pnl").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Sell BTC", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proTransactionInputsIgnoreInvalidZeroAndIncompleteValues() {
+        val harness = renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(
+                codes = listOf("BTC"),
+                holdings = mapOf("BTC" to 1.0),
+                holdingCosts = mapOf("BTC" to 45_000.0),
+            ),
+        )
+
+        compose.onNodeWithTag("watchlist_transactions").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_transaction_record").performClick()
+        compose.onNodeWithTag("watchlist_transaction_amount").performTextReplacement("0")
+        compose.onNodeWithTag("watchlist_transaction_price").performTextReplacement("50000")
+        compose.onNodeWithTag("watchlist_transaction_record").performClick()
+        compose.onNodeWithTag("watchlist_transaction_amount").performTextReplacement("abc")
+        compose.onNodeWithTag("watchlist_transaction_price").performTextReplacement("abc")
+        compose.onNodeWithTag("watchlist_transaction_record").performClick()
+
+        compose.runOnIdle {
+            assertEquals(1.0, harness.holdings["BTC"])
+            assertEquals(45_000.0, harness.holdingCosts["BTC"])
+            assertEquals(0, harness.transactions.size)
+        }
+        compose.onNodeWithTag("watchlist_no_transactions").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proSellGreaterThanHoldingClampsTransactionAndClearsClosedPositionCostBasis() {
+        val harness = renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(
+                codes = listOf("BTC"),
+                holdings = mapOf("BTC" to 1.0),
+                holdingCosts = mapOf("BTC" to 45_000.0),
+            ),
+        )
+
+        compose.onNodeWithTag("watchlist_transactions").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_transaction_sell").performClick()
+        compose.onNodeWithTag("watchlist_transaction_amount").performTextReplacement("2")
+        compose.onNodeWithTag("watchlist_transaction_price").performTextReplacement("50000")
+        compose.onNodeWithTag("watchlist_transaction_record").performClick()
+
+        compose.runOnIdle {
+            assertTrue("BTC" !in harness.holdings)
+            assertTrue("BTC" !in harness.holdingCosts)
+            assertEquals(1, harness.transactions.size)
+            assertEquals(1.0, harness.transactions.single().amount)
+            assertEquals(5_000.0, harness.transactions.single().realizedPnlBase)
+        }
+        compose.onNodeWithText("Tracking live rate", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proTransactionAssetSelectorRecordsAgainstChosenHolding() {
+        val harness = renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(
+                codes = listOf("BTC", "ETH"),
+                holdings = mapOf("BTC" to 1.0, "ETH" to 1.0),
+                holdingCosts = mapOf("BTC" to 45_000.0, "ETH" to 2_000.0),
+            ),
+        )
+
+        compose.onNodeWithTag("watchlist_transactions").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_transaction_asset_ETH").performScrollTo().performClick()
+        compose.onNodeWithTag("watchlist_transaction_amount").performTextReplacement("2")
+        compose.onNodeWithTag("watchlist_transaction_price").performTextReplacement("3000")
+        compose.onNodeWithTag("watchlist_transaction_record").performClick()
+
+        compose.runOnIdle {
+            assertEquals(1.0, harness.holdings["BTC"])
+            assertEquals(3.0, harness.holdings["ETH"])
+            assertEquals(45_000.0, harness.holdingCosts["BTC"])
+            assertTrue(kotlin.math.abs((harness.holdingCosts["ETH"] ?: 0.0) - 2_666.666) < 0.01)
+            assertEquals("ETH", harness.transactions.single().code)
+        }
+        compose.onNodeWithText("Buy ETH", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proInitialTransactionHistoryRendersLatestRowsAndRealizedPnl() {
+        renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(
+                codes = listOf("BTC"),
+                holdings = mapOf("BTC" to 1.0),
+                holdingCosts = mapOf("BTC" to 45_000.0),
+                transactions = listOf(
+                    PortfolioTransaction(
+                        id = "old_buy",
+                        code = "BTC",
+                        type = PortfolioTransactionType.Buy,
+                        amount = 1.0,
+                        priceBase = 45_000.0,
+                        createdAtMillis = 1_700_000_000_000L,
+                    ),
+                    PortfolioTransaction(
+                        id = "latest_sell",
+                        code = "BTC",
+                        type = PortfolioTransactionType.Sell,
+                        amount = 0.25,
+                        priceBase = 50_000.0,
+                        realizedPnlBase = 1_250.0,
+                        createdAtMillis = 1_700_000_000_100L,
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("watchlist_transactions").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_transaction_latest_sell").assertIsDisplayed()
+        compose.onNodeWithText("Sell BTC", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_realized_pnl").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proCostBasisInputSanitizesAndUpdatesUnrealizedPnlWithoutMovingRows() {
+        val harness = renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(
+                codes = listOf("EUR", "BTC"),
+                holdings = mapOf("EUR" to 100.0, "BTC" to 1.0),
+            ),
+        )
+
+        compose.onNodeWithTag("watchlist_cost_BTC").performScrollTo().performTextReplacement("40000abc")
+        compose.onNodeWithTag("watchlist_cost_EUR").performScrollTo().performTextReplacement("1.10")
+
+        compose.runOnIdle {
+            assertEquals(40_000.0, harness.holdingCosts["BTC"])
+            assertEquals(1.10, harness.holdingCosts["EUR"])
+        }
+        compose.onNodeWithTag("watchlist_holding_EUR").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_holding_BTC").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_portfolio_insights").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun holdingInputSanitizesNonNumericCharacters() {
         val harness = renderWatchlist(isPremium = true, initialWatchlist = Watchlist(codes = listOf("EUR")))
 
@@ -138,6 +346,9 @@ class WatchlistScreenTest {
         liveState: LiveRatesState = testLiveRatesState(),
     ): WatchlistHarness {
         val harness = WatchlistHarness()
+        harness.holdings = initialWatchlist.holdings
+        harness.holdingCosts = initialWatchlist.holdingCosts
+        harness.transactions += initialWatchlist.transactions
         AndroidAppContext.init(compose.activity)
         compose.setContent {
             var watchlist by remember { mutableStateOf(initialWatchlist) }
@@ -158,6 +369,8 @@ class WatchlistScreenTest {
                             watchlist = watchlist.copy(
                                 codes = nextCodes,
                                 holdings = watchlist.holdings.filterKeys { it in nextCodes },
+                                holdingCosts = watchlist.holdingCosts.filterKeys { it in nextCodes },
+                                transactions = watchlist.transactions.filter { it.code in nextCodes },
                             )
                         }
                     },
@@ -166,6 +379,65 @@ class WatchlistScreenTest {
                         val nextCodes = if (code in watchlist.codes) watchlist.codes else (watchlist.codes + code).distinct()
                         watchlist = watchlist.copy(codes = nextCodes, holdings = nextHoldings)
                         harness.holdings = nextHoldings
+                    },
+                    onSetHoldingCost = { code, averageCost ->
+                        val nextHoldingCosts = if (averageCost <= 0.0) {
+                            watchlist.holdingCosts - code
+                        } else {
+                            watchlist.holdingCosts + (code to averageCost)
+                        }
+                        watchlist = watchlist.copy(holdingCosts = nextHoldingCosts)
+                        harness.holdingCosts = nextHoldingCosts
+                    },
+                    onRecordTransaction = { code, type, amount, priceBase ->
+                        val currentAmount = watchlist.holdings[code] ?: 0.0
+                        val currentAverageCost = watchlist.holdingCosts[code] ?: 0.0
+                        val id = "test_${harness.transactions.size}"
+                        when (type) {
+                            PortfolioTransactionType.Buy -> {
+                                val nextAmount = currentAmount + amount
+                                val nextAverageCost = ((currentAmount * currentAverageCost) + (amount * priceBase)) / nextAmount
+                                val transaction = PortfolioTransaction(
+                                    id = id,
+                                    code = code,
+                                    type = type,
+                                    amount = amount,
+                                    priceBase = priceBase,
+                                    createdAtMillis = 1_700_000_000_000L + harness.transactions.size,
+                                )
+                                watchlist = watchlist.copy(
+                                    codes = if (code in watchlist.codes) watchlist.codes else watchlist.codes + code,
+                                    holdings = watchlist.holdings + (code to nextAmount),
+                                    holdingCosts = watchlist.holdingCosts + (code to nextAverageCost),
+                                    transactions = watchlist.transactions + transaction,
+                                )
+                                harness.holdings = watchlist.holdings
+                                harness.holdingCosts = watchlist.holdingCosts
+                                harness.transactions += transaction
+                            }
+                            PortfolioTransactionType.Sell -> {
+                                val sellAmount = amount.coerceAtMost(currentAmount)
+                                val realizedPnl = if (currentAverageCost > 0.0) (priceBase - currentAverageCost) * sellAmount else 0.0
+                                val nextAmount = currentAmount - sellAmount
+                                val transaction = PortfolioTransaction(
+                                    id = id,
+                                    code = code,
+                                    type = type,
+                                    amount = sellAmount,
+                                    priceBase = priceBase,
+                                    realizedPnlBase = realizedPnl,
+                                    createdAtMillis = 1_700_000_000_000L + harness.transactions.size,
+                                )
+                                watchlist = watchlist.copy(
+                                    holdings = if (nextAmount <= 0.0) watchlist.holdings - code else watchlist.holdings + (code to nextAmount),
+                                    holdingCosts = if (nextAmount <= 0.0) watchlist.holdingCosts - code else watchlist.holdingCosts,
+                                    transactions = watchlist.transactions + transaction,
+                                )
+                                harness.holdings = watchlist.holdings
+                                harness.holdingCosts = watchlist.holdingCosts
+                                harness.transactions += transaction
+                            }
+                        }
                     },
                     onOpenDetail = { rate ->
                         harness.openedDetailCodes += rate.code
@@ -183,6 +455,8 @@ class WatchlistScreenTest {
         val jpy = FxRate("JPY", "Japanese Yen", "🇯🇵", CurrencyKind.Fiat, 156.0, 0.3, listOf(155f, 156f), "1 USD = 156.0000 JPY")
         val chf = FxRate("CHF", "Swiss Franc", "🇨🇭", CurrencyKind.Fiat, 0.83, -0.1, listOf(0.82f, 0.83f), "1 USD = 0.8300 CHF")
         val mxn = FxRate("MXN", "Mexican Peso", "🇲🇽", CurrencyKind.Fiat, 18.72, 0.2, listOf(18.6f, 18.72f), "1 USD = 18.7200 MXN")
+        val btc = FxRate("BTC", "Bitcoin", "₿", CurrencyKind.Crypto, 0.00002, 2.0, listOf(0.000019f, 0.00002f), "1 USD = 0.00002 BTC")
+        val eth = FxRate("ETH", "Ethereum", "Ξ", CurrencyKind.Crypto, 0.00025, -1.0, listOf(0.00026f, 0.00025f), "1 USD = 0.00025 ETH")
         return LiveRatesState(
             isLoading = false,
             isLive = true,
@@ -192,6 +466,7 @@ class WatchlistScreenTest {
             converter = listOf(usd, eur, gbp, jpy, chf, mxn),
             compare = listOf(eur, gbp, jpy, chf, mxn),
             allFiat = listOf(usd, eur, gbp, jpy, chf, mxn),
+            crypto = listOf(btc, eth),
         )
     }
 
@@ -199,5 +474,7 @@ class WatchlistScreenTest {
         var paywallClicks = 0
         val openedDetailCodes = mutableListOf<String>()
         var holdings: Map<String, Double> = emptyMap()
+        var holdingCosts: Map<String, Double> = emptyMap()
+        val transactions = mutableListOf<PortfolioTransaction>()
     }
 }

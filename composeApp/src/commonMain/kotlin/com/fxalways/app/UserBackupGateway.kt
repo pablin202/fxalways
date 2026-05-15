@@ -69,12 +69,18 @@ fun mergeBackupSnapshots(local: UserBackupSnapshot, remote: UserBackupSnapshot?)
     val alerts = (remote.alerts + local.alerts).distinctBy { it.id }
     val codes = (remote.watchlist.codes + local.watchlist.codes).distinct()
     val holdings = remote.watchlist.holdings + local.watchlist.holdings
+    val holdingCosts = remote.watchlist.holdingCosts + local.watchlist.holdingCosts
+    val transactions = (remote.watchlist.transactions + local.watchlist.transactions)
+        .distinctBy { it.id }
+        .sortedBy { it.createdAtMillis }
     return local.copy(
         settings = settings,
         alerts = alerts,
         watchlist = local.watchlist.copy(
             codes = codes,
             holdings = holdings,
+            holdingCosts = holdingCosts,
+            transactions = transactions,
         ),
     )
 }

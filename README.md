@@ -16,11 +16,60 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - Watchlist con pares mayores.
 - Historico 12 meses gratis y 5 anos para Pro.
 - Sparkline por par.
+- Portfolio basico por watchlist: monto por moneda, valor total en moneda base, cambio diario estimado y peso porcentual.
+- Portfolio Pro con average cost, cost basis, P&L realizado/no realizado, allocation fiat/crypto, largest position, chart estimado y transaction history buy/sell.
+- Crypto live catalog con core crypto para Free y catalogo expandido para Pro.
+- Comparador de costos estimados por proveedor, monto y par de monedas.
+- Alertas de tipo target rate y daily move.
+- Traveler mode con presupuesto local, cash buffer y cheat sheet de gasto.
+- Backup/sync de usuario en Android con Firebase.
+- Paywall Pro con RevenueCat KMP, restore, Terms/Privacy y configuracion separada Android/iOS.
 - Localizacion in-app con selector para 13 idiomas: English, Español, Português, 中文, हिन्दी, Français, العربية, বাংলা, Русский, اردو, Indonesia, Deutsch, 日本語.
 - Cache server-side por base currency e historico por par.
 - Scheduled refresh cada 60 minutos.
 - Firestore cerrado al cliente; la app consume solo HTTPS Functions.
 - Configuracion separada para Android/iOS.
+
+## Roadmap competitivo
+
+Para competir contra conversores FX, money transfer apps y trackers crypto modernos, FX Always debe priorizar features que aumenten retencion diaria y valor Pro:
+
+1. Portfolio Pro completo con P&L y allocation. Implementado en primera version.
+   - Cash por moneda, crypto holdings y stablecoins.
+   - Precio promedio de compra/cost basis.
+   - P&L diario, total, realizado/no realizado.
+   - Valor total en moneda base.
+   - Allocation por asset, tipo de asset y moneda.
+   - Grafico estimado de evolucion del patrimonio.
+   - Historial de transacciones buy/sell con realized P&L.
+2. Smart conversion timing.
+   - Score por par: Good time, Wait, Strong rate.
+   - Comparacion contra rango 7d/30d/90d, tendencia y volatilidad.
+   - Recomendacion concreta para viajeros, ahorro y remesas.
+3. Widgets Android/iOS.
+   - Tasa favorita.
+   - Portfolio total.
+   - BTC/ETH o crypto seleccionadas.
+   - Mejor tasa del dia.
+4. Alertas inteligentes.
+   - Movimiento de portfolio por porcentaje o monto.
+   - Concentracion excesiva en un asset.
+   - Rate cerca de maximo/minimo de 30 dias.
+   - Mejor proveedor estimado para una conversion.
+5. Import/export y backup robusto.
+   - CSV import/export de holdings y transacciones.
+   - Backup cloud multiplataforma.
+   - Historial editable de transacciones.
+6. Comparador de costos mas accionable.
+   - Recibiras aproximadamente X despues de fee/spread.
+   - Diferencia contra mid-market.
+   - Mejor proveedor estimado por monto y par.
+   - Historial de proveedor mas conveniente.
+7. Onboarding personalizado.
+   - Perfil: viajero, crypto holder, remesas, freelancer, ahorro.
+   - Home y alertas sugeridas segun objetivo.
+
+El proximo bloque de producto recomendado es reforzar el punto 1 con import/export CSV y mas tipos de transaccion: deposit, withdrawal, transfer y fee.
 
 ## Ejecutar Android
 

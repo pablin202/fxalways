@@ -105,6 +105,8 @@ import com.fxalways.app.data.LiveRatesStore
 import com.fxalways.app.data.NewsStore
 import com.fxalways.app.data.NewsUiState
 import com.fxalways.app.data.PriceAlert
+import com.fxalways.app.data.PortfolioTransaction
+import com.fxalways.app.data.PortfolioTransactionType
 import com.fxalways.app.data.SettingsBaseCurrencies
 import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.data.WatchlistStore
@@ -1210,6 +1212,8 @@ fun FxAppShell() {
                                     }
                                 },
                                 onSetHolding = watchlistStore::setHolding,
+                                onSetHoldingCost = watchlistStore::setHoldingCost,
+                                onRecordTransaction = watchlistStore::recordTransaction,
                                 onOpenDetail = { openDetail(it, "watchlist") },
                             )
                             MoreRoute.Traveler -> TravelerScreen(
@@ -3270,10 +3274,14 @@ fun WatchlistScreen(
     onOpenPaywall: () -> Unit = {},
     onToggleCurrency: (String) -> Unit = {},
     onSetHolding: (String, Double) -> Unit = { _, _ -> },
+    onSetHoldingCost: (String, Double) -> Unit = { _, _ -> },
+    onRecordTransaction: (String, PortfolioTransactionType, Double, Double) -> Unit = { _, _, _, _ -> },
     onOpenDetail: (FxRate) -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
-    val allRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter) { liveState.portfolioRates() }
+    val allRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.crypto, subscriptionState.isPremium) {
+        liveState.portfolioRates(subscriptionState.isPremium)
+    }
 	    val limitLabel = if (access.hasUnlimitedWatchlistCurrencies) ui("Unlimited") else "${watchlistState.watchlist.codes.size}/${access.watchlistCurrencyLimit}"
 	    val holdings = remember(liveState.baseCurrency, allRates, watchlistState.watchlist) {
 	        watchlistState.watchlist.codes.mapNotNull { code ->
@@ -3281,12 +3289,20 @@ fun WatchlistScreen(
 	            PortfolioHolding(
 	                rate = rate,
 	                amount = watchlistState.watchlist.holdings[rate.code] ?: 0.0,
+	                averageCostBase = watchlistState.watchlist.holdingCosts[rate.code] ?: 0.0,
 	            )
 	        }
 	    }
     val valuedHoldings = holdings.filter { it.amount > 0.0 }
     val portfolioValue = valuedHoldings.sumOf { it.baseValue }
     val portfolioDailyChange = valuedHoldings.sumOf { it.dailyChangeInBase }
+    val portfolioCostBasis = valuedHoldings.sumOf { it.costBasisBase }
+    val portfolioUnrealizedPnl = valuedHoldings.sumOf { it.unrealizedPnlBase }
+    val portfolioRealizedPnl = watchlistState.watchlist.transactions.sumOf { it.realizedPnlBase }
+    val fiatValue = valuedHoldings.filter { it.rate.kind == CurrencyKind.Fiat }.sumOf { it.baseValue }
+    val cryptoValue = valuedHoldings.filter { it.rate.kind == CurrencyKind.Crypto }.sumOf { it.baseValue }
+    val largestHolding = valuedHoldings.maxByOrNull { it.baseValue }
+    val portfolioSeries = remember(valuedHoldings) { valuedHoldings.portfolioValueSeries() }
     val nonZeroHoldings = holdings.count { it.amount > 0.0 }
     ScreenScaffold {
         if (onBack != null) {
@@ -3318,8 +3334,77 @@ fun WatchlistScreen(
                         style = FxTheme.typography.caption,
                         color = if (portfolioDailyChange >= 0.0) FxTheme.colors.up else FxTheme.colors.down,
                     )
+                    if (portfolioSeries.size >= 2) {
+                        SparkLine(
+                            portfolioSeries,
+                            Modifier.fillMaxWidth().height(38.dp).testTag("watchlist_portfolio_chart"),
+                            color = if ((portfolioSeries.last() - portfolioSeries.first()) >= 0f) FxTheme.colors.up else FxTheme.colors.down,
+                            showLastDot = true,
+                        )
+                    }
                 }
             }
+        }
+
+        if (subscriptionState.isPremium && nonZeroHoldings > 0) {
+            SectionLabel(ui("PORTFOLIO INSIGHTS"))
+            BentoCard(Modifier.testTag("watchlist_portfolio_insights"), padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    KeyValueRow(
+                        ui("Unrealized P&L"),
+                        formatSignedMoney(portfolioUnrealizedPnl, liveState.baseCurrency),
+                        portfolioPnlPercentLabel(portfolioUnrealizedPnl, portfolioCostBasis),
+                        modifier = Modifier.testTag("watchlist_unrealized_pnl"),
+                    )
+                    KeyValueRow(
+                        ui("Realized P&L"),
+                        formatSignedMoney(portfolioRealizedPnl, liveState.baseCurrency),
+                        "${watchlistState.watchlist.transactions.size} ${ui("transactions")}",
+                        modifier = Modifier.testTag("watchlist_realized_pnl"),
+                    )
+                    KeyValueRow(
+                        ui("Total P&L"),
+                        formatSignedMoney(portfolioUnrealizedPnl + portfolioRealizedPnl, liveState.baseCurrency),
+                        ui("realized + unrealized"),
+                        modifier = Modifier.testTag("watchlist_total_pnl"),
+                    )
+                    KeyValueRow(
+                        ui("Cost basis"),
+                        "${liveState.baseCurrency} ${formatMoneyValue(portfolioCostBasis)}",
+                        ui("average cost per asset"),
+                        modifier = Modifier.testTag("watchlist_cost_basis"),
+                    )
+                    KeyValueRow(
+                        ui("Allocation"),
+                        "${ui("Fiat")} ${allocationLabel(fiatValue, portfolioValue)} · ${ui("Crypto")} ${allocationLabel(cryptoValue, portfolioValue)}",
+                        modifier = Modifier.testTag("watchlist_allocation"),
+                    )
+                    KeyValueRow(
+                        ui("Largest position"),
+                        largestHolding?.rate?.code ?: "—",
+                        largestHolding?.weightLabel(portfolioValue),
+                        modifier = Modifier.testTag("watchlist_largest_position"),
+                    )
+                    if (portfolioSeries.size >= 2) {
+                        KeyValueRow(
+                            ui("Chart range"),
+                            formatPortfolioSignedPercent(portfolioSeries.changePercent()),
+                            ui("estimated from tracked assets"),
+                            modifier = Modifier.testTag("watchlist_chart_range"),
+                        )
+                    }
+                }
+            }
+        }
+
+        if (subscriptionState.isPremium && holdings.isNotEmpty()) {
+            SectionLabel(ui("TRANSACTION HISTORY"))
+            PortfolioTransactionsCard(
+                baseCurrency = liveState.baseCurrency,
+                holdings = holdings,
+                transactions = watchlistState.watchlist.transactions,
+                onRecordTransaction = onRecordTransaction,
+            )
         }
 
 	        SectionLabel(ui("PORTFOLIO HOLDINGS"))
@@ -3347,7 +3432,9 @@ fun WatchlistScreen(
                             baseCurrency = liveState.baseCurrency,
                             holding = holding,
                             portfolioValue = portfolioValue,
+                            canEditCostBasis = subscriptionState.isPremium,
                             onAmountChange = { amount -> onSetHolding(holding.rate.code, amount) },
+                            onCostChange = { averageCost -> onSetHoldingCost(holding.rate.code, averageCost) },
                             onOpenDetail = { onOpenDetail(holding.rate) },
                         )
                     }
@@ -3383,18 +3470,197 @@ fun WatchlistScreen(
 }
 
 @Composable
+private fun PortfolioTransactionsCard(
+    baseCurrency: String,
+    holdings: List<PortfolioHolding>,
+    transactions: List<PortfolioTransaction>,
+    onRecordTransaction: (String, PortfolioTransactionType, Double, Double) -> Unit,
+) {
+    val codes = remember(holdings) { holdings.map { it.rate.code }.distinct() }
+    var selectedCode by remember(codes) { mutableStateOf(codes.firstOrNull().orEmpty()) }
+    if (selectedCode !in codes) selectedCode = codes.firstOrNull().orEmpty()
+    var selectedType by remember { mutableStateOf(PortfolioTransactionType.Buy) }
+    var amountText by remember(selectedCode) { mutableStateOf("") }
+    var priceText by remember(selectedCode) { mutableStateOf("") }
+    val amount = parseAmountInput(amountText)
+    val price = parseAmountInput(priceText)
+    val latestTransactions = remember(transactions) { transactions.sortedByDescending { it.createdAtMillis }.take(5) }
+
+    BentoCard(Modifier.testTag("watchlist_transactions"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                codes.forEach { code ->
+                    TransactionChip(
+                        label = code,
+                        selected = selectedCode == code,
+                        modifier = Modifier.testTag("watchlist_transaction_asset_$code"),
+                        onClick = { selectedCode = code },
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TransactionChip(
+                    label = ui("Buy"),
+                    selected = selectedType == PortfolioTransactionType.Buy,
+                    modifier = Modifier.weight(1f).testTag("watchlist_transaction_buy"),
+                    onClick = { selectedType = PortfolioTransactionType.Buy },
+                )
+                TransactionChip(
+                    label = ui("Sell"),
+                    selected = selectedType == PortfolioTransactionType.Sell,
+                    modifier = Modifier.weight(1f).testTag("watchlist_transaction_sell"),
+                    onClick = { selectedType = PortfolioTransactionType.Sell },
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TransactionInputField(
+                    value = amountText,
+                    placeholder = ui("amount"),
+                    modifier = Modifier.weight(1f).testTag("watchlist_transaction_amount"),
+                    onValueChange = { amountText = it },
+                )
+                TransactionInputField(
+                    value = priceText,
+                    placeholder = "${ui("price")} $baseCurrency",
+                    modifier = Modifier.weight(1f).testTag("watchlist_transaction_price"),
+                    onValueChange = { priceText = it },
+                )
+            }
+            PrimaryButton(
+                text = ui("Record transaction"),
+                modifier = Modifier.fillMaxWidth().testTag("watchlist_transaction_record"),
+                onClick = {
+                    if (selectedCode.isNotBlank() && amount > 0.0 && price > 0.0) {
+                        onRecordTransaction(selectedCode, selectedType, amount, price)
+                        amountText = ""
+                        priceText = ""
+                    }
+                },
+            )
+            if (latestTransactions.isEmpty()) {
+                Text(
+                    ui("No transactions yet"),
+                    style = FxTheme.typography.caption,
+                    color = FxTheme.colors.textDim,
+                    modifier = Modifier.testTag("watchlist_no_transactions"),
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    latestTransactions.forEach { transaction ->
+                        PortfolioTransactionRow(baseCurrency = baseCurrency, transaction = transaction)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransactionChip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .clip(FxTheme.shapes.field)
+            .background(if (selected) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
+            .border(1.dp, if (selected) FxTheme.colors.accent else FxTheme.colors.border, FxTheme.shapes.field)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, style = FxTheme.typography.captionMono, color = if (selected) FxTheme.colors.accent else FxTheme.colors.textDim)
+    }
+}
+
+@Composable
+private fun TransactionInputField(value: String, placeholder: String, modifier: Modifier = Modifier, onValueChange: (String) -> Unit) {
+    BasicTextField(
+        value = value,
+        onValueChange = { raw -> onValueChange(raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)) },
+        singleLine = true,
+        textStyle = FxTheme.typography.numberBody.copy(color = FxTheme.colors.text, textAlign = TextAlign.End),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+        modifier = modifier
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface1)
+            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        decorationBox = { innerTextField ->
+            if (value.isBlank()) {
+                Text(
+                    placeholder,
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.textGhost,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End,
+                )
+            }
+            innerTextField()
+        },
+    )
+}
+
+@Composable
+private fun PortfolioTransactionRow(baseCurrency: String, transaction: PortfolioTransaction) {
+    val pnl = transaction.realizedPnlBase
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .testTag("watchlist_transaction_${transaction.id}")
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                "${ui(transaction.type.name)} ${transaction.code} ${formatMoneyValue(transaction.amount)}",
+                style = FxTheme.typography.bodyStrong,
+                color = FxTheme.colors.text,
+            )
+            Text(
+                "${baseCurrency} ${formatMoneyValue(transaction.priceBase)} · ${localizedShortAgeLabel(transaction.createdAtMillis)}",
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.textFaint,
+            )
+        }
+        Text(
+            if (transaction.type == PortfolioTransactionType.Sell) formatSignedMoney(pnl, baseCurrency) else ui("cost basis"),
+            style = FxTheme.typography.captionMono,
+            color = when {
+                transaction.type == PortfolioTransactionType.Buy -> FxTheme.colors.textDim
+                pnl >= 0.0 -> FxTheme.colors.up
+                else -> FxTheme.colors.down
+            },
+        )
+    }
+}
+
+@Composable
 private fun PortfolioHoldingRow(
     baseCurrency: String,
     holding: PortfolioHolding,
     portfolioValue: Double,
+    canEditCostBasis: Boolean,
     onAmountChange: (Double) -> Unit,
+    onCostChange: (Double) -> Unit,
     onOpenDetail: () -> Unit,
 ) {
     val rate = holding.rate
     val amount = holding.amount
     val focusManager = LocalFocusManager.current
-    var amountText by remember(rate.code, amount) { mutableStateOf(if (amount > 0.0) formatRate(amount) else "") }
+    var amountText by remember(rate.code) { mutableStateOf(if (amount > 0.0) formatRate(amount) else "") }
     var amountFocused by remember(rate.code) { mutableStateOf(false) }
+    var costText by remember(rate.code) { mutableStateOf(if (holding.averageCostBase > 0.0) formatRate(holding.averageCostBase) else "") }
+    var costFocused by remember(rate.code) { mutableStateOf(false) }
+    LaunchedEffect(amount, amountFocused) {
+        if (!amountFocused) amountText = if (amount > 0.0) formatRate(amount) else ""
+    }
+    LaunchedEffect(holding.averageCostBase, costFocused) {
+        if (!costFocused) costText = if (holding.averageCostBase > 0.0) formatRate(holding.averageCostBase) else ""
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -3417,17 +3683,27 @@ private fun PortfolioHoldingRow(
             )
             val holdingSubtitle = if (amount <= 0.0) {
                 "${ui("Tracking live rate")} ${formatRate(rate.rate)} · ${ui("enter amount held")}"
+            } else if (canEditCostBasis && holding.hasCostBasis) {
+                "${formatSignedMoney(holding.unrealizedPnlBase, baseCurrency)} ${ui("unrealized")} · ${holding.weightLabel(portfolioValue)} · ${holding.dailyChangeLabel(baseCurrency)}"
             } else {
                 "$baseCurrency ${formatMoneyValue(holding.baseValue)} · ${holding.weightLabel(portfolioValue)} · ${holding.dailyChangeLabel(baseCurrency)}"
             }
             Text(
                 holdingSubtitle,
                 style = FxTheme.typography.captionMono,
-                color = if (amount <= 0.0) FxTheme.colors.textFaint else if (holding.dailyChangeInBase >= 0.0) FxTheme.colors.up else FxTheme.colors.down,
+                color = if (amount <= 0.0) {
+                    FxTheme.colors.textFaint
+                } else if (canEditCostBasis && holding.hasCostBasis) {
+                    if (holding.unrealizedPnlBase >= 0.0) FxTheme.colors.up else FxTheme.colors.down
+                } else if (holding.dailyChangeInBase >= 0.0) {
+                    FxTheme.colors.up
+                } else {
+                    FxTheme.colors.down
+                },
             )
         }
         Column(
-            modifier = Modifier.width(104.dp),
+            modifier = Modifier.width(112.dp),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
@@ -3472,6 +3748,40 @@ private fun PortfolioHoldingRow(
                             .testTag("watchlist_amount_done_${rate.code}")
                             .clickable { focusManager.clearFocus() },
 	                )
+            }
+            if (canEditCostBasis) {
+                BasicTextField(
+                    value = costText,
+                    onValueChange = { raw ->
+                        val next = raw.filter { it.isDigit() || it == '.' || it == ',' }.take(12)
+                        costText = next
+                        onCostChange(parseAmountInput(next))
+                    },
+                    singleLine = true,
+                    textStyle = FxTheme.typography.captionMono.copy(color = FxTheme.colors.text, textAlign = TextAlign.End),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("watchlist_cost_${rate.code}")
+                        .clip(FxTheme.shapes.field)
+                        .background(if (costFocused) FxTheme.colors.accentSoft else FxTheme.colors.surface1)
+                        .border(1.dp, if (costFocused) FxTheme.colors.accent else FxTheme.colors.border, FxTheme.shapes.field)
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                        .onFocusChanged { costFocused = it.isFocused },
+                    decorationBox = { innerTextField ->
+                        if (costText.isBlank()) {
+                            Text(
+                                ui("avg cost"),
+                                style = FxTheme.typography.captionMono,
+                                color = FxTheme.colors.textGhost,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.End,
+                            )
+                        }
+                        innerTextField()
+                    },
+                )
             }
         }
     }
@@ -4946,10 +5256,10 @@ private fun LiveRatesState.alertRates(isPremium: Boolean): List<FxRate> =
         .distinctBy { it.code }
         .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes || it.code in DefaultCryptoCodes }.thenBy { it.code })
 
-private fun LiveRatesState.portfolioRates(): List<FxRate> =
-    (converter + favorites + compare + allFiat)
+private fun LiveRatesState.portfolioRates(isPremium: Boolean = false): List<FxRate> =
+    (converter + favorites + compare + allFiat + availableCryptoRates(isPremium))
         .distinctBy { it.code }
-        .sortedWith(compareByDescending<FxRate> { it.code == baseCurrency }.thenBy { it.code })
+        .sortedWith(compareByDescending<FxRate> { it.code == baseCurrency || it.code in DefaultCryptoCodes }.thenBy { it.code })
 
 private fun LiveRatesState.defaultCryptoRates(): List<FxRate> {
     val byCode = crypto.associateBy { it.code }
@@ -5038,9 +5348,13 @@ private fun List<FxRate>.sortedForCompare(sortMode: CompareSortMode): List<FxRat
 private data class PortfolioHolding(
     val rate: FxRate,
     val amount: Double,
+    val averageCostBase: Double,
 ) {
     val baseValue: Double = amountInBase(rate, amount)
     val dailyChangeInBase: Double = if (rate.rate == 0.0) 0.0 else baseValue * rate.change24h / 100.0
+    val hasCostBasis: Boolean = averageCostBase > 0.0 && amount > 0.0
+    val costBasisBase: Double = if (hasCostBasis) averageCostBase * amount else 0.0
+    val unrealizedPnlBase: Double = if (hasCostBasis) baseValue - costBasisBase else 0.0
 }
 
 private fun amountInBase(rate: FxRate, amount: Double): Double =
@@ -5066,6 +5380,41 @@ private fun PortfolioHolding.dailyChangeLabel(baseCurrency: String): String {
     val sign = if (dailyChangeInBase >= 0.0) "+" else "-"
     return "$sign$baseCurrency ${formatMoneyValue(kotlin.math.abs(dailyChangeInBase))} today"
 }
+
+private fun List<PortfolioHolding>.portfolioValueSeries(): List<Float> {
+    if (isEmpty()) return emptyList()
+    val pointCount = minOf(24, map { it.rate.sparkline.size }.filter { it > 0 }.minOrNull() ?: return emptyList())
+    return List(pointCount) { index ->
+        sumOf { holding ->
+            val point = holding.rate.sparkline.getOrNull(index)?.toDouble() ?: holding.rate.rate
+            if (point <= 0.0) 0.0 else holding.amount / point
+        }.toFloat()
+    }
+}
+
+private fun List<Float>.changePercent(): Double =
+    if (size < 2 || first() == 0f) 0.0 else (last() - first()) / first() * 100.0
+
+private fun formatSignedMoney(change: Double, baseCurrency: String): String {
+    val sign = if (change >= 0.0) "+" else "-"
+    return "$sign$baseCurrency ${formatMoneyValue(kotlin.math.abs(change))}"
+}
+
+private fun formatPortfolioSignedPercent(change: Double): String {
+    val sign = if (change >= 0.0) "+" else "-"
+    return "$sign${formatRate(kotlin.math.abs(change))}%"
+}
+
+private fun portfolioPnlPercentLabel(pnl: Double, costBasis: Double): String =
+    if (costBasis <= 0.0) {
+        "Add average cost"
+    } else {
+        val sign = if (pnl >= 0.0) "+" else "-"
+        "$sign${formatRate(kotlin.math.abs(pnl / costBasis * 100.0))}%"
+    }
+
+private fun allocationLabel(value: Double, portfolioValue: Double): String =
+    if (portfolioValue <= 0.0 || value <= 0.0) "0%" else "${((value / portfolioValue) * 100.0).toInt()}%"
 
 private fun formatPortfolioChange(change: Double, baseCurrency: String): String {
     val sign = if (change >= 0.0) "+" else "-"
