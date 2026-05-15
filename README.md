@@ -18,6 +18,7 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - Sparkline por par.
 - Portfolio basico por watchlist: monto por moneda, valor total en moneda base, cambio diario estimado y peso porcentual.
 - Portfolio Pro con average cost, cost basis, P&L realizado/no realizado, allocation fiat/crypto, largest position, chart estimado y transaction history buy/sell.
+- Import/export CSV Pro de portfolio con holdings, average cost y transacciones.
 - Crypto live catalog con core crypto para Free y catalogo expandido para Pro.
 - Comparador de costos estimados por proveedor, monto y par de monedas.
 - Alertas de tipo target rate y daily move.
@@ -56,7 +57,7 @@ Para competir contra conversores FX, money transfer apps y trackers crypto moder
    - Concentracion excesiva en un asset.
    - Rate cerca de maximo/minimo de 30 dias.
    - Mejor proveedor estimado para una conversion.
-5. Import/export y backup robusto.
+5. Import/export y backup robusto. CSV portfolio implementado en primera version.
    - CSV import/export de holdings y transacciones.
    - Backup cloud multiplataforma.
    - Historial editable de transacciones.

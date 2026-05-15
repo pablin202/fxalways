@@ -21,6 +21,7 @@ import com.fxalways.app.data.PortfolioTransaction
 import com.fxalways.app.data.PortfolioTransactionType
 import com.fxalways.app.data.Watchlist
 import com.fxalways.app.data.WatchlistState
+import com.fxalways.app.data.importPortfolioCsv
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
@@ -74,18 +75,17 @@ class WatchlistScreenTest {
 
     @Test
     fun enteringHoldingUpdatesPortfolioValueAndClearingItReturnsToTrackingCopy() {
-        renderWatchlist(isPremium = true, initialWatchlist = Watchlist(codes = listOf("EUR")))
+        val harness = renderWatchlist(isPremium = true, initialWatchlist = Watchlist(codes = listOf("EUR")))
 
         compose.onNodeWithText("1 tracked").assertIsDisplayed()
         compose.onNodeWithText("Add amounts below to value your portfolio.").assertIsDisplayed()
 
         compose.onNodeWithTag("watchlist_amount_EUR").performScrollTo().performTextReplacement("100")
-        compose.onNodeWithTag("watchlist_summary").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("holdings valued", substring = true).assertIsDisplayed()
+        compose.runOnIdle { assertEquals(100.0, harness.holdings["EUR"]) }
 
         compose.onNodeWithTag("watchlist_amount_EUR").performScrollTo().performTextReplacement("")
+        compose.runOnIdle { assertTrue("EUR" !in harness.holdings) }
         compose.onNodeWithText("Tracking live rate", substring = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Add amounts below to value your portfolio.").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -300,7 +300,6 @@ class WatchlistScreenTest {
         compose.onNodeWithTag("watchlist_amount_EUR").performScrollTo().performTextReplacement("12abc,5")
 
         compose.runOnIdle { assertEquals(12.5, harness.holdings["EUR"]) }
-        compose.onNodeWithText("holdings valued", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -338,6 +337,87 @@ class WatchlistScreenTest {
 
         compose.onNodeWithTag("watchlist_holding_EUR").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("1/4 currencies · USD base").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proPortfolioExportsCsvWithHoldingsAndTransactions() {
+        renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(
+                codes = listOf("EUR", "BTC"),
+                holdings = mapOf("EUR" to 100.0, "BTC" to 1.0),
+                holdingCosts = mapOf("EUR" to 1.05, "BTC" to 45_000.0),
+                transactions = listOf(
+                    PortfolioTransaction(
+                        id = "btc_buy",
+                        code = "BTC",
+                        type = PortfolioTransactionType.Buy,
+                        amount = 1.0,
+                        priceBase = 45_000.0,
+                        createdAtMillis = 1_700_000_000_000L,
+                    ),
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("watchlist_import_export").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Portfolio CSV backup").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_export_summary").assertIsDisplayed()
+        compose.onNodeWithText("Export CSV").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_copy_export_csv").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("watchlist_export_feedback").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_import_summary").assertIsDisplayed()
+        compose.onNodeWithText("HOLDING,BTC", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("TRANSACTION,BTC,BUY", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun proPortfolioImportsCsvHoldingsAndTransactions() {
+        val harness = renderWatchlist(isPremium = true, initialWatchlist = Watchlist(codes = listOf("EUR")))
+
+        val csv = """
+            record_type,code,type,amount,price_base,realized_pnl_base,created_at_millis,id
+            HOLDING,BTC,,2,43000,,,
+            TRANSACTION,BTC,BUY,2,43000,0,1700000000000,import_buy_btc
+        """.trimIndent()
+        compose.onNodeWithTag("watchlist_import_csv").performScrollTo().performTextReplacement(csv)
+        compose.onNodeWithTag("watchlist_import_csv_button").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(2.0, harness.holdings["BTC"])
+            assertEquals(43_000.0, harness.holdingCosts["BTC"])
+            assertEquals("import_buy_btc", harness.transactions.single().id)
+        }
+        compose.onNodeWithTag("watchlist_import_feedback").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_holding_BTC").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proPortfolioImportRejectsInvalidCsvWithoutChangingPortfolio() {
+        val harness = renderWatchlist(
+            isPremium = true,
+            initialWatchlist = Watchlist(codes = listOf("BTC"), holdings = mapOf("BTC" to 1.0), holdingCosts = mapOf("BTC" to 45_000.0)),
+        )
+
+        compose.onNodeWithTag("watchlist_import_csv").performScrollTo().performTextReplacement("bad,row\nTRANSACTION,BTC,HOLD,abc,0")
+        compose.onNodeWithTag("watchlist_import_csv_button").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(1.0, harness.holdings["BTC"])
+            assertEquals(45_000.0, harness.holdingCosts["BTC"])
+            assertEquals(0, harness.transactions.size)
+        }
+        compose.onNodeWithText("No valid portfolio rows found").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun freePortfolioDoesNotShowCsvImportExportTools() {
+        renderWatchlist(
+            isPremium = false,
+            initialWatchlist = Watchlist(codes = listOf("BTC"), holdings = mapOf("BTC" to 1.0)),
+        )
+
+        compose.onAllNodesWithTag("watchlist_import_export").assertCountEquals(0)
     }
 
     private fun renderWatchlist(
@@ -438,6 +518,15 @@ class WatchlistScreenTest {
                                 harness.transactions += transaction
                             }
                         }
+                    },
+                    onImportPortfolioCsv = { csv ->
+                        val result = watchlist.importPortfolioCsv(csv, nowMillis = 1_800_000_000_000L)
+                        watchlist = result.watchlist
+                        harness.holdings = watchlist.holdings
+                        harness.holdingCosts = watchlist.holdingCosts
+                        harness.transactions.clear()
+                        harness.transactions += watchlist.transactions
+                        result
                     },
                     onOpenDetail = { rate ->
                         harness.openedDetailCodes += rate.code

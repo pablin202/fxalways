@@ -66,8 +66,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
@@ -104,13 +106,16 @@ import com.fxalways.app.data.LiveRatesState
 import com.fxalways.app.data.LiveRatesStore
 import com.fxalways.app.data.NewsStore
 import com.fxalways.app.data.NewsUiState
+import com.fxalways.app.data.PortfolioCsvImportResult
 import com.fxalways.app.data.PriceAlert
 import com.fxalways.app.data.PortfolioTransaction
 import com.fxalways.app.data.PortfolioTransactionType
 import com.fxalways.app.data.SettingsBaseCurrencies
 import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.data.WatchlistStore
+import com.fxalways.app.data.importPortfolioCsv
 import com.fxalways.app.data.matchesDefinition
+import com.fxalways.app.data.toPortfolioCsv
 import com.fxalways.app.subscription.SubscriptionPlan
 import com.fxalways.app.subscription.SubscriptionPlanKind
 import com.fxalways.app.subscription.SubscriptionState
@@ -1214,6 +1219,7 @@ fun FxAppShell() {
                                 onSetHolding = watchlistStore::setHolding,
                                 onSetHoldingCost = watchlistStore::setHoldingCost,
                                 onRecordTransaction = watchlistStore::recordTransaction,
+                                onImportPortfolioCsv = watchlistStore::importPortfolioCsv,
                                 onOpenDetail = { openDetail(it, "watchlist") },
                             )
                             MoreRoute.Traveler -> TravelerScreen(
@@ -3533,6 +3539,7 @@ fun WatchlistScreen(
     onSetHolding: (String, Double) -> Unit = { _, _ -> },
     onSetHoldingCost: (String, Double) -> Unit = { _, _ -> },
     onRecordTransaction: (String, PortfolioTransactionType, Double, Double) -> Unit = { _, _, _, _ -> },
+    onImportPortfolioCsv: (String) -> PortfolioCsvImportResult = { watchlistState.watchlist.importPortfolioCsv(it) },
     onOpenDetail: (FxRate) -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
@@ -3661,6 +3668,14 @@ fun WatchlistScreen(
                 holdings = holdings,
                 transactions = watchlistState.watchlist.transactions,
                 onRecordTransaction = onRecordTransaction,
+            )
+        }
+
+        if (subscriptionState.isPremium) {
+            SectionLabel(ui("IMPORT / EXPORT"))
+            PortfolioImportExportCard(
+                watchlist = watchlistState.watchlist,
+                onImportPortfolioCsv = onImportPortfolioCsv,
             )
         }
 
@@ -3813,6 +3828,133 @@ private fun PortfolioTransactionsCard(
             }
         }
     }
+}
+
+@Composable
+private fun PortfolioImportExportCard(
+    watchlist: com.fxalways.app.data.Watchlist,
+    onImportPortfolioCsv: (String) -> PortfolioCsvImportResult,
+) {
+    val clipboardManager = LocalClipboardManager.current
+    var importText by remember { mutableStateOf("") }
+    var importFeedback by remember { mutableStateOf<String?>(null) }
+    var exportFeedback by remember { mutableStateOf<String?>(null) }
+    val exportCsv = remember(watchlist) { watchlist.toPortfolioCsv() }
+    val exportHoldingCount = watchlist.holdings.count { it.value > 0.0 || (watchlist.holdingCosts[it.key] ?: 0.0) > 0.0 }
+    val exportTransactionCount = watchlist.transactions.size
+    val holdingsCopy = ui("holdings")
+    val transactionsCopy = ui("transactions")
+    val skippedCopy = ui("skipped")
+    val noValidRowsCopy = ui("No valid portfolio rows found")
+    val exportCopiedCopy = ui("Export copied")
+
+    BentoCard(Modifier.testTag("watchlist_import_export"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                ui("Portfolio CSV backup"),
+                style = FxTheme.typography.bodyStrong,
+                color = FxTheme.colors.text,
+            )
+            Text(
+                ui("Copy a manual backup or paste one back in to restore portfolio data."),
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textDim,
+            )
+            KeyValueRow(
+                ui("Export CSV"),
+                "$exportHoldingCount $holdingsCopy · $exportTransactionCount $transactionsCopy",
+                ui("manual backup"),
+                modifier = Modifier.testTag("watchlist_export_summary"),
+            )
+            PrimaryButton(
+                text = ui("Copy export CSV"),
+                modifier = Modifier.fillMaxWidth().testTag("watchlist_copy_export_csv"),
+                onClick = {
+                    clipboardManager.setText(AnnotatedString(exportCsv))
+                    exportFeedback = exportCopiedCopy
+                },
+            )
+            exportFeedback?.let {
+                Text(
+                    it,
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.accent,
+                    modifier = Modifier.testTag("watchlist_export_feedback"),
+                )
+            }
+            CsvTextBox(
+                value = exportCsv,
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier.testTag("watchlist_export_csv"),
+            )
+            KeyValueRow(
+                ui("Import CSV"),
+                ui("Paste rows below"),
+                ui("merge safe"),
+                modifier = Modifier.testTag("watchlist_import_summary"),
+            )
+            CsvTextBox(
+                value = importText,
+                onValueChange = { importText = it.take(4_000) },
+                readOnly = false,
+                placeholder = ui("Paste portfolio CSV"),
+                modifier = Modifier.testTag("watchlist_import_csv"),
+            )
+            PrimaryButton(
+                text = ui("Import CSV"),
+                modifier = Modifier.fillMaxWidth().testTag("watchlist_import_csv_button"),
+                onClick = {
+                    val result = onImportPortfolioCsv(importText)
+                    importFeedback = if (result.hasImports) {
+                        "${result.importedHoldings} $holdingsCopy · ${result.importedTransactions} $transactionsCopy · ${result.skippedRows} $skippedCopy"
+                    } else {
+                        noValidRowsCopy
+                    }
+                    if (result.hasImports) importText = ""
+                },
+            )
+            importFeedback?.let {
+                Text(
+                    it,
+                    style = FxTheme.typography.captionMono,
+                    color = if (it == noValidRowsCopy) FxTheme.colors.down else FxTheme.colors.accent,
+                    modifier = Modifier.testTag("watchlist_import_feedback"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CsvTextBox(
+    value: String,
+    onValueChange: (String) -> Unit,
+    readOnly: Boolean,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        readOnly = readOnly,
+        minLines = 4,
+        maxLines = 6,
+        textStyle = FxTheme.typography.captionMono.copy(color = FxTheme.colors.text),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 96.dp)
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface1)
+            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        decorationBox = { innerTextField ->
+            if (value.isBlank() && placeholder.isNotBlank()) {
+                Text(placeholder, style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost)
+            }
+            innerTextField()
+        },
+    )
 }
 
 @Composable

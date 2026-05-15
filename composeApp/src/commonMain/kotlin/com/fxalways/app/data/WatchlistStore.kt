@@ -149,6 +149,12 @@ class WatchlistStore {
         replace(watchlist)
     }
 
+    fun importPortfolioCsv(csv: String): PortfolioCsvImportResult {
+        val result = _state.value.watchlist.importPortfolioCsv(csv)
+        replace(result.watchlist)
+        return result
+    }
+
     private fun replace(watchlist: Watchlist) {
         _state.update { it.copy(watchlist = watchlist) }
         WatchlistPrefs.setWatchlistJson(json.encodeToString(WatchlistPayload(watchlist)))
