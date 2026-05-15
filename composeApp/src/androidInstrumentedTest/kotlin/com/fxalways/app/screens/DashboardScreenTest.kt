@@ -83,23 +83,28 @@ class DashboardScreenTest {
 
     @Test
     fun freeDashboardShowsPersonalizedProfileCard() {
-        renderDashboard(isPremium = false, userProfile = UserProfile.Remittances)
+        val harness = renderDashboard(isPremium = false, userProfile = UserProfile.Remittances)
 
         compose.onNodeWithText("Send money smarter").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_free_focus").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_pro_focus").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_pair").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert_action").assertIsDisplayed()
         compose.onNodeWithText("Mid-market + custom cost").assertIsDisplayed()
         compose.onNodeWithText("Full provider comparison + alerts").assertIsDisplayed()
         compose.onNodeWithText("USD -> MXN").assertIsDisplayed()
         compose.onNodeWithText("Target rate above last 7d average").assertIsDisplayed()
+        compose.onNodeWithText("Create suggested alert").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert_action").performClick()
         compose.onNodeWithText("Free").assertIsDisplayed()
+
+        compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
     }
 
     @Test
     fun proDashboardShowsProProfileState() {
-        renderDashboard(isPremium = true, userProfile = UserProfile.CryptoHolder)
+        val harness = renderDashboard(isPremium = true, userProfile = UserProfile.CryptoHolder, suggestedProfileAlertState = QuickAlertState.Active)
 
         compose.onNodeWithText("Crypto portfolio focus").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_free_focus").assertIsDisplayed()
@@ -110,13 +115,33 @@ class DashboardScreenTest {
         compose.onNodeWithText("Expanded crypto catalog + holdings").assertIsDisplayed()
         compose.onNodeWithText("USD -> BTC").assertIsDisplayed()
         compose.onNodeWithText("BTC/ETH daily move above 3%").assertIsDisplayed()
+        compose.onNodeWithText("Suggested alert active").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert_action").performClick()
         compose.onNodeWithText("Pro").assertIsDisplayed()
+
+        compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
+    }
+
+    @Test
+    fun profileSuggestedAlertCanShowLockedState() {
+        val harness = renderDashboard(
+            isPremium = false,
+            userProfile = UserProfile.CryptoHolder,
+            suggestedProfileAlertState = QuickAlertState.Locked,
+        )
+
+        compose.onNodeWithText("Crypto portfolio focus").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Unlock suggested alert").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert_action").performClick()
+
+        compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
     }
 
     private fun renderDashboard(
         isPremium: Boolean,
         trackedCurrencyCodes: List<String> = emptyList(),
         userProfile: UserProfile = UserProfile.Traveler,
+        suggestedProfileAlertState: QuickAlertState? = QuickAlertState.Create,
         liveState: LiveRatesState = testLiveRatesState(),
     ): DashboardHarness {
         val harness = DashboardHarness()
@@ -128,11 +153,13 @@ class DashboardScreenTest {
                     subscriptionState = SubscriptionState(isPremium = isPremium),
                     trackedCurrencyCodes = trackedCurrencyCodes,
                     userProfile = userProfile,
+                    suggestedProfileAlertState = suggestedProfileAlertState,
                     onRefresh = { harness.refreshClicks += 1 },
                     onOpenPaywall = { harness.paywallClicks += 1 },
                     onOpenDetail = { harness.openedDetailCodes += it.code },
                     onEditFavorites = { harness.editFavoritesClicks += 1 },
                     onSeeAllCrypto = { harness.seeAllCryptoClicks += 1 },
+                    onCreateSuggestedAlert = { harness.suggestedAlertClicks += 1 },
                 )
             }
         }
@@ -176,6 +203,7 @@ class DashboardScreenTest {
         var paywallClicks = 0
         var editFavoritesClicks = 0
         var seeAllCryptoClicks = 0
+        var suggestedAlertClicks = 0
         val openedDetailCodes = mutableListOf<String>()
     }
 }

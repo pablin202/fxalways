@@ -1,191 +1,206 @@
 # FX Always Product Checklist
 
-Use this as the production readiness checklist for each feature. Mark items only after testing on Android and sanity-checking KMP/iOS compile.
+Use this as the release checklist. Mark items only after Android device testing and a KMP/iOS compile sanity check.
 
-## Global
+## Current Release Status
 
 - [x] Firebase backend URL points to `moneytrackerpro-8ff64`.
-- [x] App supports theme mode and base currency settings.
-- [x] UI supports English, Spanish, Portuguese and additional popular languages.
-- [x] Android app icon is configured with padding.
-- [x] Bottom nav uses 5 primary destinations.
-- [x] Hide debug-only subscription toggle outside debug builds.
-- [ ] Add analytics events for paywall impressions, feature locks and purchase taps.
-- [ ] Add privacy policy, terms and store listing text.
-- [ ] Validate all strings are localized before store release.
+- [x] Firebase Functions are deployed for latest rates, historical rates, supported currencies, news and crypto markets.
+- [x] Crypto backend uses CoinPaprika, returns up to 200 assets and refreshes cache every 10 minutes.
+- [x] App consumes HTTPS Functions instead of direct client Firestore reads.
+- [x] Android debug build installs and opens on device.
+- [x] iOS `iosArm64` compile passes.
+- [x] UI supports English, Spanish, Portuguese and additional major languages.
+- [x] Theme mode, app language and base currency persist.
+- [x] Production builds hide the local dev premium override.
+- [x] Legal links open `https://fxalways.com/legal?doc=privacy&lang={lang}` and `https://fxalways.com/legal?doc=terms&lang={lang}`.
+- [x] README reflects the competitive feature set and recommended next product block.
 
-## Rates
+## Release Blockers
 
-- [x] Loads latest rates from Firebase backend.
-- [x] Falls back gracefully when backend is unavailable.
-- [x] Refresh action is available.
+- [ ] Finalize hosted legal document content for Privacy and Terms at `fxalways.com`.
+- [ ] Prepare store listing text, screenshots and metadata for Android.
+- [ ] Validate all critical release strings in the 13 supported languages.
+- [ ] Run full Android instrumentation suite after the final commit.
+- [ ] Run Android release build/signing check.
+- [ ] Decide whether Android-only launch is acceptable before iOS production setup is complete.
+
+## Android Launch Readiness
+
+- [x] App icon is configured with padding.
+- [x] Bottom navigation uses 5 primary destinations.
+- [x] Android local notification channel is configured.
+- [x] Android alert worker checks active alerts against backend rates.
+- [x] Android widgets are implemented for rates and traveler.
+- [ ] Move notification permission request to a contextual moment.
+- [ ] Confirm widgets refresh correctly after fresh install, app kill and backend cache refresh.
+- [ ] Validate offline/slow-network first launch on a clean install.
+
+## iOS Launch Readiness
+
+- [x] Shared Compose code compiles for iOS arm64.
+- [x] RevenueCat KMP gateway exists for iOS.
+- [ ] Create production iOS Firebase app and add `GoogleService-Info.plist`.
+- [ ] Enable Sign in with Apple in Apple Developer and Firebase Auth.
+- [ ] Replace RevenueCat Test Store key with App Store public SDK key.
+- [ ] Add iOS local notification implementation.
+- [ ] Add iOS Widget Extension or explicitly defer iOS widgets.
+- [ ] Install and smoke-test on connected iPhone before iOS release.
+
+## Rates And Crypto
+
+- [x] Loads latest fiat rates from Firebase backend.
+- [x] Loads crypto market data from Firebase backend.
+- [x] Free crypto starts with BTC, ETH, USDT and USDC.
+- [x] Pro can search and add from expanded crypto catalog.
 - [x] Base currency changes reload rates.
+- [x] Refresh action is available.
+- [x] Falls back gracefully when backend is unavailable.
+- [x] Home crypto snapshot uses readable spacing/padding.
 - [ ] Show explicit loading skeletons for slow networks.
-- [ ] Confirm stale/cached timestamp is accurate.
+- [ ] Confirm stale/cached timestamp is accurate across fiat and crypto.
 - [ ] Validate unavailable currency codes are hidden or explained.
 
 ## Convert
 
 - [x] Uses live rates from selected base currency.
 - [x] Fee comparison has Free/Pro gating.
-- [x] Amount input is editable.
-- [x] Add reverse pair action.
+- [x] Amount input is editable and preserves focus with large values.
+- [x] Reverse pair action exists.
 - [x] Free users can edit a limited converter currency list.
 - [x] Pro users can use every supported converter currency.
+- [x] Profile onboarding can preselect converter currencies and amount.
 - [ ] Validate decimal separators for locales using comma.
-- [ ] Handle crypto precision without rounding important digits.
-- [ ] Persist the last converter amount.
+- [ ] Confirm crypto precision does not round important digits in high-value conversions.
+- [ ] Edge: selected target removed from backend falls back to a valid currency.
 
 ## Compare
 
 - [x] Uses live rates from selected base currency.
 - [x] Free users see limited comparison set.
-- [x] Overlay card no longer covers the currency grid.
-- [x] Add pair selection/edit list.
-- [ ] Make overlay series reflect selected currencies.
-- [x] Add empty state if compare list is unavailable.
+- [x] Pro users can select from the expanded supported set.
+- [x] Edit Comparison modal avoids nested scroll overlap.
+- [x] Selected currencies apply clearly and update Home/Compare after Apply.
+- [x] Empty compare data shows a useful state.
+- [x] Profile onboarding can preselect compare currencies.
+- [ ] Make overlay chart series reflect selected currencies.
 - [ ] Visually verify Free limit and Pro unlimited compare list on Android and iOS.
 
 ## Alerts
 
 - [x] Alerts persist locally on Android/iOS.
-- [x] Free users limited to 1 alert; Pro is unlimited.
-- [x] Supports Above/Below manual targets.
+- [x] Free users are limited to 1 alert; Pro is unlimited.
+- [x] Supports Above/Below target-rate alerts.
+- [x] Supports Daily Move alert type.
 - [x] Supports quick presets: -1%, -0.5%, +0.5%, +1%.
-- [x] Android worker checks active alerts against backend rates.
-- [x] Android local notification channel and permission are configured.
 - [x] Debug test notification action exists per alert.
 - [x] Alerts keep their original base pair when app base currency changes.
-- [ ] Move notification permission request to contextual moment.
+- [x] Duplicate identical alerts reactivate the existing alert.
 - [ ] Add triggered-alert history.
-- [ ] Add Daily Move alert type.
 - [ ] Add server-side alert evaluation for more reliable background delivery.
-- [ ] Add iOS local notification implementation.
-- [x] Prevent duplicate identical alerts by reactivating the existing alert.
 - [ ] Verify upgrade path when user hits the Free alert limit.
+- [ ] Edge: offline restore failure copy is clear and does not change entitlement state.
 
 ## News
 
 - [x] News feed comes from Firebase backend.
-- [x] News is gated for Free/Pro story count.
+- [x] News is gated by Free/Pro story count.
 - [x] Backend strategy supports language, region and currencies.
-- [x] Add user-facing region selector.
-- [x] Add currency filters.
-- [x] Open article/source links when the provider gives a URL.
-- [x] Add empty state for region with no relevant stories.
-- [x] Add cache age and refresh feedback.
-- [x] Add topic filters.
+- [x] Region selector exists.
+- [x] Currency filters exist.
+- [x] Topic filters exist.
+- [x] Article/source links open when a provider URL exists.
+- [x] Empty states exist for no stories and filtered no-results.
+- [x] Offline/no-connection messaging avoids showing the wrong news copy.
+- [x] Empty "no news" box is full width.
+- [x] Cache age and refresh feedback exist.
 
 ## Traveler
 
 - [x] Shows local cheat sheet and etiquette card.
 - [x] Free/Pro cheat sheet gating exists.
+- [x] Manual destination selector exists.
+- [x] Last travel destination persists offline.
+- [x] Traveler widget exists on Android.
+- [x] Profile onboarding can preselect traveler destination and amount.
 - [ ] Add actual location/country detection with permission flow.
-- [x] Add manual destination selector.
-- [x] Persist last travel destination offline.
 - [ ] Add country-specific ATM/card/tipping data source.
 - [ ] Handle countries with multiple accepted currencies.
 
-## Settings
+## Settings And Account
 
 - [x] Theme mode persists.
+- [x] Language selector exists.
 - [x] Base currency persists and updates app rates.
 - [x] Version name is visible.
-- [x] Restore purchase action calls RevenueCat restore.
-- [x] Debug dev premium toggle exists.
-- [x] Remove or hide dev toggle in release builds.
-- [x] Add notification permission/status row.
-- [x] Add language selector.
-- [x] Add legal/privacy links.
-- [x] Add account/subscription management once RevenueCat is live.
+- [x] Restore purchase calls RevenueCat restore.
+- [x] Manage subscription deep links are present.
+- [x] Notification permission/status row exists.
+- [x] Legal/privacy rows open language-aware URLs.
+- [x] Account backup/sync exists.
+- [x] User profile can be changed after onboarding.
 
 ## Watchlist And Portfolio
 
 - [x] Watchlist persists locally on Android/iOS.
-- [x] Free users limited to 4 currencies; Pro is unlimited.
+- [x] Free users are limited to 4 tracked currencies; Pro is unlimited.
 - [x] Users can add/remove currencies.
 - [x] Tracked rows open detail screen.
 - [x] Portfolio holdings persist by currency code.
+- [x] Large holding inputs no longer jump/focus out.
 - [x] Portfolio total recalculates when base currency changes.
 - [x] Portfolio supports holding in the current base currency at rate 1.0.
+- [x] Allocation percentages exist.
+- [x] Daily portfolio move estimate exists.
+- [x] Portfolio Pro supports average cost, cost basis, realized/unrealized P&L and transactions.
+- [x] CSV import/export exists for portfolio holdings and transactions.
 - [ ] Add multiple watchlists for Pro.
 - [ ] Add manual rename for watchlist.
-- [ ] Add allocation percentages.
-- [ ] Add daily portfolio move estimate.
-- [ ] Add import/export CSV.
-- [ ] Confirm holdings behave correctly when a currency is removed from watchlist.
+- [ ] Confirm holdings behavior when a currency is removed from watchlist.
 
 ## Monetization
 
 - [x] Free/Pro policy is centralized.
-- [x] Gating exists for alerts, watchlist, compare, news, traveler, fees and base currencies.
-- [x] Connect RevenueCat Android through KMP gateway.
-- [x] Connect RevenueCat iOS through KMP gateway.
-- [x] Add entitlement validation for `pro`.
-- [x] Add restore purchase behavior.
-- [x] Add purchase/restore in-progress state to avoid duplicate taps.
-- [ ] Add manage subscription deep links.
-- [ ] Add paywall A/B-ready copy and pricing.
+- [x] Gating exists for alerts, watchlist, compare, news, traveler, fees, crypto and base currencies.
+- [x] RevenueCat Android gateway is connected.
+- [x] RevenueCat iOS gateway is connected.
+- [x] Entitlement validation for `pro` exists.
+- [x] Restore purchase behavior exists.
+- [x] Purchase/restore in-progress state avoids duplicate taps.
+- [x] Paywall has profile-aware copy and full-width primary CTA.
+- [x] Paywall legal links are language-aware.
+- [ ] Finalize production pricing and App Store/Play Store products.
 - [ ] Test offline entitlement cache.
+- [ ] Add paywall experiment hooks only if we actually plan to A/B test before launch.
 
-## Free/Pro Use Case Audit
+## Personalization
 
-### Converter
+- [x] Onboarding asks for Traveler, Crypto holder, Remittances, Freelancer or Savings.
+- [x] Profile persists in settings and backup.
+- [x] Home shows profile-aware Free/Pro focus, suggested pair and suggested alert.
+- [x] Profile can preselect converter currencies, compare currencies, watchlist, traveler destination and suggested amount when defaults are still untouched.
+- [x] Paywall adapts copy to selected profile.
+- [x] App opens on Rates/Home instead of jumping to Watchlist after profile selection.
+- [x] Suggested profile alert can be created/reactivated from Home in one tap.
+- [ ] For remittances/freelancer, persist suggested provider and frequent amount as explicit user preferences.
 
-- [x] Free: user can convert with the base currency and a limited target list.
-- [x] Free: extra converter currencies open the paywall instead of silently failing.
-- [x] Pro: user can select from all supported backend currencies.
-- [x] Pro: full fee provider list is visible.
-- [ ] Edge: selected target removed from backend falls back to a valid currency.
+## UI Test Coverage
 
-### Compare
+- [x] Dashboard tests cover Free/Pro crypto and profile card behavior.
+- [x] Onboarding tests cover profile selection.
+- [x] Settings tests cover profile changes and language-aware legal URLs.
+- [x] Paywall tests cover Free/Pro comparison, profile offer and language-aware legal URLs.
+- [x] Converter tests cover large values and currency selection behavior.
+- [x] Compare tests cover edit list and Free/Pro limits.
+- [x] Traveler tests cover budget behavior.
+- [x] Watchlist/portfolio tests cover holdings and import/export behavior.
+- [ ] Add a final "launch smoke" test class that walks Home -> Convert -> Compare -> Alerts -> More.
 
-- [x] Free: comparison board is limited by `compareLimit`.
-- [x] Free: edit list blocks extra currencies with a Pro affordance.
-- [x] Pro: edit list accepts the complete supported currency set.
-- [x] Edge: empty compare data shows a useful state instead of an empty board.
+## Recommended Next Work
 
-### Details
-
-- [x] Free: 1D, 1W and 1M history load.
-- [x] Free: 1Y and ALL open the paywall.
-- [x] Pro: 1Y and ALL request backend history.
-- [x] Pro-loading: cached chart remains visible while the new period loads.
-- [ ] Edge: backend history error keeps the last useful chart and shows a non-blocking error.
-
-### Alerts
-
-- [x] Free: one alert can be created.
-- [x] Free: second alert opens the paywall.
-- [x] Pro: unlimited app-side alert creation is allowed.
-- [x] Edge: alerts keep the original pair when base currency changes.
-- [x] Edge: duplicate identical alerts reactivate the existing alert instead of adding another row.
-
-### Watchlist
-
-- [x] Free: limited tracked currencies.
-- [x] Free: locked rows show a Pro action when the limit is reached.
-- [x] Pro: unlimited tracked currencies.
-- [x] Edge: base currency can be tracked at rate `1.0`.
-- [ ] Edge: removing a tracked currency clears or preserves its holding by explicit product decision.
-
-### News
-
-- [x] Free: limited story count and locked filters.
-- [x] Pro: region and currency filters are enabled.
-- [x] Pro: full filtered story list is visible.
-- [x] Edge: no stories for a selected region/currency shows a specific empty state.
-
-### Traveler
-
-- [x] Free: local destination list is limited.
-- [x] Free: More destinations opens the paywall.
-- [x] Pro: full destination picker is enabled.
-- [x] Edge: selected destination stays visible even if it is not in the default popular set.
-
-### Settings And Restore
-
-- [x] Free/Pro state comes from RevenueCat entitlement when configured.
-- [x] Restore purchase updates the visible subscription state.
-- [x] Production builds hide the local dev override.
-- [ ] Edge: offline restore failure copy is clear and does not change entitlement state.
+1. Close release blockers: legal content, store listing, release build/signing and full test run.
+2. Add contextual notification permission request.
+3. Add triggered-alert history.
+4. Add provider-history insight to the fee comparator.
+5. Persist suggested provider/frequent amount for remittance and freelancer profiles.
+6. Decide iOS release scope: compile-only, TestFlight, or full App Store setup.

@@ -734,6 +734,10 @@ private val uiTranslations = mapOf(
         "Pro focus" to "Foco Pro",
         "Suggested pair" to "Par sugerido",
         "Suggested alert" to "Alerta sugerida",
+        "Create suggested alert" to "Crear alerta sugerida",
+        "Suggested alert active" to "Alerta sugerida activa",
+        "Reactivate suggested alert" to "Reactivar alerta sugerida",
+        "Unlock suggested alert" to "Desbloquear alerta sugerida",
         "Show all" to "Mostrar todo",
         "Showing top" to "Mostrando top",
         "Destination rate near 30d high" to "Rate de destino cerca del maximo 30d",
@@ -1166,6 +1170,12 @@ fun FxAppShell() {
                                     subscriptionState = subscriptionState,
                                     trackedCurrencyCodes = compareCurrencyCodes,
                                     userProfile = userProfile,
+                                    suggestedProfileAlertState = suggestedProfileAlertState(
+                                        profile = userProfile,
+                                        liveState = liveState,
+                                        isPremium = subscriptionState.isPremium,
+                                        alerts = alertsState.alerts,
+                                    ),
                                     onRefresh = {
                                         Observability.event("rates_refresh", mapOf("source" to "dashboard"))
                                         liveStore.refresh()
@@ -1187,6 +1197,40 @@ fun FxAppShell() {
                                             compareCurrencyCodes = cryptoCodes
                                             AppSettingsPrefs.setCompareCurrencyCodes(cryptoCodes)
                                             selectTab(FxTab.Compare)
+                                        }
+                                    },
+                                    onCreateSuggestedAlert = {
+                                        val suggestion = suggestedProfileAlert(
+                                            profile = userProfile,
+                                            liveState = liveState,
+                                            isPremium = subscriptionState.isPremium,
+                                        )
+                                        if (suggestion == null) {
+                                            openMoreRoute(MoreRoute.Alerts)
+                                            selectTab(FxTab.More)
+                                        } else {
+                                            val existing = alertsState.alerts.findMatchingAlert(
+                                                baseCurrency = liveState.baseCurrency,
+                                                quote = suggestion.rate.code,
+                                                target = suggestion.target,
+                                                direction = suggestion.direction,
+                                                kind = suggestion.kind,
+                                            )
+                                            when {
+                                                existing != null -> {
+                                                    Observability.event("profile_alert_reactivated", mapOf("profile" to userProfile.name, "currency" to suggestion.rate.code))
+                                                    alertsStore.resumeAlert(existing.id)
+                                                    selectTab(FxTab.More)
+                                                    openMoreRoute(MoreRoute.Alerts)
+                                                }
+                                                canCreateAlert(subscriptionState, alertsState.alerts.size) -> {
+                                                    Observability.event("profile_alert_created", mapOf("profile" to userProfile.name, "currency" to suggestion.rate.code, "kind" to suggestion.kind.name))
+                                                    alertsStore.addAlert(liveState.baseCurrency, suggestion.rate.code, suggestion.target, suggestion.direction, suggestion.kind)
+                                                    selectTab(FxTab.More)
+                                                    openMoreRoute(MoreRoute.Alerts)
+                                                }
+                                                else -> openPaywall("dashboard_profile_alert_limit")
+                                            }
                                         }
                                     },
                                 )
@@ -1659,11 +1703,58 @@ private fun UserProfile.preset(): ProfilePreset =
         )
     }
 
+private data class ProfileAlertSuggestion(
+    val rate: FxRate,
+    val target: Double,
+    val direction: AlertDirection,
+    val kind: AlertKind,
+)
+
+private fun suggestedProfileAlert(
+    profile: UserProfile,
+    liveState: LiveRatesState,
+    isPremium: Boolean,
+): ProfileAlertSuggestion? {
+    val quote = profile.preset().suggestedPair.substringAfter("->", "").trim()
+    val rate = liveState.alertRates(isPremium).firstOrNull { it.code == quote } ?: return null
+    return when (profile) {
+        UserProfile.Traveler -> ProfileAlertSuggestion(rate, rate.rate * 1.005, AlertDirection.Above, AlertKind.Target)
+        UserProfile.CryptoHolder -> ProfileAlertSuggestion(rate, 3.0, AlertDirection.Above, AlertKind.DailyChange)
+        UserProfile.Remittances -> ProfileAlertSuggestion(rate, rate.rate * 1.01, AlertDirection.Above, AlertKind.Target)
+        UserProfile.Freelancer -> ProfileAlertSuggestion(rate, 1.0, AlertDirection.Above, AlertKind.DailyChange)
+        UserProfile.Savings -> ProfileAlertSuggestion(rate, 5.0, AlertDirection.Above, AlertKind.DailyChange)
+    }
+}
+
+private fun suggestedProfileAlertState(
+    profile: UserProfile,
+    liveState: LiveRatesState,
+    isPremium: Boolean,
+    alerts: List<PriceAlert>,
+): QuickAlertState? {
+    val suggestion = suggestedProfileAlert(profile, liveState, isPremium) ?: return null
+    val existing = alerts.findMatchingAlert(
+        baseCurrency = liveState.baseCurrency,
+        quote = suggestion.rate.code,
+        target = suggestion.target,
+        direction = suggestion.direction,
+        kind = suggestion.kind,
+    )
+    return when {
+        existing?.enabled == true -> QuickAlertState.Active
+        existing != null -> QuickAlertState.Paused
+        canCreateAlert(SubscriptionState(isPremium = isPremium), alerts.size) -> QuickAlertState.Create
+        else -> QuickAlertState.Locked
+    }
+}
+
 @Composable
 private fun ProfileInsightCard(
     profile: UserProfile,
     isPremium: Boolean,
+    suggestedAlertState: QuickAlertState?,
     modifier: Modifier = Modifier,
+    onCreateSuggestedAlert: () -> Unit,
 ) {
     val copy = profile.copy()
     val preset = profile.preset()
@@ -1689,9 +1780,24 @@ private fun ProfileInsightCard(
                 ProfileMetricTile(ui("Suggested pair"), preset.suggestedPair, preset.suggestedProvider, Modifier.weight(1f).testTag("dashboard_profile_pair"))
                 ProfileMetricTile(ui("Suggested alert"), ui(preset.suggestedAlert), ui(preset.suggestedHolding), Modifier.weight(1f).testTag("dashboard_profile_alert"))
             }
+            suggestedAlertState?.let { state ->
+                PrimaryButton(
+                    text = ui(state.profileAlertActionLabel),
+                    modifier = Modifier.fillMaxWidth().testTag("dashboard_profile_alert_action"),
+                    onClick = onCreateSuggestedAlert,
+                )
+            }
         }
     }
 }
+
+private val QuickAlertState.profileAlertActionLabel: String
+    get() = when (this) {
+        QuickAlertState.Create -> "Create suggested alert"
+        QuickAlertState.Active -> "Suggested alert active"
+        QuickAlertState.Paused -> "Reactivate suggested alert"
+        QuickAlertState.Locked -> "Unlock suggested alert"
+    }
 
 @Composable
 private fun ProfileMetricTile(
@@ -1743,11 +1849,13 @@ fun DashboardScreen(
     subscriptionState: SubscriptionState,
     trackedCurrencyCodes: List<String> = emptyList(),
     userProfile: UserProfile = UserProfile.Traveler,
+    suggestedProfileAlertState: QuickAlertState? = null,
     onRefresh: () -> Unit,
     onOpenPaywall: () -> Unit,
     onOpenDetail: (FxRate) -> Unit,
     onEditFavorites: () -> Unit,
     onSeeAllCrypto: () -> Unit,
+    onCreateSuggestedAlert: () -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
     val preset = userProfile.preset()
@@ -1782,7 +1890,9 @@ fun DashboardScreen(
         ProfileInsightCard(
             profile = userProfile,
             isPremium = subscriptionState.isPremium,
+            suggestedAlertState = suggestedProfileAlertState,
             modifier = Modifier.testTag("dashboard_profile_card"),
+            onCreateSuggestedAlert = onCreateSuggestedAlert,
         )
         HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -5952,7 +6062,7 @@ private fun AlertDirection.label(kind: AlertKind): String =
         }
     }
 
-private enum class QuickAlertState(
+enum class QuickAlertState(
     val label: String,
     val variant: PillVariant,
 ) {
