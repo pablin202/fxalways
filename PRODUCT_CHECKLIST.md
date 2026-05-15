@@ -32,7 +32,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Android local notification channel is configured.
 - [x] Android alert worker checks active alerts against backend rates.
 - [x] Android widgets are implemented for rates and traveler.
-- [ ] Move notification permission request to a contextual moment.
+- [x] Move notification permission request to a contextual moment.
 - [ ] Confirm widgets refresh correctly after fresh install, app kill and backend cache refresh.
 - [ ] Validate offline/slow-network first launch on a clean install.
 
@@ -199,8 +199,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 ## Recommended Next Work
 
 1. Close release blockers: legal content, store listing, release build/signing and full test run.
-2. Add contextual notification permission request.
-3. Add triggered-alert history.
-4. Add provider-history insight to the fee comparator.
-5. Persist suggested provider/frequent amount for remittance and freelancer profiles.
-6. Decide iOS release scope: compile-only, TestFlight, or full App Store setup.
+2. Add triggered-alert history.
+3. Add provider-history insight to the fee comparator.
+4. Persist suggested provider/frequent amount for remittance and freelancer profiles.
+5. Decide iOS release scope: compile-only, TestFlight, or full App Store setup.

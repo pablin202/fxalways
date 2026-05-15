@@ -41,6 +41,7 @@ class AlertsScreenTest {
     fun freeUserCreatesOneAlertThenNewAlertsOpenPaywall() {
         val harness = renderAlerts(isPremium = false)
 
+        compose.runOnIdle { assertEquals(0, harness.notificationPermissionRequests) }
         compose.onNodeWithText("0/1 alerts · USD base").assertIsDisplayed()
         compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("0.95")
         compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
@@ -48,13 +49,20 @@ class AlertsScreenTest {
         compose.onNodeWithTag("alert_feedback").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("alert_card_manual_0").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Create unlimited alerts").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertEquals(1, harness.notificationPermissionRequests) }
 
         compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("0.96")
         compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+        compose.runOnIdle {
+            assertEquals(1, harness.paywallClicks)
+            assertEquals(1, harness.notificationPermissionRequests)
+        }
 
         compose.onNodeWithTag("alert_quick_GBP").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(2, harness.paywallClicks) }
+        compose.runOnIdle {
+            assertEquals(2, harness.paywallClicks)
+            assertEquals(1, harness.notificationPermissionRequests)
+        }
     }
 
     @Test
@@ -145,7 +153,10 @@ class AlertsScreenTest {
         compose.onAllNodesWithText("paused").assertCountEquals(2)
 
         compose.onNodeWithTag("alert_test_eur_target").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(listOf("eur_target"), harness.testedAlertIds) }
+        compose.runOnIdle {
+            assertEquals(listOf("eur_target"), harness.testedAlertIds)
+            assertEquals(1, harness.notificationPermissionRequests)
+        }
 
         compose.onNodeWithTag("alert_delete_eur_target").performScrollTo().performClick()
         compose.onAllNodesWithTag("alert_card_eur_target").assertCountEquals(0)
@@ -356,6 +367,7 @@ class AlertsScreenTest {
                     alertsState = AlertsState(alerts),
                     subscriptionState = SubscriptionState(isPremium = isPremium),
                     onOpenPaywall = { harness.paywallClicks += 1 },
+                    onRequestNotificationPermission = { harness.notificationPermissionRequests += 1 },
                     onCreateAlert = { rate ->
                         val id = "quick_${nextAlertIndex++}"
                         alerts = alerts + PriceAlert(
@@ -464,6 +476,7 @@ class AlertsScreenTest {
     private class AlertsHarness {
         var paywallClicks = 0
         var manualCreateCalls = 0
+        var notificationPermissionRequests = 0
         val testedAlertIds = mutableListOf<String>()
     }
 }

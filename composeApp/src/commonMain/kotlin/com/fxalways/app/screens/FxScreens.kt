@@ -3699,6 +3699,7 @@ fun AlertsScreen(
     subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
     onBack: (() -> Unit)? = null,
     onOpenPaywall: () -> Unit = {},
+    onRequestNotificationPermission: () -> Unit = { NotificationPermissionStatus.requestIfNeeded() },
     onCreateAlert: (FxRate) -> Unit = {},
     onCreateManualAlert: (FxRate, AlertDirection, Double, AlertKind) -> Unit = { _, _, _, _ -> },
     onResumeAlert: (String) -> Unit = {},
@@ -3827,6 +3828,7 @@ fun AlertsScreen(
                             },
                             enabled = canUseSuggestion,
                             onCreate = {
+                                onRequestNotificationPermission()
                                 if (existingSmartAlert != null) {
                                     onResumeAlert(existingSmartAlert.id)
                                 } else {
@@ -3934,6 +3936,7 @@ fun AlertsScreen(
 	                        if (!canCreateOrUpdate) {
 	                            onOpenPaywall()
 	                        } else if (targetValue > 0.0) {
+	                            onRequestNotificationPermission()
 	                            onCreateManualAlert(selectedRate, selectedDirection, targetValue, selectedKind)
 	                            customAlertFeedback = if (matchingCustomAlert != null) {
 		                                "$existingAlertReactivatedCopy ${liveState.baseCurrency}/${selectedRate.code}."
@@ -3987,6 +3990,7 @@ fun AlertsScreen(
                         },
                         enabled = canCreateQuick,
                         onCreate = {
+                            onRequestNotificationPermission()
                             if (quickAlert != null) {
                                 onResumeAlert(quickAlert.id)
                             } else {
@@ -4025,7 +4029,10 @@ fun AlertsScreen(
                         currentChangePct = currentRatesByCode[alert.quote]?.change24h.takeIf { alert.base == liveState.baseCurrency },
                         onToggle = onToggleAlert,
                         onDelete = onDeleteAlert,
-                        onTest = onTestAlert,
+                        onTest = {
+                            onRequestNotificationPermission()
+                            onTestAlert(it)
+                        },
                     )
                 }
             }

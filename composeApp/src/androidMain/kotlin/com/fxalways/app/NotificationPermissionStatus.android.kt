@@ -3,6 +3,7 @@ package com.fxalways.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 actual object NotificationPermissionStatus {
@@ -16,10 +17,23 @@ actual object NotificationPermissionStatus {
             "Android permission is required before local price alerts can be delivered"
         }
 
+    actual fun requestIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (canPostNotifications()) return
+        val activity = AndroidAppContext.activity ?: return
+        ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            NOTIFICATION_PERMISSION_REQUEST,
+        )
+    }
+
     private fun canPostNotifications(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(
                 AndroidAppContext.context,
                 Manifest.permission.POST_NOTIFICATIONS,
             ) == PackageManager.PERMISSION_GRANTED
+
+    private const val NOTIFICATION_PERMISSION_REQUEST = 1001
 }
