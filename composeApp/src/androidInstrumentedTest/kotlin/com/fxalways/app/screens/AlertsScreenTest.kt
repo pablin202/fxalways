@@ -45,7 +45,7 @@ class AlertsScreenTest {
         compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("0.95")
         compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
 
-        compose.onNodeWithTag("alert_feedback").assertIsDisplayed()
+        compose.onNodeWithTag("alert_feedback").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("alert_card_manual_0").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Create unlimited alerts").performScrollTo().assertIsDisplayed()
 
@@ -85,8 +85,8 @@ class AlertsScreenTest {
         compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("")
         compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
 
-        compose.onNodeWithTag("alert_target_error").assertIsDisplayed()
-        compose.onNodeWithText("Enter a target above 0").assertIsDisplayed()
+        compose.onNodeWithTag("alert_target_error").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Enter a target above 0").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("alert_card_manual_0").assertCountEquals(0)
     }
 
@@ -232,6 +232,75 @@ class AlertsScreenTest {
     }
 
     @Test
+    fun proSmartAlertCreatesSuggestedRangeAlert() {
+        val harness = renderAlerts(isPremium = true, liveState = smartAlertLiveRatesState())
+
+        compose.onNodeWithTag("alert_smart_EUR").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_smart_EUR").performScrollTo().performClick()
+
+        compose.runOnIdle { assertEquals(1, harness.manualCreateCalls) }
+        compose.onNodeWithTag("alert_card_manual_0").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun freeSmartAlertRespectsLimitAndOpensPaywall() {
+        val harness = renderAlerts(
+            isPremium = false,
+            liveState = smartAlertLiveRatesState(),
+            initialAlerts = listOf(
+                PriceAlert(
+                    id = "existing_limit",
+                    base = "USD",
+                    quote = "JPY",
+                    target = 160.0,
+                    direction = AlertDirection.Above,
+                    kind = AlertKind.Target,
+                    enabled = true,
+                    createdAtMillis = 1L,
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("1/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithTag("alert_smart_EUR").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(1, harness.paywallClicks)
+            assertEquals(0, harness.manualCreateCalls)
+        }
+    }
+
+    @Test
+    fun freeSmartAlertReactivatesMatchingPausedAlertAtLimit() {
+        val harness = renderAlerts(
+            isPremium = false,
+            liveState = smartAlertLiveRatesState(),
+            initialAlerts = listOf(
+                PriceAlert(
+                    id = "eur_smart",
+                    base = "USD",
+                    quote = "EUR",
+                    target = 0.92184,
+                    direction = AlertDirection.Above,
+                    kind = AlertKind.Target,
+                    enabled = false,
+                    createdAtMillis = 1L,
+                ),
+            ),
+        )
+
+        compose.onNodeWithText("1/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithTag("alert_smart_EUR").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(0, harness.paywallClicks)
+            assertEquals(0, harness.manualCreateCalls)
+        }
+        compose.onNodeWithTag("alert_card_eur_smart").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("on").assertIsDisplayed()
+    }
+
+    @Test
     fun activeAlertsShowHitAndDistanceStatesForTargetAndDailyMove() {
         renderAlerts(
             isPremium = true,
@@ -370,6 +439,24 @@ class AlertsScreenTest {
             converter = listOf(usd, eur, gbp, jpy),
             compare = listOf(eur, gbp, jpy),
             crypto = listOf(btc, eth, usdt, usdc, sol),
+            allFiat = listOf(usd, eur, gbp, jpy),
+        )
+    }
+
+    private fun smartAlertLiveRatesState(): LiveRatesState {
+        val usd = FxRate("USD", "US Dollar", "🇺🇸", CurrencyKind.Fiat, 1.0, 0.0, listOf(1f, 1f, 1f), "1 USD = 1.0000 USD")
+        val eur = FxRate("EUR", "Euro", "🇪🇺", CurrencyKind.Fiat, 0.92, 0.8, listOf(0.84f, 0.86f, 0.89f, 0.92f), "1 USD = 0.9200 EUR")
+        val gbp = FxRate("GBP", "British Pound", "🇬🇧", CurrencyKind.Fiat, 0.78, -0.7, listOf(0.82f, 0.80f, 0.79f, 0.78f), "1 USD = 0.7800 GBP")
+        val jpy = FxRate("JPY", "Japanese Yen", "🇯🇵", CurrencyKind.Fiat, 156.0, 0.3, listOf(154f, 155f, 156f), "1 USD = 156.0000 JPY")
+        return LiveRatesState(
+            isLoading = false,
+            isLive = true,
+            baseCurrency = "USD",
+            updatedLabel = "2026-05-14 · test · refreshed 12:00",
+            favorites = listOf(eur, gbp, jpy),
+            converter = listOf(usd, eur, gbp, jpy),
+            compare = listOf(eur, gbp, jpy),
+            crypto = emptyList(),
             allFiat = listOf(usd, eur, gbp, jpy),
         )
     }

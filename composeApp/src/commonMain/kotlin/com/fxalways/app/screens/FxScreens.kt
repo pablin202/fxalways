@@ -3212,6 +3212,9 @@ fun AlertsScreen(
     val currentRatesByCode = remember(liveState.baseCurrency, alertRates) {
         alertRates.associateBy { it.code }
     }
+    val smartSuggestions = remember(liveState.baseCurrency, alertRates, subscriptionState.isPremium) {
+        smartAlertSuggestions(alertRates, subscriptionState.isPremium)
+    }
     var selectedRateCode by remember(liveState.baseCurrency) { mutableStateOf(alertRates.firstOrNull()?.code ?: "EUR") }
     val selectedRate = alertRates.firstOrNull { it.code == selectedRateCode } ?: alertRates.firstOrNull() ?: FavoriteRates.first()
     val visibleAlertRates = remember(alertRates, selectedRate.code, subscriptionState.isPremium) {
@@ -3282,7 +3285,51 @@ fun AlertsScreen(
             }
         }
 
-	        SectionLabel(ui("CUSTOM ALERT"))
+        SectionLabel(ui("SMART ALERTS"), right = if (subscriptionState.isPremium) "FX/ PRO" else ui("Preview"))
+        BentoCard(padding = 8.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (smartSuggestions.isEmpty()) {
+                    Text(
+                        ui("No smart alert signals yet"),
+                        modifier = Modifier.fillMaxWidth().testTag("alert_smart_empty").padding(horizontal = 12.dp, vertical = 10.dp),
+                        style = FxTheme.typography.captionMono,
+                        color = FxTheme.colors.textFaint,
+                    )
+                } else {
+                    smartSuggestions.forEach { suggestion ->
+                        val existingSmartAlert = alertsState.alerts.findMatchingAlert(
+                            baseCurrency = liveState.baseCurrency,
+                            quote = suggestion.rate.code,
+                            target = suggestion.target,
+                            direction = suggestion.direction,
+                            kind = suggestion.kind,
+                        )
+                        val canUseSuggestion = existingSmartAlert != null || canCreate
+                        SmartAlertRow(
+                            baseCurrency = liveState.baseCurrency,
+                            suggestion = suggestion,
+                            state = when {
+                                existingSmartAlert?.enabled == true -> QuickAlertState.Active
+                                existingSmartAlert != null -> QuickAlertState.Paused
+                                canCreate -> QuickAlertState.Create
+                                else -> QuickAlertState.Locked
+                            },
+                            enabled = canUseSuggestion,
+                            onCreate = {
+                                if (existingSmartAlert != null) {
+                                    onResumeAlert(existingSmartAlert.id)
+                                } else {
+                                    onCreateManualAlert(suggestion.rate, suggestion.direction, suggestion.target, suggestion.kind)
+                                }
+                            },
+                            onLocked = onOpenPaywall,
+                        )
+                    }
+                }
+            }
+        }
+
+        SectionLabel(ui("CUSTOM ALERT"))
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 	                Eyebrow("${liveState.baseCurrency} ${ui("PAIR")}")
@@ -4136,7 +4183,55 @@ private fun AlertQuickRow(
             Text("$baseCurrency / ${rate.code}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
 	            Text("${ui("Above")} ${formatRate(rate.rate * 1.01)} · ${ui("current")} ${formatRate(rate.rate)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
         }
-	        Pill(ui(state.label), variant = state.variant)
+        Pill(ui(state.label), variant = state.variant)
+    }
+}
+
+@Composable
+private fun SmartAlertRow(
+    baseCurrency: String,
+    suggestion: SmartAlertSuggestion,
+    state: QuickAlertState,
+    enabled: Boolean,
+    onCreate: () -> Unit,
+    onLocked: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("alert_smart_${suggestion.rate.code}")
+            .clip(FxTheme.shapes.field)
+            .clickable(onClick = if (enabled) onCreate else onLocked)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FlagDot(suggestion.rate.glyph, suggestion.rate.kind, 30.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                "$baseCurrency / ${suggestion.rate.code}",
+                style = FxTheme.typography.bodyStrong,
+                color = FxTheme.colors.text,
+            )
+            Text(
+                ui(suggestion.title),
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.accent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                "${ui(suggestion.direction.label(suggestion.kind))} ${formatRate(suggestion.target)} · ${ui(suggestion.subtitle)}",
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Pill(ui(state.label), variant = state.variant)
+            Text(suggestion.strengthLabel, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+        }
     }
 }
 
@@ -5264,6 +5359,56 @@ private enum class QuickAlertState(
     Active("active", PillVariant.Up),
     Paused("resume", PillVariant.Ghost),
     Locked("pro", PillVariant.Accent),
+}
+
+private data class SmartAlertSuggestion(
+    val rate: FxRate,
+    val title: String,
+    val subtitle: String,
+    val target: Double,
+    val direction: AlertDirection,
+    val kind: AlertKind = AlertKind.Target,
+    val strength: Double,
+) {
+    val strengthLabel: String
+        get() = "${(strength * 100.0).toInt()}%"
+}
+
+private fun smartAlertSuggestions(rates: List<FxRate>, isPremium: Boolean): List<SmartAlertSuggestion> =
+    rates
+        .mapNotNull(::smartAlertSuggestion)
+        .sortedWith(compareByDescending<SmartAlertSuggestion> { it.strength }.thenBy { it.rate.code })
+        .take(if (isPremium) 4 else 2)
+
+private fun smartAlertSuggestion(rate: FxRate): SmartAlertSuggestion? {
+    val points = (rate.sparkline + rate.rate.toFloat())
+        .filter { it.isFinite() && it > 0f }
+        .map { it.toDouble() }
+    if (points.size < 3) return null
+    val low = points.minOrNull() ?: return null
+    val high = points.maxOrNull() ?: return null
+    val range = high - low
+    if (range <= 0.0) return null
+    val position = ((rate.rate - low) / range).coerceIn(0.0, 1.0)
+    return when {
+        position >= 0.74 -> SmartAlertSuggestion(
+            rate = rate,
+            title = "Near recent high",
+            subtitle = "30d range signal",
+            target = rate.rate * 1.002,
+            direction = AlertDirection.Above,
+            strength = position,
+        )
+        position <= 0.26 -> SmartAlertSuggestion(
+            rate = rate,
+            title = "Near recent low",
+            subtitle = "30d range signal",
+            target = rate.rate * 0.998,
+            direction = AlertDirection.Below,
+            strength = 1.0 - position,
+        )
+        else -> null
+    }
 }
 
 private data class AlertPreset(
