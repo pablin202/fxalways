@@ -1664,7 +1664,11 @@ fun ConverterScreen(
         allFeeQuotes.filter { it.provider in FreeFeeProviders }
     }
     val bestQuote = feeQuotes.minByOrNull { it.lossTargetValue }
+    val worstQuote = feeQuotes.maxByOrNull { it.lossTargetValue }
     val customQuote = feeQuotes.firstOrNull { it.provider == "Custom" }
+    val potentialSavings = bestQuote?.let { best ->
+        worstQuote?.let { worst -> (worst.lossTargetValue - best.lossTargetValue).coerceAtLeast(0.0) }
+    } ?: 0.0
     val timingInsight = remember(sourceRate, targetRate) { smartTimingInsight(sourceRate, targetRate) }
     if (showCurrencyPicker) {
         CurrencyListPickerSheet(
@@ -1798,19 +1802,40 @@ fun ConverterScreen(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MetricTile(
-                        ui("Best received"),
-                        bestQuote?.amount ?: formatConvertedAmount(targetRate, 0.0),
-                        bestQuote?.provider?.let { ui(it) },
-                        Modifier.weight(1f),
+                        ui("Best provider"),
+                        bestQuote?.provider?.let { ui(it) } ?: "--",
+                        bestQuote?.let { "${ui("Recipient gets")} ${it.amount}" },
+                        Modifier.weight(1f).testTag("converter_best_provider"),
                     )
                     MetricTile(
-                        ui("Worst loss"),
-                        feeQuotes.maxByOrNull { it.lossTargetValue }?.loss ?: "${targetRate.code} 0.00",
-                        ui("vs mid-market"),
-                        Modifier.weight(1f),
+                        ui("Potential savings"),
+                        formatConvertedAmount(targetRate, potentialSavings),
+                        ui("vs worst visible provider"),
+                        Modifier.weight(1f).testTag("converter_provider_savings"),
                     )
                 }
-                KeyValueRow(ui("Mid-market value"), formatConvertedAmount(targetRate, convertedAmount(amountValue, sourceRate, targetRate)))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetricTile(
+                        ui("Mid-market value"),
+                        formatConvertedAmount(targetRate, convertedAmount(amountValue, sourceRate, targetRate)),
+                        ui("before fees and markup"),
+                        Modifier.weight(1f).testTag("converter_mid_market_value"),
+                    )
+                    MetricTile(
+                        ui("Best loss"),
+                        bestQuote?.loss ?: "${targetRate.code} 0.00",
+                        bestQuote?.provider?.let { ui(it) },
+                        Modifier.weight(1f).testTag("converter_best_loss"),
+                    )
+                }
+                bestQuote?.let {
+                    KeyValueRow(
+                        ui("Best route"),
+                        "${ui(it.provider)} · ${ui("Recipient gets")} ${it.amount}",
+                        "${ui("Loss vs mid-market")} ${it.loss} (${it.lossPercent})",
+                        modifier = Modifier.testTag("converter_best_route"),
+                    )
+                }
                 customQuote?.let {
                     KeyValueRow(ui("Your custom cost"), it.loss, "${ui("Effective rate")} ${it.effectiveRate}")
                 }
@@ -2021,6 +2046,13 @@ private fun FeeComparisonRow(quote: EstimatedFeeQuote, rank: Int) {
                     quote.badge?.let { Pill(ui(it), variant = if (quote.isHighFee) PillVariant.Down else PillVariant.Up) }
                 }
                 Text(
+                    "${ui("Recipient gets")} ${quote.amount}",
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.accent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
                     "${ui("Fee")} ${quote.fee} · ${ui("Markup")} ${quote.markup}",
                     style = FxTheme.typography.captionMono,
                     color = FxTheme.colors.textFaint,
@@ -2030,12 +2062,12 @@ private fun FeeComparisonRow(quote: EstimatedFeeQuote, rank: Int) {
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(quote.amount, style = FxTheme.typography.numberBody, color = FxTheme.colors.text, textAlign = TextAlign.End)
-                Text(quote.loss, style = FxTheme.typography.captionMono, color = if (quote.lossTargetValue > 0.0) FxTheme.colors.down else FxTheme.colors.up)
+                Text("${ui("Lost")} ${quote.loss}", style = FxTheme.typography.captionMono, color = if (quote.lossTargetValue > 0.0) FxTheme.colors.down else FxTheme.colors.up)
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("${ui("Effective rate")} ${quote.effectiveRate}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
-            Text("${ui("Lost")} ${quote.lossPercent}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+            Text("${ui("Loss vs mid-market")} ${quote.lossPercent}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
         }
     }
 }

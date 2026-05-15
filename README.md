@@ -20,7 +20,7 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - Portfolio Pro con average cost, cost basis, P&L realizado/no realizado, allocation fiat/crypto, largest position, chart estimado y transaction history buy/sell.
 - Import/export CSV Pro de portfolio con holdings, average cost y transacciones.
 - Crypto live catalog con core crypto para Free y catalogo expandido para Pro.
-- Comparador de costos estimados por proveedor, monto y par de monedas.
+- Comparador de costos estimados por proveedor, monto y par: mejor proveedor, monto recibido, perdida vs mid-market y ahorro potencial.
 - Alertas de tipo target rate y daily move.
 - Traveler mode con presupuesto local, cash buffer y cheat sheet de gasto.
 - Backup/sync de usuario en Android con Firebase.
@@ -61,16 +61,17 @@ Para competir contra conversores FX, money transfer apps y trackers crypto moder
    - CSV import/export de holdings y transacciones.
    - Backup cloud multiplataforma.
    - Historial editable de transacciones.
-6. Comparador de costos mas accionable.
+6. Comparador de costos mas accionable. Resumen principal implementado.
    - Recibiras aproximadamente X despues de fee/spread.
    - Diferencia contra mid-market.
    - Mejor proveedor estimado por monto y par.
-   - Historial de proveedor mas conveniente.
+   - Ahorro potencial contra el peor proveedor visible.
+   - Pendiente: historial de proveedor mas conveniente.
 7. Onboarding personalizado.
    - Perfil: viajero, crypto holder, remesas, freelancer, ahorro.
    - Home y alertas sugeridas segun objetivo.
 
-El proximo bloque de producto recomendado es reforzar el punto 1 con import/export CSV y mas tipos de transaccion: deposit, withdrawal, transfer y fee.
+El proximo bloque de producto recomendado es cerrar el historial del comparador y avanzar con onboarding personalizado para mejorar activacion y conversion a Pro.
 
 ## Ejecutar Android
 

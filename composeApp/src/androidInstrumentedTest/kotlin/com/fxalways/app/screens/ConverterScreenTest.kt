@@ -42,7 +42,7 @@ class ConverterScreenTest {
         renderConverter(isPremium = false)
 
         compose.onNodeWithText("FEES · USD → EUR").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText("Mid-market").assertCountEquals(2)
+        compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("CUSTOM COST").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Pro unlocks the complete provider list; estimates update with your amount.")
@@ -62,7 +62,12 @@ class ConverterScreenTest {
         renderConverter(isPremium = true)
 
         compose.onNodeWithText("FEES · USD → EUR").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText("Mid-market").assertCountEquals(2)
+        compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_best_provider").assertIsDisplayed()
+        compose.onNodeWithTag("converter_provider_savings").assertIsDisplayed()
+        compose.onNodeWithTag("converter_mid_market_value").assertIsDisplayed()
+        compose.onNodeWithTag("converter_best_loss").assertIsDisplayed()
+        compose.onNodeWithTag("converter_best_route").assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Revolut").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Card payment").performScrollTo().assertIsDisplayed()
@@ -169,7 +174,7 @@ class ConverterScreenTest {
         compose.onNodeWithText("⇄  Reverse").performClick()
 
         compose.onNodeWithText("FEES · EUR → USD").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText("Mid-market").assertCountEquals(2)
+        compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
     }
 
