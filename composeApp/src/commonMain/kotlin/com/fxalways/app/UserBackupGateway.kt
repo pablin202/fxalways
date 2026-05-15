@@ -14,6 +14,7 @@ data class BackupSettings(
     val travelerBudgetBase: Double = 100.0,
     val converterCurrencyCodes: List<String> = emptyList(),
     val compareCurrencyCodes: List<String> = emptyList(),
+    val userProfile: String = UserProfile.Traveler.name,
 )
 
 @Serializable
@@ -52,7 +53,8 @@ private fun BackupSettings.isDefaultLocalSettings(): Boolean =
         travelerCurrency == "JPY" &&
         travelerBudgetBase == 100.0 &&
         converterCurrencyCodes.isEmpty() &&
-        compareCurrencyCodes.isEmpty()
+        compareCurrencyCodes.isEmpty() &&
+        userProfile == UserProfile.Traveler.name
 
 expect object UserBackupGateway {
     suspend fun ensureUser(): UserBackupState

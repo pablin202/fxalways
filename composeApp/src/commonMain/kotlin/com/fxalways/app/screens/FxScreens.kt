@@ -86,6 +86,7 @@ import com.fxalways.app.Platform
 import com.fxalways.app.PlatformConfig
 import com.fxalways.app.ThemeMode
 import com.fxalways.app.PlatformBackHandler
+import com.fxalways.app.UserProfile
 import com.fxalways.app.UserBackupGateway
 import com.fxalways.app.UserBackupSnapshot
 import com.fxalways.app.UserBackupState
@@ -111,6 +112,7 @@ import com.fxalways.app.data.PriceAlert
 import com.fxalways.app.data.PortfolioTransaction
 import com.fxalways.app.data.PortfolioTransactionType
 import com.fxalways.app.data.SettingsBaseCurrencies
+import com.fxalways.app.data.Watchlist
 import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.data.WatchlistStore
 import com.fxalways.app.data.importPortfolioCsv
@@ -701,6 +703,49 @@ private val uiTranslations = mapOf(
         "STEP 02 · FEES THAT MATTER" to "PASO 02 · FEES IMPORTANTES",
         "STEP 03 · TRAVEL READY" to "PASO 03 · LISTO PARA VIAJAR",
         "STEP 04 · BACKUP" to "PASO 04 · BACKUP",
+        "FOR YOU" to "PARA TI",
+        "Profile" to "Perfil",
+        "Choose your focus" to "Elige tu foco",
+        "Travel money setup" to "Setup de dinero para viajes",
+        "Trip budget, local cash buffer and destination rates stay near the top." to "Presupuesto, efectivo local y tasas de destino quedan cerca del inicio.",
+        "Budget + core destinations" to "Presupuesto + destinos core",
+        "Full cheat sheet + all destinations" to "Guia completa + todos los destinos",
+        "Crypto holder" to "Crypto holder",
+        "Crypto portfolio focus" to "Foco en portfolio crypto",
+        "Crypto board, stablecoins and holdings get priority across Home and Portfolio." to "Crypto, stablecoins y posiciones tienen prioridad en Home y Portfolio.",
+        "BTC, ETH, USDT, USDC" to "BTC, ETH, USDT, USDC",
+        "Expanded crypto catalog + holdings" to "Catalogo crypto expandido + holdings",
+        "Remittances" to "Remesas",
+        "Send money smarter" to "Enviar dinero mejor",
+        "Provider cost, timing and alerts stay visible for repeat transfers." to "Costo por proveedor, timing y alertas quedan visibles para envios frecuentes.",
+        "Mid-market + custom cost" to "Mid-market + costo custom",
+        "Full provider comparison + alerts" to "Comparacion completa + alertas",
+        "Freelancer" to "Freelancer",
+        "Multi-currency income" to "Ingresos multi-moneda",
+        "Converter, base currency and income pairs are tuned for cross-border work." to "Conversor, moneda base y pares de ingreso se ajustan al trabajo cross-border.",
+        "Converter + saved pairs" to "Conversor + pares guardados",
+        "Timing + portfolio + alerts" to "Timing + portfolio + alertas",
+        "Savings" to "Ahorro",
+        "Savings and allocation" to "Ahorro y allocation",
+        "Portfolio allocation, long-range context and alerts are treated as the main workflow." to "Allocation, contexto largo y alertas pasan a ser el flujo principal.",
+        "Portfolio snapshot" to "Snapshot de portfolio",
+        "P&L, allocation and long history" to "P&L, allocation e historico largo",
+        "Free focus" to "Foco Free",
+        "Pro focus" to "Foco Pro",
+        "Suggested pair" to "Par sugerido",
+        "Suggested alert" to "Alerta sugerida",
+        "Show all" to "Mostrar todo",
+        "Showing top" to "Mostrando top",
+        "Destination rate near 30d high" to "Rate de destino cerca del maximo 30d",
+        "Trip cash budget" to "Presupuesto efectivo de viaje",
+        "BTC/ETH daily move above 3%" to "Movimiento diario BTC/ETH mayor a 3%",
+        "BTC, ETH and stablecoins" to "BTC, ETH y stablecoins",
+        "Target rate above last 7d average" to "Rate objetivo sobre promedio 7d",
+        "Receiver currency balance" to "Balance en moneda destino",
+        "Invoice pair moves 1% in a day" to "Par de factura se mueve 1% en un dia",
+        "Client payment currencies" to "Monedas de pago de clientes",
+        "Portfolio allocation drift above 5%" to "Desvio de allocation mayor a 5%",
+        "Core savings currencies" to "Monedas core de ahorro",
         "Pro unlocks the full regional stream." to "Pro desbloquea el stream regional completo.",
         "Pro unlocks more stories and filters by region, currencies and topics." to "Pro desbloquea más noticias y filtros por región, monedas y temas.",
         "fees" to "fees",
@@ -814,6 +859,8 @@ private val uiTranslations = mapOf(
 
 @Composable
 fun FxAppShell() {
+    val initialProfile = remember { AppSettingsPrefs.userProfile() }
+    val initialPreset = remember(initialProfile) { initialProfile.preset() }
     var selectedTab by remember { mutableStateOf(FxTab.Rates) }
     var moreRoute by remember { mutableStateOf(MoreRoute.Menu) }
     var detailRate by remember { mutableStateOf<FxRate?>(null) }
@@ -827,6 +874,7 @@ fun FxAppShell() {
     var travelerBudgetBase by remember { mutableStateOf(AppSettingsPrefs.travelerBudgetBase()) }
     var converterCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.converterCurrencyCodes()) }
     var compareCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.compareCurrencyCodes()) }
+    var userProfile by remember { mutableStateOf(AppSettingsPrefs.userProfile()) }
     val liveStore = remember { LiveRatesStore(initialBaseCurrency = baseCurrency) }
     val newsStore = remember { NewsStore(initialLanguage = appLanguage) }
     val alertsStore = remember { AlertsStore() }
@@ -847,6 +895,26 @@ fun FxAppShell() {
     val alertsState by alertsStore.state.collectAsState()
     val watchlistState by watchlistStore.state.collectAsState()
     val detailState by detailStore.state.collectAsState()
+    LaunchedEffect(Unit) {
+        if (converterCurrencyCodes.isEmpty()) {
+            converterCurrencyCodes = initialPreset.converterCodes
+            AppSettingsPrefs.setConverterCurrencyCodes(converterCurrencyCodes)
+        }
+        if (compareCurrencyCodes.isEmpty()) {
+            compareCurrencyCodes = initialPreset.compareCodes
+            AppSettingsPrefs.setCompareCurrencyCodes(compareCurrencyCodes)
+        }
+        if (watchlistState.watchlist == Watchlist()) {
+            watchlistStore.replaceFromBackup(Watchlist(codes = initialPreset.watchlistCodes))
+        }
+        if (travelerCurrency == "JPY" && initialPreset.travelerCurrency != "JPY") {
+            travelerCurrency = initialPreset.travelerCurrency
+            AppSettingsPrefs.setTravelerCurrency(travelerCurrency)
+        }
+        if (AppSettingsPrefs.converterAmountText() == "1000" && initialPreset.suggestedAmount != "1000") {
+            AppSettingsPrefs.setConverterAmountText(initialPreset.suggestedAmount)
+        }
+    }
     fun selectTab(tab: FxTab) {
         showPaywall = false
         detailRate = null
@@ -919,6 +987,7 @@ fun FxAppShell() {
                     travelerBudgetBase,
                     converterCurrencyCodes,
                     compareCurrencyCodes,
+                    userProfile,
                     alertsState,
                     watchlistState,
                 )
@@ -933,6 +1002,7 @@ fun FxAppShell() {
                         onCompareCurrencyCodes = { compareCurrencyCodes = it },
                         onTravelerCurrency = { travelerCurrency = it },
                         onTravelerBudgetBase = { travelerBudgetBase = it },
+                        onUserProfile = { userProfile = it },
                         onLanguage = {
                             appLanguage = it
                             newsStore.setLanguage(it)
@@ -953,7 +1023,7 @@ fun FxAppShell() {
         backupReady = backupState.isAvailable
         startupReady = true
     }
-    LaunchedEffect(themeMode, appLanguage, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, compareCurrencyCodes, alertsState, watchlistState, backupReady) {
+    LaunchedEffect(themeMode, appLanguage, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, compareCurrencyCodes, userProfile, alertsState, watchlistState, backupReady) {
         if (backupReady) {
             runCatching {
                 val snapshot = buildUserBackupSnapshot(
@@ -964,6 +1034,7 @@ fun FxAppShell() {
                     travelerBudgetBase,
                     converterCurrencyCodes,
                     compareCurrencyCodes,
+                    userProfile,
                     alertsState,
                     watchlistState,
                 )
@@ -1005,6 +1076,7 @@ fun FxAppShell() {
                     PaywallScreen(
                         subscriptionState = subscriptionState,
                         actionInProgress = subscriptionActionInProgress,
+                        userProfile = userProfile,
                         onClose = { showPaywall = false },
                         onStart = { planKind ->
                             scope.launch {
@@ -1093,6 +1165,7 @@ fun FxAppShell() {
                                     liveState = liveState,
                                     subscriptionState = subscriptionState,
                                     trackedCurrencyCodes = compareCurrencyCodes,
+                                    userProfile = userProfile,
                                     onRefresh = {
                                         Observability.event("rates_refresh", mapOf("source" to "dashboard"))
                                         liveStore.refresh()
@@ -1244,6 +1317,7 @@ fun FxAppShell() {
                                 themeMode = themeMode,
                                 appLanguage = appLanguage,
                                 baseCurrency = baseCurrency,
+                                userProfile = userProfile,
                                 availableBaseCurrencies = liveState.allFiat,
                                 backupState = backupState,
                                 backupSyncing = backupSyncing,
@@ -1273,6 +1347,7 @@ fun FxAppShell() {
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
                                                 compareCurrencyCodes,
+                                                userProfile,
                                                 alertsState,
                                                 watchlistState,
                                             )
@@ -1299,6 +1374,7 @@ fun FxAppShell() {
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
                                                 compareCurrencyCodes,
+                                                userProfile,
                                                 alertsState,
                                                 watchlistState,
                                             )
@@ -1316,6 +1392,7 @@ fun FxAppShell() {
                                                 onCompareCurrencyCodes = { compareCurrencyCodes = it },
                                                 onTravelerCurrency = { travelerCurrency = it },
                                                 onTravelerBudgetBase = { travelerBudgetBase = it },
+                                                onUserProfile = { userProfile = it },
                                                 onLanguage = {
                                                     appLanguage = it
                                                     newsStore.setLanguage(it)
@@ -1346,6 +1423,7 @@ fun FxAppShell() {
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
                                                 compareCurrencyCodes,
+                                                userProfile,
                                                 alertsState,
                                                 watchlistState,
                                             )
@@ -1384,6 +1462,22 @@ fun FxAppShell() {
                                     baseCurrency = code
                                     AppSettingsPrefs.setBaseCurrency(code)
                                     liveStore.setBaseCurrency(code)
+                                },
+                                onUserProfileChange = { profile ->
+                                    Observability.event("profile_changed", mapOf("profile" to profile.name))
+                                    val preset = profile.preset()
+                                    userProfile = profile
+                                    AppSettingsPrefs.setUserProfile(profile)
+                                    converterCurrencyCodes = preset.converterCodes
+                                    compareCurrencyCodes = preset.compareCodes
+                                    travelerCurrency = preset.travelerCurrency
+                                    AppSettingsPrefs.setConverterCurrencyCodes(converterCurrencyCodes)
+                                    AppSettingsPrefs.setCompareCurrencyCodes(compareCurrencyCodes)
+                                    AppSettingsPrefs.setTravelerCurrency(travelerCurrency)
+                                    AppSettingsPrefs.setConverterAmountText(preset.suggestedAmount)
+                                    if (watchlistState.watchlist.holdings.isEmpty() && watchlistState.watchlist.transactions.isEmpty()) {
+                                        watchlistStore.replaceFromBackup(Watchlist(codes = preset.watchlistCodes))
+                                    }
                                 },
                             )
                         }
@@ -1437,11 +1531,218 @@ private fun ScreenScaffold(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
+private data class ProfileCopy(
+    val title: String,
+    val label: String,
+    val subtitle: String,
+    val freeFocus: String,
+    val proFocus: String,
+)
+
+private fun UserProfile.copy(): ProfileCopy =
+    when (this) {
+        UserProfile.Traveler -> ProfileCopy(
+            title = "Travel money setup",
+            label = "Traveler",
+            subtitle = "Trip budget, local cash buffer and destination rates stay near the top.",
+            freeFocus = "Budget + core destinations",
+            proFocus = "Full cheat sheet + all destinations",
+        )
+        UserProfile.CryptoHolder -> ProfileCopy(
+            title = "Crypto portfolio focus",
+            label = "Crypto holder",
+            subtitle = "Crypto board, stablecoins and holdings get priority across Home and Portfolio.",
+            freeFocus = "BTC, ETH, USDT, USDC",
+            proFocus = "Expanded crypto catalog + holdings",
+        )
+        UserProfile.Remittances -> ProfileCopy(
+            title = "Send money smarter",
+            label = "Remittances",
+            subtitle = "Provider cost, timing and alerts stay visible for repeat transfers.",
+            freeFocus = "Mid-market + custom cost",
+            proFocus = "Full provider comparison + alerts",
+        )
+        UserProfile.Freelancer -> ProfileCopy(
+            title = "Multi-currency income",
+            label = "Freelancer",
+            subtitle = "Converter, base currency and income pairs are tuned for cross-border work.",
+            freeFocus = "Converter + saved pairs",
+            proFocus = "Timing + portfolio + alerts",
+        )
+        UserProfile.Savings -> ProfileCopy(
+            title = "Savings and allocation",
+            label = "Savings",
+            subtitle = "Portfolio allocation, long-range context and alerts are treated as the main workflow.",
+            freeFocus = "Portfolio snapshot",
+            proFocus = "P&L, allocation and long history",
+        )
+    }
+
+private data class ProfilePreset(
+    val initialTab: FxTab,
+    val moreRoute: MoreRoute = MoreRoute.Menu,
+    val converterCodes: List<String>,
+    val compareCodes: List<String>,
+    val watchlistCodes: List<String>,
+    val travelerCurrency: String,
+    val suggestedAmount: String,
+    val suggestedPair: String,
+    val suggestedProvider: String,
+    val suggestedAlert: String,
+    val suggestedHolding: String,
+)
+
+private fun UserProfile.preset(): ProfilePreset =
+    when (this) {
+        UserProfile.Traveler -> ProfilePreset(
+            initialTab = FxTab.More,
+            moreRoute = MoreRoute.Traveler,
+            converterCodes = listOf("EUR", "GBP", "JPY"),
+            compareCodes = listOf("EUR", "GBP", "JPY", "MXN"),
+            watchlistCodes = listOf("EUR", "GBP", "JPY", "MXN"),
+            travelerCurrency = "JPY",
+            suggestedAmount = "1000",
+            suggestedPair = "USD -> JPY",
+            suggestedProvider = "Wise / Revolut",
+            suggestedAlert = "Destination rate near 30d high",
+            suggestedHolding = "Trip cash budget",
+        )
+        UserProfile.CryptoHolder -> ProfilePreset(
+            initialTab = FxTab.More,
+            moreRoute = MoreRoute.Watchlist,
+            converterCodes = listOf("BTC", "ETH", "USDT", "USDC"),
+            compareCodes = listOf("BTC", "ETH", "USDT", "USDC"),
+            watchlistCodes = listOf("BTC", "ETH", "USDT", "USDC"),
+            travelerCurrency = "EUR",
+            suggestedAmount = "1000",
+            suggestedPair = "USD -> BTC",
+            suggestedProvider = "Mid-market crypto rate",
+            suggestedAlert = "BTC/ETH daily move above 3%",
+            suggestedHolding = "BTC, ETH and stablecoins",
+        )
+        UserProfile.Remittances -> ProfilePreset(
+            initialTab = FxTab.Convert,
+            converterCodes = listOf("MXN", "EUR", "GBP", "BRL"),
+            compareCodes = listOf("MXN", "EUR", "GBP", "BRL"),
+            watchlistCodes = listOf("MXN", "EUR", "GBP", "BRL"),
+            travelerCurrency = "MXN",
+            suggestedAmount = "500",
+            suggestedPair = "USD -> MXN",
+            suggestedProvider = "Wise first, compare bank transfer",
+            suggestedAlert = "Target rate above last 7d average",
+            suggestedHolding = "Receiver currency balance",
+        )
+        UserProfile.Freelancer -> ProfilePreset(
+            initialTab = FxTab.Convert,
+            converterCodes = listOf("EUR", "GBP", "AUD", "CAD"),
+            compareCodes = listOf("EUR", "GBP", "AUD", "CAD"),
+            watchlistCodes = listOf("EUR", "GBP", "AUD", "CAD"),
+            travelerCurrency = "EUR",
+            suggestedAmount = "2500",
+            suggestedPair = "USD -> EUR",
+            suggestedProvider = "Wise / bank transfer",
+            suggestedAlert = "Invoice pair moves 1% in a day",
+            suggestedHolding = "Client payment currencies",
+        )
+        UserProfile.Savings -> ProfilePreset(
+            initialTab = FxTab.More,
+            moreRoute = MoreRoute.Watchlist,
+            converterCodes = listOf("EUR", "CHF", "BTC", "ETH"),
+            compareCodes = listOf("EUR", "CHF", "BTC", "ETH"),
+            watchlistCodes = listOf("EUR", "CHF", "BTC", "ETH"),
+            travelerCurrency = "CHF",
+            suggestedAmount = "1000",
+            suggestedPair = "USD -> CHF",
+            suggestedProvider = "Mid-market baseline",
+            suggestedAlert = "Portfolio allocation drift above 5%",
+            suggestedHolding = "Core savings currencies",
+        )
+    }
+
+@Composable
+private fun ProfileInsightCard(
+    profile: UserProfile,
+    isPremium: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val copy = profile.copy()
+    val preset = profile.preset()
+    BentoCard(modifier.fillMaxWidth(), padding = 14.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow("${ui("FOR YOU")} · ${ui(copy.label)}", color = FxTheme.colors.accent)
+                Pill(if (isPremium) ui("Pro") else ui("Free"), variant = if (isPremium) PillVariant.Accent else PillVariant.Ghost)
+            }
+            Text(ui(copy.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Text(ui(copy.subtitle), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                ProfileMetricTile(ui("Free focus"), ui(copy.freeFocus), null, Modifier.weight(1f).testTag("dashboard_profile_free_focus"))
+                ProfileMetricTile(ui("Pro focus"), ui(copy.proFocus), null, Modifier.weight(1f).testTag("dashboard_profile_pro_focus"))
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                ProfileMetricTile(ui("Suggested pair"), preset.suggestedPair, preset.suggestedProvider, Modifier.weight(1f).testTag("dashboard_profile_pair"))
+                ProfileMetricTile(ui("Suggested alert"), ui(preset.suggestedAlert), ui(preset.suggestedHolding), Modifier.weight(1f).testTag("dashboard_profile_alert"))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileMetricTile(
+    label: String,
+    value: String,
+    sub: String?,
+    modifier: Modifier = Modifier,
+) {
+    BentoTile(
+        modifier = modifier.heightIn(min = 108.dp),
+        padding = 13.dp,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Text(
+                label.uppercase(),
+                style = FxTheme.typography.eyebrow,
+                color = FxTheme.colors.textFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                value,
+                style = FxTheme.typography.bodyStrong,
+                color = FxTheme.colors.text,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 18.sp,
+            )
+            sub?.let {
+                Text(
+                    it,
+                    style = FxTheme.typography.caption,
+                    color = FxTheme.colors.textDim,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 15.sp,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun DashboardScreen(
     liveState: LiveRatesState,
     subscriptionState: SubscriptionState,
     trackedCurrencyCodes: List<String> = emptyList(),
+    userProfile: UserProfile = UserProfile.Traveler,
     onRefresh: () -> Unit,
     onOpenPaywall: () -> Unit,
     onOpenDetail: (FxRate) -> Unit,
@@ -1449,7 +1750,15 @@ fun DashboardScreen(
     onSeeAllCrypto: () -> Unit,
 ) {
     val access = subscriptionState.featureAccess()
-    val visibleFavorites = liveState.favorites.take(access.favoriteLimit.cap(liveState.favorites.size))
+    val preset = userProfile.preset()
+    val profileFavorites = remember(liveState.favorites, userProfile, access.favoriteLimit) {
+        val ordered = liveState.favorites.sortedWith(compareBy<FxRate> {
+            val index = preset.watchlistCodes.indexOf(it.code)
+            if (index == -1) Int.MAX_VALUE else index
+        }.thenBy { it.code })
+        ordered.take(access.favoriteLimit.cap(ordered.size))
+    }
+    val visibleFavorites = profileFavorites
     val visibleCrypto = liveState.visibleDashboardCryptoRates(subscriptionState.isPremium, trackedCurrencyCodes)
     val cryptoAverageMove = visibleCrypto.takeIf { it.isNotEmpty() }?.map { it.change24h }?.average() ?: 0.0
     val strongestCrypto = visibleCrypto.maxByOrNull { it.change24h }
@@ -1470,6 +1779,11 @@ fun DashboardScreen(
         if (liveState.errorMessage != null) {
             Text(ui("Live backend unavailable · using cached UI data"), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
         }
+        ProfileInsightCard(
+            profile = userProfile,
+            isPremium = subscriptionState.isPremium,
+            modifier = Modifier.testTag("dashboard_profile_card"),
+        )
         HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricTile(ui("VOLATILITY · 24H"), "0.42%", null, Modifier.weight(1f).height(76.dp))
@@ -1516,15 +1830,21 @@ fun DashboardScreen(
                 Text(ui("No crypto rates yet"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.textDim)
             }
         } else {
-            BentoCard(Modifier.testTag("dashboard_crypto_snapshot"), padding = 12.dp) {
+            BentoCard(Modifier.testTag("dashboard_crypto_snapshot"), padding = 14.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MetricTile(ui("Crypto"), "${visibleCrypto.size}", ui("major crypto assets"), Modifier.weight(1f).height(76.dp).testTag("dashboard_crypto_count"))
-                        MetricTile(ui("24H avg"), formatChange(cryptoAverageMove), strongestCrypto?.code, Modifier.weight(1f).height(76.dp).testTag("dashboard_crypto_avg"))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        CryptoMetricTile(ui("Crypto"), "${visibleCrypto.size}", ui("major crypto assets"), Modifier.weight(1f).testTag("dashboard_crypto_count"))
+                        CryptoMetricTile(ui("24H avg"), formatChange(cryptoAverageMove), strongestCrypto?.code, Modifier.weight(1f).testTag("dashboard_crypto_avg"))
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MetricTile(ui("Stablecoins"), "$stablecoinCount", "USDT / USDC", Modifier.weight(1f).height(76.dp).testTag("dashboard_crypto_stablecoins"))
-                        MetricTile(ui("Strongest"), strongestCrypto?.code ?: "--", strongestCrypto?.let { formatChange(it.change24h) }, Modifier.weight(1f).height(76.dp).testTag("dashboard_crypto_strongest"))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        CryptoMetricTile(ui("Stablecoins"), "$stablecoinCount", "USDT / USDC", Modifier.weight(1f).testTag("dashboard_crypto_stablecoins"))
+                        CryptoMetricTile(ui("Strongest"), strongestCrypto?.code ?: "--", strongestCrypto?.let { formatChange(it.change24h) }, Modifier.weight(1f).testTag("dashboard_crypto_strongest"))
                     }
                     Text(ui("live crypto movers"), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
                 }
@@ -1551,6 +1871,49 @@ fun DashboardScreen(
 
 private val DefaultCryptoCodes = listOf("BTC", "ETH", "USDT", "USDC")
 private val StablecoinCodes = setOf("USDT", "USDC", "DAI", "BUSD", "PYUSD", "USDS")
+
+@Composable
+private fun CryptoMetricTile(
+    label: String,
+    value: String,
+    sub: String?,
+    modifier: Modifier = Modifier,
+) {
+    BentoTile(
+        modifier = modifier.heightIn(min = 98.dp),
+        padding = 14.dp,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                label.uppercase(),
+                style = FxTheme.typography.eyebrow,
+                color = FxTheme.colors.textFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(
+                    value,
+                    style = FxTheme.typography.numberBody,
+                    color = FxTheme.colors.text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    sub.orEmpty(),
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.textDim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 15.sp,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun CryptoAssetRow(rate: FxRate, baseCurrency: String, onClick: () -> Unit) {
@@ -4817,6 +5180,7 @@ fun SettingsScreen(
     themeMode: ThemeMode,
     appLanguage: String,
     baseCurrency: String,
+    userProfile: UserProfile = UserProfile.Traveler,
     availableBaseCurrencies: List<FxRate> = SettingsBaseCurrencies,
     backupState: UserBackupState,
     backupSyncing: Boolean,
@@ -4833,6 +5197,7 @@ fun SettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onLanguageChange: (String) -> Unit,
     onBaseCurrencyChange: (String) -> Unit,
+    onUserProfileChange: (UserProfile) -> Unit = {},
 ) {
     val copy = settingsCopy(appLanguage)
     val activeLanguage = SupportedLanguages.firstOrNull { it.code == appLanguage }
@@ -4954,6 +5319,22 @@ fun SettingsScreen(
             )
         }
 
+        SectionLabel(ui("Profile"))
+        BentoCard(padding = 8.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                UserProfile.entries.forEach { profile ->
+                    val profileCopy = profile.copy()
+                    SettingChoiceRow(
+                        title = ui(profileCopy.label),
+                        subtitle = ui(profileCopy.subtitle),
+                        selected = userProfile == profile,
+                        modifier = Modifier.testTag("settings_profile_${profile.name}"),
+                        onClick = { onUserProfileChange(profile) },
+                    )
+                }
+            }
+        }
+
         SectionLabel(copy.themeMode)
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -5049,14 +5430,16 @@ fun SettingsScreen(
                     subtitle = copy.privacyPolicySubtitle,
                     selected = false,
                     actionLabel = copy.open,
-                    onClick = { onOpenUrl(PRIVACY_POLICY_URL) },
+                    modifier = Modifier.testTag("settings_privacy_policy"),
+                    onClick = { onOpenUrl(privacyPolicyUrl(appLanguage)) },
                 )
                 SettingChoiceRow(
                     title = copy.termsOfUse,
                     subtitle = copy.termsOfUseSubtitle,
                     selected = false,
                     actionLabel = copy.open,
-                    onClick = { onOpenUrl(TERMS_OF_USE_URL) },
+                    modifier = Modifier.testTag("settings_terms_of_use"),
+                    onClick = { onOpenUrl(termsOfUseUrl(appLanguage)) },
                 )
             }
         }
@@ -5172,6 +5555,7 @@ private fun CurrencyPickerSheet(
     onSelect: (String) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    var showAll by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val rows = remember(currencies, query) {
         val term = query.trim()
@@ -5183,6 +5567,16 @@ private fun CurrencyPickerSheet(
                     currency.name.contains(term, ignoreCase = true)
             }
             .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.name })
+    }
+    val visibleRows = remember(rows, query, showAll, selectedCode) {
+        if (query.isNotBlank() || showAll || rows.size <= DefaultPickerVisibleLimit) {
+            rows
+        } else {
+            val selected = rows.firstOrNull { it.code == selectedCode }
+            (listOfNotNull(selected) + rows.filterNot { it.code == selectedCode })
+                .distinctBy { it.code }
+                .take(DefaultPickerVisibleLimit)
+        }
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -5216,13 +5610,23 @@ private fun CurrencyPickerSheet(
                     },
                 )
             }
+            if (query.isBlank() && !showAll && rows.size > visibleRows.size) {
+                SettingChoiceRow(
+                    title = "${ui("Showing top")} ${visibleRows.size}/${rows.size}",
+                    subtitle = ui("Search currency"),
+                    selected = false,
+                    actionLabel = ui("Show all"),
+                    modifier = Modifier.testTag("currency_picker_show_all"),
+                    onClick = { showAll = true },
+                )
+            }
             LazyColumn(
                 Modifier
                     .fillMaxWidth()
                     .height(390.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                items(rows, key = { it.code }) { currency ->
+                items(visibleRows, key = { it.code }) { currency ->
                     SettingChoiceRow(
                         title = "${currency.glyph}  ${currency.code}",
                         subtitle = "${assetKindLabel(currency)} · ${localizedCurrencyName(currency.name)}",
@@ -5231,7 +5635,7 @@ private fun CurrencyPickerSheet(
                         onClick = { onSelect(currency.code) },
                     )
                 }
-                if (rows.isEmpty()) {
+                if (visibleRows.isEmpty()) {
 	                    item {
 	                        Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
 	                    }
@@ -5256,6 +5660,7 @@ private fun CurrencyListPickerSheet(
     onApply: (List<String>) -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
+    var showAll by remember { mutableStateOf(false) }
     var draftCodes by remember(selectedCodes) { mutableStateOf(selectedCodes) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val effectiveLimit = limit.cap(currencies.size).coerceAtLeast(1)
@@ -5276,6 +5681,16 @@ private fun CurrencyListPickerSheet(
                     currency.name.contains(term, ignoreCase = true)
             }
             .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
+    }
+    val visibleRows = remember(rows, query, showAll, draftCodes) {
+        if (query.isNotBlank() || showAll || rows.size <= DefaultPickerVisibleLimit) {
+            rows
+        } else {
+            val selected = rows.filter { it.code in draftCodes }
+            (selected + rows.filterNot { it.code in draftCodes })
+                .distinctBy { it.code }
+                .take(DefaultPickerVisibleLimit)
+        }
     }
     ModalBottomSheet(
         onDismissRequest = { applyDraftAndDismiss() },
@@ -5317,6 +5732,16 @@ private fun CurrencyListPickerSheet(
                     },
                 )
             }
+            if (query.isBlank() && !showAll && rows.size > visibleRows.size) {
+                SettingChoiceRow(
+                    title = "${ui("Showing top")} ${visibleRows.size}/${rows.size}",
+                    subtitle = ui("Search currency"),
+                    selected = false,
+                    actionLabel = ui("Show all"),
+                    modifier = Modifier.testTag("currency_list_show_all"),
+                    onClick = { showAll = true },
+                )
+            }
             LazyColumn(
                 Modifier
                     .fillMaxWidth()
@@ -5324,7 +5749,7 @@ private fun CurrencyListPickerSheet(
                     .testTag("currency_list_scroll"),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                items(rows, key = { it.code }) { currency ->
+                items(visibleRows, key = { it.code }) { currency ->
                     val selected = currency.code in draftCodes
                     val locked = !selected && draftCodes.size >= effectiveLimit
                     SettingChoiceRow(
@@ -5342,7 +5767,7 @@ private fun CurrencyListPickerSheet(
                         },
                     )
                 }
-                if (rows.isEmpty()) {
+                if (visibleRows.isEmpty()) {
 	                    item {
 	                        Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
 	                    }
@@ -5360,6 +5785,8 @@ private fun CurrencyListPickerSheet(
         }
     }
 }
+
+private const val DefaultPickerVisibleLimit = 20
 
 private val PopularCurrencyCodes = listOf("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD")
 
@@ -5965,6 +6392,7 @@ private fun buildUserBackupSnapshot(
     travelerBudgetBase: Double,
     converterCurrencyCodes: List<String>,
     compareCurrencyCodes: List<String>,
+    userProfile: UserProfile,
     alertsState: AlertsState,
     watchlistState: WatchlistState,
 ): UserBackupSnapshot =
@@ -5978,6 +6406,7 @@ private fun buildUserBackupSnapshot(
             travelerBudgetBase = travelerBudgetBase,
             converterCurrencyCodes = converterCurrencyCodes,
             compareCurrencyCodes = compareCurrencyCodes,
+            userProfile = userProfile.name,
         ),
         alerts = alertsState.alerts,
         watchlist = watchlistState.watchlist,
@@ -5992,10 +6421,12 @@ private fun applyUserBackupSnapshot(
     onCompareCurrencyCodes: (List<String>) -> Unit,
     onTravelerCurrency: (String) -> Unit,
     onTravelerBudgetBase: (Double) -> Unit,
+    onUserProfile: (UserProfile) -> Unit,
     onLanguage: (String) -> Unit,
 ): ThemeMode {
     val theme = ThemeMode.entries.firstOrNull { it.name == snapshot.settings.themeMode } ?: ThemeMode.System
     val language = snapshot.settings.language.ifBlank { DeviceLocale.language }
+    val profile = UserProfile.entries.firstOrNull { it.name == snapshot.settings.userProfile } ?: UserProfile.Traveler
     AppSettingsPrefs.setThemeMode(theme)
     AppSettingsPrefs.setLanguage(language)
     AppSettingsPrefs.setBaseCurrency(snapshot.settings.baseCurrency)
@@ -6003,12 +6434,14 @@ private fun applyUserBackupSnapshot(
     AppSettingsPrefs.setTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     AppSettingsPrefs.setConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
     AppSettingsPrefs.setCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
+    AppSettingsPrefs.setUserProfile(profile)
     liveStore.setBaseCurrency(snapshot.settings.baseCurrency)
     onLanguage(language)
     onConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
     onCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
     onTravelerCurrency(snapshot.settings.travelerCurrency)
     onTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
+    onUserProfile(profile)
     alertsStore.replaceAll(snapshot.alerts)
     watchlistStore.replaceFromBackup(snapshot.watchlist)
     return theme
@@ -6193,8 +6626,18 @@ private fun newsEmptyCopy(
         else -> "No currency stories" to "Try a broader filter or refresh the feed."
     }
 
-private const val PRIVACY_POLICY_URL = "https://fxalways.app/privacy"
-private const val TERMS_OF_USE_URL = "https://fxalways.app/terms"
+private fun privacyPolicyUrl(language: String): String = legalDocumentUrl("privacy", language)
+
+private fun termsOfUseUrl(language: String): String = legalDocumentUrl("terms", language)
+
+private fun legalDocumentUrl(doc: String, language: String): String {
+    val normalizedLanguage = language
+        .substringBefore("-")
+        .substringBefore("_")
+        .lowercase()
+        .ifBlank { "en" }
+    return "https://fxalways.com/legal?doc=$doc&lang=$normalizedLanguage"
+}
 
 private fun subscriptionManagementUrl(): String =
     when (PlatformConfig.platform) {
@@ -6417,6 +6860,8 @@ private fun NewsStory.safeTestTagKey(): String =
 fun PaywallScreen(
     subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
     actionInProgress: Boolean = false,
+    userProfile: UserProfile = UserProfile.Traveler,
+    appLanguage: String = LocalAppLanguage.current,
     onClose: () -> Unit = {},
     onStart: (SubscriptionPlanKind) -> Unit = {},
     onRestore: () -> Unit = {},
@@ -6426,6 +6871,8 @@ fun PaywallScreen(
     val selectedPlan = subscriptionState.plans.firstOrNull { it.kind == selectedKind && it.isAvailable }
         ?: subscriptionState.plans.firstOrNull { it.isAvailable }
         ?: subscriptionState.plans.first()
+    val profileCopy = userProfile.copy()
+    val profilePreset = userProfile.preset()
     LaunchedEffect(selectedPlan.kind) {
         selectedKind = selectedPlan.kind
     }
@@ -6446,6 +6893,15 @@ fun PaywallScreen(
             style = FxTheme.typography.caption,
             color = FxTheme.colors.textFaint,
         )
+        BentoCard(Modifier.testTag("paywall_profile_offer"), padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Eyebrow("${ui("FOR YOU")} · ${ui(profileCopy.label)}", color = FxTheme.colors.accent)
+                Text(ui(profileCopy.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text(ui(profileCopy.proFocus), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                KeyValueRow(ui("Suggested pair"), profilePreset.suggestedPair, profilePreset.suggestedProvider)
+                KeyValueRow(ui("Suggested alert"), ui(profilePreset.suggestedAlert), ui(profilePreset.suggestedHolding))
+            }
+        }
         if (subscriptionState.isPremium) {
             ProActiveCard(subscriptionState = subscriptionState)
         }
@@ -6538,14 +6994,14 @@ fun PaywallScreen(
                 ui("Terms"),
                 style = FxTheme.typography.captionMono,
                 color = FxTheme.colors.textFaint,
-                modifier = Modifier.testTag("paywall_terms").clickable { onOpenUrl(TERMS_OF_USE_URL) },
+                modifier = Modifier.testTag("paywall_terms").clickable { onOpenUrl(termsOfUseUrl(appLanguage)) },
             )
             Text("  ·  ", style = FxTheme.typography.captionMono, color = FxTheme.colors.textGhost)
             Text(
                 ui("Privacy"),
                 style = FxTheme.typography.captionMono,
                 color = FxTheme.colors.textFaint,
-                modifier = Modifier.testTag("paywall_privacy").clickable { onOpenUrl(PRIVACY_POLICY_URL) },
+                modifier = Modifier.testTag("paywall_privacy").clickable { onOpenUrl(privacyPolicyUrl(appLanguage)) },
             )
         }
     }
@@ -6719,10 +7175,11 @@ private data class OnboardingStep(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun OnboardingScreen(onComplete: () -> Unit = {}) {
+fun OnboardingScreen(onComplete: (UserProfile) -> Unit = {}) {
     val localCurrency = remember { DeviceLocale.currencyCode }
     val localRegion = remember { DeviceLocale.region.uppercase() }
     val localLanguage = remember { DeviceLocale.language.uppercase() }
+    var selectedProfile by remember { mutableStateOf(UserProfile.Traveler) }
 	    val steps = listOf(
             OnboardingStep(
 	                tag = ui("STEP 01 · LIVE RATES"),
@@ -6778,12 +7235,12 @@ fun OnboardingScreen(onComplete: () -> Unit = {}) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Pill(localCurrency, variant = PillVariant.Ghost)
                     Text(
-	                        ui("Skip"),
+                        ui("Skip"),
                         style = FxTheme.typography.caption,
                         color = FxTheme.colors.textDim,
                         modifier = Modifier
                             .clip(FxTheme.shapes.field)
-                            .clickable(onClick = onComplete)
+                            .clickable(onClick = { onComplete(selectedProfile) })
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                     )
                 }
@@ -6796,6 +7253,11 @@ fun OnboardingScreen(onComplete: () -> Unit = {}) {
             ) { page ->
                 OnboardingPage(step = steps[page])
             }
+
+            OnboardingProfilePicker(
+                selectedProfile = selectedProfile,
+                onProfileSelected = { selectedProfile = it },
+            )
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
@@ -6824,10 +7286,68 @@ fun OnboardingScreen(onComplete: () -> Unit = {}) {
                     modifier = Modifier.width(if (pagerState.currentPage == steps.lastIndex) 154.dp else 126.dp),
                 ) {
                     if (pagerState.currentPage == steps.lastIndex) {
-                        onComplete()
+                        onComplete(selectedProfile)
                     } else {
                         scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingProfilePicker(
+    selectedProfile: UserProfile,
+    onProfileSelected: (UserProfile) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("onboarding_profile_picker")
+            .padding(bottom = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Eyebrow(ui("Choose your focus"), color = FxTheme.colors.accent)
+            Pill(ui(selectedProfile.copy().label), variant = PillVariant.Accent)
+        }
+        val rows = listOf(
+            listOf(UserProfile.Traveler, UserProfile.CryptoHolder, UserProfile.Remittances),
+            listOf(UserProfile.Freelancer, UserProfile.Savings),
+        )
+        rows.forEach { rowProfiles ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowProfiles.forEach { profile ->
+                    val copy = profile.copy()
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .testTag("onboarding_profile_${profile.name}")
+                            .clip(FxTheme.shapes.field)
+                            .background(if (selectedProfile == profile) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
+                            .border(
+                                if (selectedProfile == profile) 1.dp else 0.dp,
+                                if (selectedProfile == profile) FxTheme.colors.accentLine else Color.Transparent,
+                                FxTheme.shapes.field,
+                            )
+                            .clickable { onProfileSelected(profile) }
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            ui(copy.label),
+                            style = FxTheme.typography.caption,
+                            color = if (selectedProfile == profile) FxTheme.colors.accent else FxTheme.colors.textDim,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+                if (rowProfiles.size < 3) {
+                    Spacer(Modifier.weight(1f))
                 }
             }
         }

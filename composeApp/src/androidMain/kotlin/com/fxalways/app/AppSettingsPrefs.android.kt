@@ -10,6 +10,7 @@ actual object AppSettingsPrefs {
     private const val KEY_CONVERTER_AMOUNT_TEXT = "converter_amount_text"
     private const val KEY_CONVERTER_CURRENCY_CODES = "converter_currency_codes"
     private const val KEY_COMPARE_CURRENCY_CODES = "compare_currency_codes"
+    private const val KEY_USER_PROFILE = "user_profile"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
 
     actual fun themeMode(): ThemeMode {
@@ -76,6 +77,15 @@ actual object AppSettingsPrefs {
 
     actual fun setCompareCurrencyCodes(codes: List<String>) {
         prefs().edit().putString(KEY_COMPARE_CURRENCY_CODES, codes.distinct().joinToString(",")).apply()
+    }
+
+    actual fun userProfile(): UserProfile {
+        val raw = prefs().getString(KEY_USER_PROFILE, UserProfile.Traveler.name)
+        return UserProfile.entries.firstOrNull { it.name == raw } ?: UserProfile.Traveler
+    }
+
+    actual fun setUserProfile(profile: UserProfile) {
+        prefs().edit().putString(KEY_USER_PROFILE, profile.name).apply()
     }
 
     actual fun cachedPremium(): Boolean? =

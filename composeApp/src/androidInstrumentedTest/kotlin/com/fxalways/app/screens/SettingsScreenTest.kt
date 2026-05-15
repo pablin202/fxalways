@@ -16,6 +16,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.ThemeMode
 import com.fxalways.app.UserBackupState
+import com.fxalways.app.UserProfile
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
@@ -82,6 +83,25 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun legalLinksUseCurrentLanguage() {
+        val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = true))
+
+        compose.onNodeWithTag("settings_language_es").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_privacy_policy").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_terms_of_use").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(
+                listOf(
+                    "https://fxalways.com/legal?doc=privacy&lang=es",
+                    "https://fxalways.com/legal?doc=terms&lang=es",
+                ),
+                harness.openedUrls,
+            )
+        }
+    }
+
+    @Test
     fun freeBaseCurrencyMoreOpensPaywallInsteadOfFullPicker() {
         val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = false))
 
@@ -118,10 +138,25 @@ class SettingsScreenTest {
         compose.runOnIdle { assertEquals(ThemeMode.Light, harness.themeMode) }
     }
 
+    @Test
+    fun userCanChangePersonalizedProfileFromSettings() {
+        val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = true))
+
+        compose.onNodeWithTag("settings_profile_CryptoHolder").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("settings_profile_Remittances").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_profile_Savings").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(UserProfile.Savings, harness.userProfile)
+            assertEquals(listOf(UserProfile.Remittances, UserProfile.Savings), harness.profileChanges)
+        }
+    }
+
     private fun renderSettings(
         subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
         backupState: UserBackupState = UserBackupState(uid = "anon", isAnonymous = true, isAvailable = true),
         lastSyncedAtMillis: Long? = null,
+        initialUserProfile: UserProfile = UserProfile.Traveler,
     ): SettingsHarness {
         val harness = SettingsHarness()
         AndroidAppContext.init(compose.activity)
@@ -129,12 +164,14 @@ class SettingsScreenTest {
             var themeMode by remember { mutableStateOf(ThemeMode.System) }
             var appLanguage by remember { mutableStateOf("en") }
             var baseCurrency by remember { mutableStateOf("USD") }
+            var userProfile by remember { mutableStateOf(initialUserProfile) }
 
             FxTheme {
                 SettingsScreen(
                     themeMode = themeMode,
                     appLanguage = appLanguage,
                     baseCurrency = baseCurrency,
+                    userProfile = userProfile,
                     availableBaseCurrencies = testBaseCurrencies(),
                     backupState = backupState,
                     backupSyncing = false,
@@ -158,6 +195,11 @@ class SettingsScreenTest {
                     onBaseCurrencyChange = {
                         baseCurrency = it
                         harness.baseCurrency = it
+                    },
+                    onUserProfileChange = {
+                        userProfile = it
+                        harness.userProfile = it
+                        harness.profileChanges += it
                     },
                 )
             }
@@ -187,7 +229,9 @@ class SettingsScreenTest {
         var themeMode = ThemeMode.System
         var language = "en"
         var baseCurrency = "USD"
+        var userProfile = UserProfile.Traveler
         val openedUrls = mutableListOf<String>()
         val devPremiumChanges = mutableListOf<Boolean>()
+        val profileChanges = mutableListOf<UserProfile>()
     }
 }

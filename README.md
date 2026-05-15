@@ -24,6 +24,7 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - Alertas de tipo target rate y daily move.
 - Traveler mode con presupuesto local, cash buffer y cheat sheet de gasto.
 - Backup/sync de usuario en Android con Firebase.
+- Onboarding personalizado con perfiles Traveler, Crypto holder, Remittances, Freelancer y Savings; aplica pares, watchlist, destino traveler, monto inicial, Home y paywall segun perfil.
 - Paywall Pro con RevenueCat KMP, restore, Terms/Privacy y configuracion separada Android/iOS.
 - Localizacion in-app con selector para 13 idiomas: English, Español, Português, 中文, हिन्दी, Français, العربية, বাংলা, Русский, اردو, Indonesia, Deutsch, 日本語.
 - Cache server-side por base currency e historico por par.
@@ -67,11 +68,11 @@ Para competir contra conversores FX, money transfer apps y trackers crypto moder
    - Mejor proveedor estimado por monto y par.
    - Ahorro potencial contra el peor proveedor visible.
    - Pendiente: historial de proveedor mas conveniente.
-7. Onboarding personalizado.
+7. Onboarding personalizado. Implementado en primera version.
    - Perfil: viajero, crypto holder, remesas, freelancer, ahorro.
-   - Home y alertas sugeridas segun objetivo.
+   - Home, pares iniciales, watchlist, destino traveler, monto sugerido, paywall y alertas sugeridas segun objetivo.
 
-El proximo bloque de producto recomendado es cerrar el historial del comparador y avanzar con onboarding personalizado para mejorar activacion y conversion a Pro.
+El proximo bloque de producto recomendado es cerrar el historial del comparador y convertir las alertas sugeridas por perfil en creacion one-tap.
 
 ## Ejecutar Android
 

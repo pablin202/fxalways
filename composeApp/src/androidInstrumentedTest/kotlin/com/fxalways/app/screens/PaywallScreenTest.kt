@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
+import com.fxalways.app.UserProfile
 import com.fxalways.app.subscription.SubscriptionPlanKind
 import com.fxalways.app.subscription.SubscriptionPlan
 import com.fxalways.app.subscription.SubscriptionState
@@ -53,8 +54,32 @@ class PaywallScreenTest {
         compose.runOnIdle {
             assertEquals(listOf(SubscriptionPlanKind.Yearly), harness.startedPlans)
             assertEquals(1, harness.restoreClicks)
-            assertEquals(listOf("https://fxalways.app/terms", "https://fxalways.app/privacy"), harness.openedUrls)
+            assertEquals(
+                listOf(
+                    "https://fxalways.com/legal?doc=terms&lang=en",
+                    "https://fxalways.com/legal?doc=privacy&lang=en",
+                ),
+                harness.openedUrls,
+            )
             assertEquals(1, harness.closeClicks)
+        }
+    }
+
+    @Test
+    fun paywallLegalLinksUseSelectedLanguage() {
+        val harness = renderPaywall(SubscriptionState(isPremium = false), appLanguage = "es")
+
+        compose.onNodeWithTag("paywall_terms").performScrollTo().performClick()
+        compose.onNodeWithTag("paywall_privacy").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(
+                listOf(
+                    "https://fxalways.com/legal?doc=terms&lang=es",
+                    "https://fxalways.com/legal?doc=privacy&lang=es",
+                ),
+                harness.openedUrls,
+            )
         }
     }
 
@@ -169,9 +194,22 @@ class PaywallScreenTest {
         }
     }
 
+    @Test
+    fun paywallPersonalizesOfferForSelectedProfile() {
+        renderPaywall(SubscriptionState(isPremium = false), userProfile = UserProfile.Remittances)
+
+        compose.onNodeWithTag("paywall_profile_offer").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Send money smarter").assertIsDisplayed()
+        compose.onNodeWithText("Full provider comparison + alerts").assertIsDisplayed()
+        compose.onNodeWithText("USD -> MXN").assertIsDisplayed()
+        compose.onNodeWithText("Wise first, compare bank transfer").assertIsDisplayed()
+    }
+
     private fun renderPaywall(
         subscriptionState: SubscriptionState,
         actionInProgress: Boolean = false,
+        userProfile: UserProfile = UserProfile.Traveler,
+        appLanguage: String = "en",
     ): PaywallHarness {
         val harness = PaywallHarness()
         AndroidAppContext.init(compose.activity)
@@ -180,6 +218,8 @@ class PaywallScreenTest {
                 PaywallScreen(
                     subscriptionState = subscriptionState,
                     actionInProgress = actionInProgress,
+                    userProfile = userProfile,
+                    appLanguage = appLanguage,
                     onClose = { harness.closeClicks += 1 },
                     onStart = { harness.startedPlans += it },
                     onRestore = { harness.restoreClicks += 1 },

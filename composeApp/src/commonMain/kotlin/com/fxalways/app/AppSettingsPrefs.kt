@@ -6,6 +6,14 @@ enum class ThemeMode {
     Dark,
 }
 
+enum class UserProfile {
+    Traveler,
+    CryptoHolder,
+    Remittances,
+    Freelancer,
+    Savings,
+}
+
 expect object AppSettingsPrefs {
     fun themeMode(): ThemeMode
     fun setThemeMode(mode: ThemeMode)
@@ -23,6 +31,8 @@ expect object AppSettingsPrefs {
     fun setConverterCurrencyCodes(codes: List<String>)
     fun compareCurrencyCodes(): List<String>
     fun setCompareCurrencyCodes(codes: List<String>)
+    fun userProfile(): UserProfile
+    fun setUserProfile(profile: UserProfile)
     fun cachedPremium(): Boolean?
     fun setCachedPremium(enabled: Boolean)
 }

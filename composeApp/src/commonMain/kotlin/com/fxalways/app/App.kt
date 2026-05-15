@@ -19,8 +19,9 @@ fun App() {
         FxTheme(dark = true) {
             OnboardingScreen(
                 onComplete = {
+                    AppSettingsPrefs.setUserProfile(it)
                     OnboardingPrefs.markSeen()
-                    Observability.event("onboarding_complete")
+                    Observability.event("onboarding_complete", mapOf("profile" to it.name))
                     onboardingComplete = true
                 },
             )

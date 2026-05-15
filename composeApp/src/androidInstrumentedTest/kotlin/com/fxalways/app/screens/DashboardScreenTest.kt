@@ -6,10 +6,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
+import com.fxalways.app.UserProfile
 import com.fxalways.app.data.LiveRatesState
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
@@ -79,9 +81,42 @@ class DashboardScreenTest {
         compose.onAllNodesWithTag("dashboard_crypto_BTC").assertCountEquals(0)
     }
 
+    @Test
+    fun freeDashboardShowsPersonalizedProfileCard() {
+        renderDashboard(isPremium = false, userProfile = UserProfile.Remittances)
+
+        compose.onNodeWithText("Send money smarter").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_free_focus").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_pro_focus").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_pair").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert").assertIsDisplayed()
+        compose.onNodeWithText("Mid-market + custom cost").assertIsDisplayed()
+        compose.onNodeWithText("Full provider comparison + alerts").assertIsDisplayed()
+        compose.onNodeWithText("USD -> MXN").assertIsDisplayed()
+        compose.onNodeWithText("Target rate above last 7d average").assertIsDisplayed()
+        compose.onNodeWithText("Free").assertIsDisplayed()
+    }
+
+    @Test
+    fun proDashboardShowsProProfileState() {
+        renderDashboard(isPremium = true, userProfile = UserProfile.CryptoHolder)
+
+        compose.onNodeWithText("Crypto portfolio focus").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_free_focus").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_pro_focus").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_pair").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert").assertIsDisplayed()
+        compose.onNodeWithText("BTC, ETH, USDT, USDC").assertIsDisplayed()
+        compose.onNodeWithText("Expanded crypto catalog + holdings").assertIsDisplayed()
+        compose.onNodeWithText("USD -> BTC").assertIsDisplayed()
+        compose.onNodeWithText("BTC/ETH daily move above 3%").assertIsDisplayed()
+        compose.onNodeWithText("Pro").assertIsDisplayed()
+    }
+
     private fun renderDashboard(
         isPremium: Boolean,
         trackedCurrencyCodes: List<String> = emptyList(),
+        userProfile: UserProfile = UserProfile.Traveler,
         liveState: LiveRatesState = testLiveRatesState(),
     ): DashboardHarness {
         val harness = DashboardHarness()
@@ -92,6 +127,7 @@ class DashboardScreenTest {
                     liveState = liveState,
                     subscriptionState = SubscriptionState(isPremium = isPremium),
                     trackedCurrencyCodes = trackedCurrencyCodes,
+                    userProfile = userProfile,
                     onRefresh = { harness.refreshClicks += 1 },
                     onOpenPaywall = { harness.paywallClicks += 1 },
                     onOpenDetail = { harness.openedDetailCodes += it.code },
