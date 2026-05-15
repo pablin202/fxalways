@@ -1659,6 +1659,7 @@ fun ConverterScreen(
     }
     val bestQuote = feeQuotes.minByOrNull { it.lossTargetValue }
     val customQuote = feeQuotes.firstOrNull { it.provider == "Custom" }
+    val timingInsight = remember(sourceRate, targetRate) { smartTimingInsight(sourceRate, targetRate) }
     if (showCurrencyPicker) {
         CurrencyListPickerSheet(
             title = ui("Edit converter list"),
@@ -1780,6 +1781,12 @@ fun ConverterScreen(
             )
             GhostButton("≡  ${ui("Edit list")}", Modifier.weight(1f).testTag("converter_edit_list"), onClick = { showCurrencyPicker = true })
         }
+        SectionLabel("${ui("SMART TIMING")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
+        SmartTimingCard(
+            insight = timingInsight,
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+        )
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1843,6 +1850,98 @@ fun ConverterScreen(
         }
     }
 }
+
+@Composable
+private fun SmartTimingCard(
+    insight: SmartTimingInsight,
+    isPremium: Boolean,
+    onOpenPaywall: () -> Unit,
+) {
+    BentoCard(Modifier.testTag("converter_smart_timing"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(ui(insight.signal), style = FxTheme.typography.bodyStrong, color = insight.color())
+                    Text(insight.action, style = FxTheme.typography.caption, color = FxTheme.colors.textDim, modifier = Modifier.testTag("converter_timing_action"))
+                }
+                Box(
+                    Modifier
+                        .testTag("converter_timing_score")
+                        .clip(FxTheme.shapes.field)
+                        .background(FxTheme.colors.surface2)
+                        .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("${insight.score}/100", style = FxTheme.typography.numberBody, color = insight.color(), textAlign = TextAlign.End)
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                insight.horizons.take(if (isPremium) insight.horizons.size else 1).forEach { horizon ->
+                    SmartTimingHorizonRow(horizon)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TimingUseCaseTile(ui("Travel"), insight.travelAdvice, Modifier.weight(1f).testTag("converter_timing_travel"))
+                TimingUseCaseTile(ui("Savings"), insight.savingsAdvice, Modifier.weight(1f).testTag("converter_timing_savings"))
+                TimingUseCaseTile(ui("Remit"), insight.remittanceAdvice, Modifier.weight(1f).testTag("converter_timing_remit"))
+            }
+            if (!isPremium) {
+                GhostButton(
+                    text = ui("Unlock 30d and 90d timing"),
+                    modifier = Modifier.fillMaxWidth().testTag("converter_timing_upsell"),
+                    onClick = onOpenPaywall,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmartTimingHorizonRow(horizon: TimingHorizon) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .testTag("converter_timing_${horizon.label.lowercase()}")
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(horizon.label, style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+            Text(horizon.rangeLabel, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(horizon.positionLabel, style = FxTheme.typography.captionMono, color = FxTheme.colors.text)
+            Text("${ui("Trend")} ${horizon.trendLabel} · ${ui("Vol")} ${horizon.volatilityLabel}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+        }
+    }
+}
+
+@Composable
+private fun TimingUseCaseTile(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface1)
+            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
+            .padding(9.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(label, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(value, style = FxTheme.typography.caption, color = FxTheme.colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun SmartTimingInsight.color(): Color =
+    when (signal) {
+        "Strong rate" -> FxTheme.colors.up
+        "Good time" -> FxTheme.colors.accent
+        else -> FxTheme.colors.textDim
+    }
 
 @Composable
 private fun ConverterRow(
@@ -2004,6 +2103,117 @@ private data class FeeProviderTemplate(
     val feePercent: Double = 0.0,
     val markupPercent: Double = 0.0,
 )
+
+private data class SmartTimingInsight(
+    val score: Int,
+    val signal: String,
+    val action: String,
+    val travelAdvice: String,
+    val savingsAdvice: String,
+    val remittanceAdvice: String,
+    val horizons: List<TimingHorizon>,
+)
+
+private data class TimingHorizon(
+    val label: String,
+    val rangeLabel: String,
+    val positionLabel: String,
+    val trendLabel: String,
+    val volatilityLabel: String,
+    val position: Double,
+    val trendPct: Double,
+    val volatilityPct: Double,
+)
+
+private fun smartTimingInsight(sourceRate: FxRate, targetRate: FxRate): SmartTimingInsight {
+    val pairSeries = pairRateSeries(sourceRate, targetRate)
+    val horizons = listOf(
+        timingHorizon("7D", pairSeries, 7),
+        timingHorizon("30D", pairSeries, 30),
+        timingHorizon("90D", pairSeries, 90),
+    )
+    val primary = horizons.first()
+    val score = timingScore(primary)
+    val signal = when {
+        score >= 82 -> "Strong rate"
+        score >= 58 -> "Good time"
+        else -> "Wait"
+    }
+    val action = when (signal) {
+        "Strong rate" -> "Convert now: the pair is near the top of its recent range."
+        "Good time" -> "Convert in tranches: current rate is better than average but not stretched."
+        else -> "Wait or set an alert: current rate is below its recent advantage zone."
+    }
+    return SmartTimingInsight(
+        score = score,
+        signal = signal,
+        action = action,
+        travelAdvice = when (signal) {
+            "Wait" -> "Cover essentials only"
+            "Good time" -> "Buy partial budget"
+            else -> "Lock trip cash"
+        },
+        savingsAdvice = when (signal) {
+            "Wait" -> "Use alerts"
+            "Good time" -> "Average in"
+            else -> "Move larger slice"
+        },
+        remittanceAdvice = when (signal) {
+            "Wait" -> "Delay if flexible"
+            "Good time" -> "Send staged"
+            else -> "Send now"
+        },
+        horizons = horizons,
+    )
+}
+
+private fun pairRateSeries(sourceRate: FxRate, targetRate: FxRate): List<Double> {
+    val targetSeries = targetRate.sparkline.ifEmpty { listOf(targetRate.rate.toFloat()) }.map { it.toDouble() }
+    val sourceSeries = sourceRate.sparkline.ifEmpty { listOf(sourceRate.rate.toFloat()) }.map { it.toDouble() }
+    val points = maxOf(2, targetSeries.size, sourceSeries.size)
+    return List(points) { index ->
+        val target = targetSeries.valueAtScaledIndex(index, points, targetRate.rate)
+        val source = sourceSeries.valueAtScaledIndex(index, points, sourceRate.rate)
+        if (source == 0.0) 0.0 else target / source
+    }
+}
+
+private fun List<Double>.valueAtScaledIndex(index: Int, total: Int, fallback: Double): Double {
+    if (isEmpty()) return fallback
+    if (size == 1 || total <= 1) return first()
+    val scaled = (index.toDouble() / (total - 1).coerceAtLeast(1)) * (size - 1)
+    return this[scaled.toInt().coerceIn(0, lastIndex)]
+}
+
+private fun timingHorizon(label: String, series: List<Double>, points: Int): TimingHorizon {
+    val window = series.takeLast(points.coerceAtMost(series.size)).ifEmpty { series }
+    val current = window.lastOrNull() ?: 0.0
+    val open = window.firstOrNull() ?: current
+    val high = window.maxOrNull() ?: current
+    val low = window.minOrNull() ?: current
+    val average = window.average().takeIf { !it.isNaN() } ?: current
+    val spread = high - low
+    val position = if (spread <= 0.0) 0.5 else ((current - low) / spread).coerceIn(0.0, 1.0)
+    val trendPct = if (open == 0.0) 0.0 else ((current - open) / open) * 100.0
+    val volatilityPct = if (average == 0.0) 0.0 else (spread / average) * 100.0
+    return TimingHorizon(
+        label = label,
+        rangeLabel = "${formatRate(low)} - ${formatRate(high)}",
+        positionLabel = "${(position * 100).toInt()}% of range",
+        trendLabel = formatSignedPercent(trendPct),
+        volatilityLabel = "${formatRate(volatilityPct)}%",
+        position = position,
+        trendPct = trendPct,
+        volatilityPct = volatilityPct,
+    )
+}
+
+private fun timingScore(horizon: TimingHorizon): Int {
+    val positionScore = horizon.position * 72.0
+    val trendScore = ((horizon.trendPct + 2.0) / 4.0).coerceIn(0.0, 1.0) * 20.0
+    val volatilityPenalty = (horizon.volatilityPct / 12.0).coerceIn(0.0, 1.0) * 10.0
+    return (positionScore + trendScore + 18.0 - volatilityPenalty).toInt().coerceIn(0, 100)
+}
 
 private fun estimatedFeeQuotes(
     sourceRate: FxRate,

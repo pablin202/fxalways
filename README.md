@@ -42,7 +42,7 @@ Para competir contra conversores FX, money transfer apps y trackers crypto moder
    - Allocation por asset, tipo de asset y moneda.
    - Grafico estimado de evolucion del patrimonio.
    - Historial de transacciones buy/sell con realized P&L.
-2. Smart conversion timing.
+2. Smart conversion timing. Implementado en primera version.
    - Score por par: Good time, Wait, Strong rate.
    - Comparacion contra rango 7d/30d/90d, tendencia y volatilidad.
    - Recomendacion concreta para viajeros, ahorro y remesas.

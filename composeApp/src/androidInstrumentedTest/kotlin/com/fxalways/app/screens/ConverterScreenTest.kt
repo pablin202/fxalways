@@ -95,6 +95,72 @@ class ConverterScreenTest {
     }
 
     @Test
+    fun freeUserSeesSmartTimingPreviewAndUpsellOnlyForLongerRanges() {
+        val harness = renderConverter(isPremium = false)
+
+        compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_score").assertIsDisplayed()
+        compose.onNodeWithText("Strong rate").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_7d").assertIsDisplayed()
+        compose.onAllNodesWithTag("converter_timing_30d").assertCountEquals(0)
+        compose.onAllNodesWithTag("converter_timing_90d").assertCountEquals(0)
+        compose.onNodeWithTag("converter_timing_travel").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_upsell").performClick()
+
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+    }
+
+    @Test
+    fun proUserSeesFullSmartTimingHorizonsAndUseCaseRecommendations() {
+        renderConverter(isPremium = true)
+
+        compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Strong rate").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_7d").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_30d").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_90d").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_travel").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_savings").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_remit").assertIsDisplayed()
+        compose.onAllNodesWithTag("converter_timing_upsell").assertCountEquals(0)
+    }
+
+    @Test
+    fun smartTimingUpdatesWhenPairIsReversed() {
+        renderConverter(isPremium = true)
+
+        compose.onNodeWithText("SMART TIMING · USD → EUR").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("⇄  Reverse").performScrollTo().performClick()
+
+        compose.onNodeWithText("SMART TIMING · EUR → USD").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_smart_timing").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_score").assertIsDisplayed()
+    }
+
+    @Test
+    fun smartTimingShowsWaitRecommendationForWeakRecentRange() {
+        renderConverter(isPremium = true, liveState = fallingLiveRatesState())
+
+        compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Wait").assertIsDisplayed()
+        compose.onNodeWithText("Wait or set an alert", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_7d").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_30d").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_90d").assertIsDisplayed()
+    }
+
+    @Test
+    fun smartTimingHandlesFlatSeriesWithoutMissingScore() {
+        renderConverter(isPremium = true, liveState = flatLiveRatesState())
+
+        compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_score").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_7d").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_30d").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_90d").assertIsDisplayed()
+    }
+
+    @Test
     fun reverseSwapsPairAndKeepsFeeCalculatorForNewPair() {
         renderConverter(isPremium = true)
 
@@ -158,6 +224,7 @@ class ConverterScreenTest {
     private fun renderConverter(
         isPremium: Boolean,
         selectedCodes: List<String> = listOf("EUR", "GBP", "JPY"),
+        liveState: LiveRatesState = testLiveRatesState(),
     ): ConverterHarness {
         val harness = ConverterHarness(selectedCodes = selectedCodes)
         AndroidAppContext.init(compose.activity)
@@ -166,7 +233,7 @@ class ConverterScreenTest {
 
             FxTheme {
                 ConverterScreen(
-                    liveState = testLiveRatesState(),
+                    liveState = liveState,
                     subscriptionState = SubscriptionState(isPremium = isPremium),
                     selectedCurrencyCodes = codes,
                     onCurrencyCodesChange = {
@@ -181,11 +248,11 @@ class ConverterScreenTest {
     }
 
     private fun testLiveRatesState(): LiveRatesState {
-        val usd = FxRate("USD", "US Dollar", "🇺🇸", CurrencyKind.Fiat, 1.0, 0.0, listOf(1f, 1f), "1 USD = 1.0000 USD")
-        val eur = FxRate("EUR", "Euro", "🇪🇺", CurrencyKind.Fiat, 0.92, -0.2, listOf(0.91f, 0.92f), "1 USD = 0.9200 EUR")
-        val gbp = FxRate("GBP", "British Pound", "🇬🇧", CurrencyKind.Fiat, 0.78, 0.1, listOf(0.77f, 0.78f), "1 USD = 0.7800 GBP")
-        val jpy = FxRate("JPY", "Japanese Yen", "🇯🇵", CurrencyKind.Fiat, 156.0, 0.3, listOf(155f, 156f), "1 USD = 156.0000 JPY")
-        val chf = FxRate("CHF", "Swiss Franc", "🇨🇭", CurrencyKind.Fiat, 0.83, -0.1, listOf(0.82f, 0.83f), "1 USD = 0.8300 CHF")
+        val usd = FxRate("USD", "US Dollar", "🇺🇸", CurrencyKind.Fiat, 1.0, 0.0, List(36) { 1f }, "1 USD = 1.0000 USD")
+        val eur = FxRate("EUR", "Euro", "🇪🇺", CurrencyKind.Fiat, 0.92, -0.2, List(36) { index -> 0.84f + index * 0.0023f }, "1 USD = 0.9200 EUR")
+        val gbp = FxRate("GBP", "British Pound", "🇬🇧", CurrencyKind.Fiat, 0.78, 0.1, List(36) { index -> 0.76f + index * 0.0006f }, "1 USD = 0.7800 GBP")
+        val jpy = FxRate("JPY", "Japanese Yen", "🇯🇵", CurrencyKind.Fiat, 156.0, 0.3, List(36) { index -> 151f + index * 0.14f }, "1 USD = 156.0000 JPY")
+        val chf = FxRate("CHF", "Swiss Franc", "🇨🇭", CurrencyKind.Fiat, 0.83, -0.1, List(36) { index -> 0.82f + index * 0.0003f }, "1 USD = 0.8300 CHF")
         val btc = FxRate("BTC", "Bitcoin", "₿", CurrencyKind.Crypto, 0.000015, 2.4, listOf(0.000014f, 0.000015f), "1 USD = 0.000015 BTC")
         val eth = FxRate("ETH", "Ethereum", "Ξ", CurrencyKind.Crypto, 0.00024, 1.2, listOf(0.00023f, 0.00024f), "1 USD = 0.000240 ETH")
         val usdt = FxRate("USDT", "Tether", "₮", CurrencyKind.Crypto, 1.0002, 0.01, listOf(1f, 1.0002f), "1 USD = 1.0002 USDT")
@@ -203,6 +270,28 @@ class ConverterScreenTest {
             compare = listOf(eur, gbp, jpy, chf),
             crypto = crypto,
             allFiat = fiat,
+        )
+    }
+
+    private fun fallingLiveRatesState(): LiveRatesState {
+        val usd = FxRate("USD", "US Dollar", "🇺🇸", CurrencyKind.Fiat, 1.0, 0.0, List(36) { 1f }, "1 USD = 1.0000 USD")
+        val eur = FxRate("EUR", "Euro", "🇪🇺", CurrencyKind.Fiat, 0.84, -2.1, List(36) { index -> 0.92f - index * 0.0023f }, "1 USD = 0.8400 EUR")
+        return testLiveRatesState().copy(
+            favorites = listOf(eur),
+            converter = listOf(usd, eur),
+            compare = listOf(eur),
+            allFiat = listOf(usd, eur),
+        )
+    }
+
+    private fun flatLiveRatesState(): LiveRatesState {
+        val usd = FxRate("USD", "US Dollar", "🇺🇸", CurrencyKind.Fiat, 1.0, 0.0, List(36) { 1f }, "1 USD = 1.0000 USD")
+        val eur = FxRate("EUR", "Euro", "🇪🇺", CurrencyKind.Fiat, 0.92, 0.0, List(36) { 0.92f }, "1 USD = 0.9200 EUR")
+        return testLiveRatesState().copy(
+            favorites = listOf(eur),
+            converter = listOf(usd, eur),
+            compare = listOf(eur),
+            allFiat = listOf(usd, eur),
         )
     }
 
