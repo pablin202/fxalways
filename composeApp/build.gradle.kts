@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.compose.ExperimentalComposeLibrary
+import java.io.File
 import java.util.Properties
 
 plugins {
@@ -24,6 +25,25 @@ fun projectPropertyOrLocal(name: String, defaultValue: String): String =
     providers.gradleProperty(name).orNull
         ?: localProperties.getProperty(name)
         ?: defaultValue
+
+fun projectPropertyLocalOrEnv(name: String): String? =
+    providers.gradleProperty(name).orNull
+        ?: localProperties.getProperty(name)
+        ?: providers.environmentVariable(name).orNull
+
+fun releaseFile(path: String): File =
+    File(path).let { if (it.isAbsolute) it else rootProject.file(path) }
+
+val releaseKeystorePath = projectPropertyLocalOrEnv("ANDROID_KEYSTORE_PATH")
+val releaseKeystorePassword = projectPropertyLocalOrEnv("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = projectPropertyLocalOrEnv("ANDROID_KEY_ALIAS")
+val releaseKeyPassword = projectPropertyLocalOrEnv("ANDROID_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
 
 kotlin {
     androidTarget {
@@ -112,6 +132,27 @@ android {
         val revenueCatKey = projectPropertyOrLocal("REVENUECAT_API_KEY", projectPropertyOrLocal("REVENUECAT_ANDROID_KEY", ""))
         buildConfigField("String", "FX_BACKEND_URL", "\"$backendUrl\"")
         buildConfigField("String", "REVENUECAT_API_KEY", "\"$revenueCatKey\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigning) {
+                storeFile = releaseFile(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isDebuggable = false
+            isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 }
 

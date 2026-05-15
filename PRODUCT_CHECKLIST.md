@@ -22,7 +22,8 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [ ] Prepare store listing text, screenshots and metadata for Android.
 - [ ] Validate all critical release strings in the 13 supported languages.
 - [ ] Run full Android instrumentation suite after the final commit.
-- [ ] Run Android release build/signing check.
+- [x] Run Android release build check.
+- [ ] Configure production Android keystore and verify signed Play upload AAB.
 - [ ] Decide whether Android-only launch is acceptable before iOS production setup is complete.
 
 ## Android Launch Readiness
