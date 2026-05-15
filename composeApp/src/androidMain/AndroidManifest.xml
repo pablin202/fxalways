@@ -17,5 +17,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <receiver
+            android:name=".FxAlwaysWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_rates_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/fx_always_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".FxTravelerWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_traveler_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/fx_traveler_widget_info" />
+        </receiver>
     </application>
 </manifest>

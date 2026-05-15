@@ -1,6 +1,7 @@
 package com.fxalways.app.data
 
 import com.fxalways.app.LiveRatesCachePrefs
+import com.fxalways.app.refreshFxWidgets
 import com.fxalways.app.data.mock.CompareRates
 import com.fxalways.app.data.mock.ConverterRates
 import com.fxalways.app.data.mock.CryptoRates
@@ -153,6 +154,7 @@ class LiveRatesStore(
                     detailSeries = histories.values.firstOrNull()?.toSparkline(DetailSeries) ?: DetailSeries,
                 )
                 LiveRatesCachePrefs.setCacheJson(base, json.encodeToString(nextState.toCachePayload()))
+                refreshFxWidgets()
 
                 _state.update {
                     nextState

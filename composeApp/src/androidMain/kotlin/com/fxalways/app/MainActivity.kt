@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
         AndroidAppContext.init(this)
         requestNotificationPermissionIfNeeded()
         AndroidAlertScheduler.schedule(this)
+        FxAlwaysWidgetProvider.updateAll(this)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),

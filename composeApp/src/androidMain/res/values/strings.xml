@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">FX Always</string>
+    <string name="widget_rates_name">FX Always Rates</string>
+    <string name="widget_traveler_name">FX Always Traveler</string>
 </resources>

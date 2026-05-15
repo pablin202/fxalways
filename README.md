@@ -46,11 +46,11 @@ Para competir contra conversores FX, money transfer apps y trackers crypto moder
    - Score por par: Good time, Wait, Strong rate.
    - Comparacion contra rango 7d/30d/90d, tendencia y volatilidad.
    - Recomendacion concreta para viajeros, ahorro y remesas.
-3. Widgets Android/iOS.
-   - Tasa favorita.
-   - Portfolio total.
-   - BTC/ETH o crypto seleccionadas.
-   - Mejor tasa del dia.
+3. Widgets Android/iOS. Android implementado en primera version.
+   - Tasa favorita desde el cache live.
+   - BTC/ETH cuando estan disponibles en cache.
+   - Estado Live/Cache y deep link a la app.
+   - Pendiente iOS Widget Extension y portfolio total.
 4. Alertas inteligentes.
    - Movimiento de portfolio por porcentaje o monto.
    - Concentracion excesiva en un asset.
