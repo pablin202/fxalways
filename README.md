@@ -1,6 +1,6 @@
 # FX Always
 
-Kotlin Multiplatform + Compose app para currency exchange con rates actuales, historicos, watchlist global y arquitectura lista para cobrar suscripcion mensual en iOS.
+Kotlin Multiplatform + Compose app para currency exchange con rates actuales, historicos, watchlist global, crypto, portfolio, alertas, traveler mode y suscripciones Pro con RevenueCat.
 
 ## Arquitectura
 
@@ -8,7 +8,8 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - `functions`: Firebase Cloud Functions TypeScript.
 - Firestore: cache backend de `latest` y `history` para evitar miles de llamadas al proveedor FX.
 - Proveedor FX inicial: Frankfurter API, basada en datos del European Central Bank.
-- iOS premium: `SubscriptionGateway` conectado a RevenueCat KMP con Test Store durante desarrollo.
+- Premium: `SubscriptionGateway` conectado a RevenueCat KMP para Android/iOS.
+- Android release: AAB firmado para Google Play Internal Testing y versionCode automatizable por CI.
 
 ## Features incluidas
 
@@ -26,11 +27,34 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - Backup/sync de usuario en Android con Firebase.
 - Onboarding personalizado con perfiles Traveler, Crypto holder, Remittances, Freelancer y Savings; aplica pares, watchlist, destino traveler, monto inicial, Home y paywall segun perfil.
 - Paywall Pro con RevenueCat KMP, restore, Terms/Privacy y configuracion separada Android/iOS.
+- Suscripciones Pro recurrentes mensual/anual; no se expone compra lifetime.
+- Rate trust en Home, Convert y Detail: fuente, estado Live/Cache/Preview y hora de actualizacion.
+- Loading skeletons para estados lentos de rates, converter y news.
+- Analytics basicos: seleccion de plan, compra exitosa, currency agregada y uso de widgets.
 - Localizacion in-app con selector para 13 idiomas: English, Español, Português, 中文, हिन्दी, Français, العربية, বাংলা, Русский, اردو, Indonesia, Deutsch, 日本語.
 - Cache server-side por base currency e historico por par.
 - Scheduled refresh cada 60 minutos.
 - Firestore cerrado al cliente; la app consume solo HTTPS Functions.
 - Configuracion separada para Android/iOS.
+
+## Free vs Pro
+
+Free esta pensado para validar valor diario sin bloquear lo esencial:
+
+- Core FX/crypto inicial.
+- Conversor, Home, traveler basics y alertas basicas.
+- Crypto core: BTC, ETH, USDT y USDC.
+- Historial corto y previews Pro donde corresponde.
+
+Pro aumenta profundidad y retencion:
+
+- Catalogo crypto expandido.
+- Portfolio completo con holdings, average cost, P&L y transacciones.
+- Historial largo.
+- Import/export CSV.
+- Alertas avanzadas.
+- Comparaciones y sugerencias mas completas.
+- Mas personalizacion por perfil.
 
 ## Roadmap competitivo
 
@@ -93,6 +117,104 @@ Para usar Firebase deployado:
 ```bash
 ./gradlew :composeApp:assembleDebug -PFX_BACKEND_URL=https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net
 ```
+
+## Android release para Play
+
+El AAB de Play se genera desde:
+
+```bash
+./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=3
+```
+
+Salida:
+
+```text
+composeApp/build/outputs/bundle/release/composeApp-release.aab
+```
+
+Release signing se configura por `local.properties`, propiedades Gradle o environment variables:
+
+```properties
+ANDROID_KEYSTORE_PATH=/absolute/path/to/fxalways-upload.jks
+ANDROID_KEYSTORE_PASSWORD=...
+ANDROID_KEY_ALIAS=fxalways
+ANDROID_KEY_PASSWORD=...
+REVENUECAT_API_KEY=goog_...
+```
+
+No commitear keystores ni passwords. El repo ignora `*.jks`, `*.keystore`, `release-key.properties`, `keystore.properties` y `local.properties`.
+
+### VersionCode automatico
+
+`composeApp/build.gradle.kts` lee:
+
+- `ANDROID_VERSION_CODE`
+- `ANDROID_VERSION_NAME`
+
+Prioridad: Gradle property, `local.properties`, environment variable, default del repo.
+
+Ejemplo manual:
+
+```bash
+./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=4
+```
+
+GitHub Actions usa `github.run_number` como `ANDROID_VERSION_CODE`, por lo que los artefactos de CI tienen codigo creciente automaticamente.
+
+### Advertencias de Play Console
+
+- `No hay archivo de desofuscacion`: normal mientras `isMinifyEnabled=false`. No hay `mapping.txt` porque no se usa R8/ProGuard en release.
+- `Codigo nativo sin simbolos`: la app incluye `.so` de dependencias. Release configura `ndk.debugSymbolLevel = "SYMBOL_TABLE"`, pero algunas dependencias pueden venir ya strippeadas. Es advertencia, no bloqueo para Internal Testing.
+
+## RevenueCat y compras Android
+
+Configuracion esperada en RevenueCat:
+
+- Entitlement: `pro`.
+- Offering: `default`.
+- Packages:
+  - `$rc_monthly` -> `fxalways_pro_monthly`
+  - `$rc_annual` -> `fxalways_pro_annual`
+- Android SDK key: `goog_...`.
+- No usar lifetime package.
+
+Configuracion esperada en Google Play:
+
+- App package: `com.fxalways.app`.
+- Subscriptions/product IDs exactos:
+  - `fxalways_pro_monthly`
+  - `fxalways_pro_annual`
+- Internal testing track con AAB firmado.
+- Tester agregado al track interno y tambien a license testing para compras sandbox.
+
+Importante: compras reales/sandbox no se validan instalando por `adb` o `bundletool`. Si el dispositivo muestra `installerPackageName=null`, Google Billing puede responder como no disponible y el paywall puede mostrar `Purchases unavailable`. Para probar compras, instalar desde el opt-in link de Google Play Internal Testing; el installer debe ser `com.android.vending`.
+
+## Internal Testing checklist
+
+1. Generar AAB firmado con versionCode nuevo.
+2. Subirlo a Google Play Console -> Testing -> Internal testing.
+3. Completar los formularios obligatorios: store listing, data safety, app content, privacy policy, categoria y contacto.
+4. Confirmar productos de suscripcion activos en Play y conectados a RevenueCat.
+5. Agregar testers al track interno y a license testing.
+6. Instalar desde el link interno de Play.
+7. Probar:
+   - Onboarding completo.
+   - Home rates y crypto core.
+   - Paywall mensual/anual.
+   - Compra sandbox mensual.
+   - Restore.
+   - Free vs Pro gating.
+   - Links Terms/Privacy.
+   - Offline/cache states.
+   - Widgets.
+
+## Troubleshooting rapido
+
+- `Todos los bundles subidos deben estar firmados`: falta `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` o `ANDROID_KEY_PASSWORD`.
+- `Version code already used`: subir `ANDROID_VERSION_CODE` y regenerar el AAB.
+- `Purchases unavailable` instalado localmente: esperado con `adb`; instalar desde Play Internal Testing.
+- Crash post-onboarding por compras: RevenueCat ya soporta arranque anonimo si Firebase UID todavia no esta disponible.
+- Crash al abrir Terms/Privacy: Android ahora captura `ActivityNotFoundException`; si no hay navegador muestra `No browser available`.
 
 ## Ejecutar backend
 
