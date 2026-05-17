@@ -144,17 +144,24 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
 
     private suspend fun ensureConfigured(): Purchases {
         val account = UserBackupGateway.ensureUser()
-        val uid = account.uid ?: error("Firebase user unavailable for RevenueCat")
+        val uid = account.uid
 
         if (!Purchases.isConfigured) {
             Purchases.logLevel = LogLevel.DEBUG
-            configuredUserId = uid
-            return Purchases.configure(apiKey = PlatformConfig.revenueCatApiKey) {
-                appUserId = uid
+            return if (uid.isNullOrBlank()) {
+                Purchases.configure(apiKey = PlatformConfig.revenueCatApiKey)
+            } else {
+                configuredUserId = uid
+                Purchases.configure(apiKey = PlatformConfig.revenueCatApiKey) {
+                    appUserId = uid
+                }
             }
         }
 
         val purchases = Purchases.sharedInstance
+        if (uid.isNullOrBlank()) {
+            return purchases
+        }
         if (configuredUserId != uid || purchases.appUserID != uid) {
             purchases.awaitLogIn(uid)
             configuredUserId = uid

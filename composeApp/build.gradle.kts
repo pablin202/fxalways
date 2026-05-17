@@ -38,6 +38,11 @@ val releaseKeystorePath = projectPropertyLocalOrEnv("ANDROID_KEYSTORE_PATH")
 val releaseKeystorePassword = projectPropertyLocalOrEnv("ANDROID_KEYSTORE_PASSWORD")
 val releaseKeyAlias = projectPropertyLocalOrEnv("ANDROID_KEY_ALIAS")
 val releaseKeyPassword = projectPropertyLocalOrEnv("ANDROID_KEY_PASSWORD")
+val androidVersionCode = projectPropertyLocalOrEnv("ANDROID_VERSION_CODE")
+    ?.toIntOrNull()
+    ?: 2
+val androidVersionName = projectPropertyLocalOrEnv("ANDROID_VERSION_NAME")
+    ?: "1.0.0"
 val hasReleaseSigning = listOf(
     releaseKeystorePath,
     releaseKeystorePassword,
@@ -124,8 +129,8 @@ android {
         applicationId = "com.fxalways.app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.compileSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = androidVersionCode
+        versionName = androidVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         val backendUrl = projectPropertyOrLocal("FX_BACKEND_URL", "https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net")
@@ -149,6 +154,9 @@ android {
         getByName("release") {
             isDebuggable = false
             isMinifyEnabled = false
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }

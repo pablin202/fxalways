@@ -40,6 +40,7 @@ jobs:
       - name: Compile Android and release artifacts
         run: >
           ./gradlew
+          -PANDROID_VERSION_CODE=${{ github.run_number }}
           :composeApp:compileDebugKotlinAndroid
           :composeApp:compileDebugAndroidTestKotlinAndroid
           :composeApp:assembleRelease

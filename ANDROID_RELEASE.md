@@ -31,6 +31,16 @@ Do not commit keystores or signing properties. The repo ignores `*.jks`, `*.keys
 
 If these values are absent, Gradle can still compile an unsigned release artifact for verification. Play upload requires a signed AAB.
 
+## Versioning
+
+Release builds use `ANDROID_VERSION_CODE` when provided through Gradle properties, `local.properties`, or environment variables:
+
+```bash
+./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=3
+```
+
+GitHub Actions passes `github.run_number` as `ANDROID_VERSION_CODE`, so CI release artifacts get an increasing Play-compatible code automatically. Local builds default to the base value in `composeApp/build.gradle.kts`; increase it or pass `-PANDROID_VERSION_CODE=...` before uploading manually to Play Console.
+
 ## Production config reminders
 
 - `FX_BACKEND_URL` defaults to `https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net`.
