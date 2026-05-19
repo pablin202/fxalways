@@ -164,6 +164,31 @@ class AlertsScreenTest {
     }
 
     @Test
+    fun productionAlertCardHidesTestAction() {
+        renderAlerts(
+            isPremium = true,
+            showTestAction = false,
+            initialAlerts = listOf(
+                PriceAlert(
+                    id = "eur_target",
+                    base = "USD",
+                    quote = "EUR",
+                    target = 0.95,
+                    direction = AlertDirection.Above,
+                    kind = AlertKind.Target,
+                    enabled = true,
+                    createdAtMillis = 1L,
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("alert_card_eur_target").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("alert_test_eur_target").assertCountEquals(0)
+        compose.onNodeWithTag("alert_toggle_eur_target").assertIsDisplayed()
+        compose.onNodeWithTag("alert_delete_eur_target").assertIsDisplayed()
+    }
+
+    @Test
     fun pausedExistingQuickAlertCanBeResumedEvenWhenFreeLimitReached() {
         renderAlerts(
             isPremium = false,
@@ -354,6 +379,7 @@ class AlertsScreenTest {
         isPremium: Boolean,
         initialAlerts: List<PriceAlert> = emptyList(),
         liveState: LiveRatesState = testLiveRatesState(),
+        showTestAction: Boolean = true,
     ): AlertsHarness {
         val harness = AlertsHarness()
         AndroidAppContext.init(compose.activity)
@@ -366,6 +392,7 @@ class AlertsScreenTest {
                     liveState = liveState,
                     alertsState = AlertsState(alerts),
                     subscriptionState = SubscriptionState(isPremium = isPremium),
+                    showTestAction = showTestAction,
                     onOpenPaywall = { harness.paywallClicks += 1 },
                     onRequestNotificationPermission = { harness.notificationPermissionRequests += 1 },
                     onCreateAlert = { rate ->

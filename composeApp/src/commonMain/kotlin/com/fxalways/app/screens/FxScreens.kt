@@ -3881,6 +3881,7 @@ fun AlertsScreen(
     liveState: LiveRatesState,
     alertsState: AlertsState,
     subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
+    showTestAction: Boolean = PlatformConfig.isDebug,
     onBack: (() -> Unit)? = null,
     onOpenPaywall: () -> Unit = {},
     onRequestNotificationPermission: () -> Unit = { NotificationPermissionStatus.requestIfNeeded() },
@@ -4213,6 +4214,7 @@ fun AlertsScreen(
                         currentChangePct = currentRatesByCode[alert.quote]?.change24h.takeIf { alert.base == liveState.baseCurrency },
                         onToggle = onToggleAlert,
                         onDelete = onDeleteAlert,
+                        showTestAction = showTestAction,
                         onTest = {
                             onRequestNotificationPermission()
                             onTestAlert(it)
@@ -5080,6 +5082,7 @@ private fun AlertCard(
     currentChangePct: Double?,
     onToggle: (String) -> Unit,
     onDelete: (String) -> Unit,
+    showTestAction: Boolean,
     onTest: (PriceAlert) -> Unit,
 ) {
     val isHit = alert.isHit(currentRate, currentChangePct)
@@ -5121,15 +5124,17 @@ private fun AlertCard(
                             .clickable { onToggle(alert.id) },
 	                )
                 Spacer(Modifier.width(14.dp))
-                Text(
-		                    ui("test"),
-	                    style = FxTheme.typography.captionMono,
-	                    color = FxTheme.colors.accent,
-	                    modifier = Modifier
-                            .testTag("alert_test_${alert.id}")
-                            .clickable { onTest(alert) },
-	                )
-	                Spacer(Modifier.width(14.dp))
+                if (showTestAction) {
+                    Text(
+		                        ui("test"),
+	                        style = FxTheme.typography.captionMono,
+	                        color = FxTheme.colors.accent,
+	                        modifier = Modifier
+                                .testTag("alert_test_${alert.id}")
+                                .clickable { onTest(alert) },
+	                    )
+	                    Spacer(Modifier.width(14.dp))
+                }
 	                Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textFaint, modifier = Modifier
                         .testTag("alert_delete_${alert.id}")
                         .clickable { onDelete(alert.id) })
