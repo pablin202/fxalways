@@ -161,10 +161,10 @@ class ConverterScreenTest {
         renderConverter(isPremium = true, liveState = flatLiveRatesState())
 
         compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("converter_timing_score").assertIsDisplayed()
-        compose.onNodeWithTag("converter_timing_7d").assertIsDisplayed()
-        compose.onNodeWithTag("converter_timing_30d").assertIsDisplayed()
-        compose.onNodeWithTag("converter_timing_90d").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_score").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_7d").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_30d").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_90d").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -236,7 +236,13 @@ class ConverterScreenTest {
         )
 
         compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("rate_trust_source_loading").assertCountEquals(1)
+        compose.onAllNodesWithTag("rate_trust_updated_loading").assertCountEquals(1)
+        compose.onAllNodesWithTag("rate_trust_source").assertCountEquals(0)
+        compose.onAllNodesWithTag("rate_trust_updated").assertCountEquals(0)
         compose.onAllNodesWithTag("converter_loading_skeleton").assertCountEquals(1)
+        compose.onAllNodesWithTag("converter_fee_loading_skeleton").assertCountEquals(1)
+        compose.onAllNodesWithTag("converter_best_provider").assertCountEquals(0)
     }
 
     private fun renderConverter(

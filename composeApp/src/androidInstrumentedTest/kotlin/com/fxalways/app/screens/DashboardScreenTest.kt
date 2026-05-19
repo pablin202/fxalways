@@ -91,7 +91,14 @@ class DashboardScreenTest {
         )
 
         compose.onNodeWithTag("dashboard_rate_trust").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("rate_trust_source_loading").assertCountEquals(1)
+        compose.onAllNodesWithTag("rate_trust_updated_loading").assertCountEquals(1)
+        compose.onAllNodesWithTag("rate_trust_source").assertCountEquals(0)
+        compose.onAllNodesWithTag("rate_trust_updated").assertCountEquals(0)
         compose.onAllNodesWithTag("dashboard_loading_skeleton").assertCountEquals(1)
+        compose.onAllNodesWithTag("dashboard_market_loading_skeleton").assertCountEquals(1)
+        compose.onAllNodesWithTag("dashboard_profile_card").assertCountEquals(0)
+        compose.onAllNodesWithTag("dashboard_crypto_snapshot").assertCountEquals(0)
     }
 
     @Test

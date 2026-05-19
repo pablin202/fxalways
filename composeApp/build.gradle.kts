@@ -42,7 +42,7 @@ val androidVersionCode = projectPropertyLocalOrEnv("ANDROID_VERSION_CODE")
     ?.toIntOrNull()
     ?: 2
 val androidVersionName = projectPropertyLocalOrEnv("ANDROID_VERSION_NAME")
-    ?: "1.0.0"
+    ?: "1.0.2"
 val hasReleaseSigning = listOf(
     releaseKeystorePath,
     releaseKeystorePassword,

@@ -7,7 +7,7 @@ Use this before Android internal testing, Android closed testing, and iOS TestFl
 1. RevenueCat
    - Use the Android public SDK key, not the Test Store key.
    - Entitlement: `pro`.
-   - Offering: `default`.
+   - Offering: `pro` recommended. The app also accepts `default` or the current offering as fallback.
    - Packages:
      - `$rc_monthly` -> `fxalways_pro_monthly`
      - `$rc_annual` -> `fxalways_pro_annual`
@@ -34,7 +34,7 @@ Use this before Android internal testing, Android closed testing, and iOS TestFl
 1. App Store Connect
    - Create monthly and annual subscriptions only.
    - Use the iOS public SDK key in the iOS build configuration.
-   - Add the products to the same RevenueCat `pro` entitlement and `default` offering.
+   - Add the products to the same RevenueCat `pro` entitlement and `pro` offering.
 
 2. TestFlight
    - Upload the iOS build.

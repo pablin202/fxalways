@@ -37,7 +37,7 @@ For Test Store or store-backed setup, keep these identifiers consistent:
 
 ```text
 Entitlement: pro
-Offering: default
+Offering: pro
 Package: monthly
 Package: annual
 ```
@@ -49,8 +49,8 @@ fxalways_pro_monthly
 fxalways_pro_annual
 ```
 
-The app reads `offerings.current.monthly` and `offerings.current.annual`. Production should not configure a lifetime
-package for this offering; FX Always sells Pro as monthly or annual recurring subscriptions only.
+The app first reads offering `pro`, then falls back to `default`, then to RevenueCat's current offering. Production should
+not configure a lifetime package for this offering; FX Always sells Pro as monthly or annual recurring subscriptions only.
 
 ## 4. Android Production
 
@@ -73,7 +73,7 @@ When preparing iOS:
 1. Create monthly and annual App Store Connect subscriptions.
 2. Add the iOS app/platform in RevenueCat.
 3. Attach the iOS products to entitlement `pro`.
-4. Keep offering `default` and monthly/annual packages aligned with Android.
+4. Keep offering `pro` and monthly/annual packages aligned with Android.
 5. Provide the iOS public SDK key through `PlatformConfig.ios.kt` or an iOS build configuration.
 
 There is no separate iOS subscription gateway in this app; purchase logic stays in `commonMain`.

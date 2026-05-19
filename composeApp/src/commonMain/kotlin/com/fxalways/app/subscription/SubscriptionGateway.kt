@@ -12,6 +12,7 @@ import com.revenuecat.purchases.kmp.ktx.awaitPurchase
 import com.revenuecat.purchases.kmp.ktx.awaitRestore
 import com.revenuecat.purchases.kmp.models.CustomerInfo
 import com.revenuecat.purchases.kmp.models.Offering
+import com.revenuecat.purchases.kmp.models.Offerings
 import com.revenuecat.purchases.kmp.models.Package
 
 enum class SubscriptionPlanKind {
@@ -87,7 +88,7 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
         val purchases = ensureConfigured()
         return runCatching {
             val offerings = purchases.awaitOfferings()
-            packagesByKind = offerings.current?.toPackagesByKind().orEmpty()
+            packagesByKind = offerings.proOffering()?.toPackagesByKind().orEmpty()
             purchases.awaitCustomerInfo().toSubscriptionState()
         }.getOrElse { error ->
             unavailableState(error.message ?: "RevenueCat unavailable.")
@@ -105,7 +106,7 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
         val purchases = ensureConfigured()
         if (packagesByKind.isEmpty()) {
             packagesByKind = runCatching {
-                purchases.awaitOfferings().current?.toPackagesByKind().orEmpty()
+                purchases.awaitOfferings().proOffering()?.toPackagesByKind().orEmpty()
             }.getOrDefault(emptyMap())
         }
         val packageToPurchase = packagesByKind[kind]
@@ -217,6 +218,11 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
     private fun String.toReadablePrice(): String =
         replace(Regex("^([A-Z]{3})(\\d)"), "$1 $2")
 
+    private fun Offerings.proOffering(): Offering? =
+        getOffering(PRO_OFFERING_ID)
+            ?: getOffering(DEFAULT_OFFERING_ID)
+            ?: current
+
     private fun Offering.toPackagesByKind(): Map<SubscriptionPlanKind, Package> =
         buildMap {
             monthly?.let { put(SubscriptionPlanKind.Monthly, it) }
@@ -233,7 +239,9 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
         }
 
     private companion object {
-        val PRO_ENTITLEMENTS = setOf("pro", "FX Always Pro")
+        const val PRO_OFFERING_ID = "pro"
+        const val DEFAULT_OFFERING_ID = "default"
+        val PRO_ENTITLEMENTS = setOf("pro")
     }
 }
 

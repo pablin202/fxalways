@@ -123,7 +123,7 @@ Para usar Firebase deployado:
 El AAB de Play se genera desde:
 
 ```bash
-./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=3
+./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=5 -PANDROID_VERSION_NAME=1.0.2
 ```
 
 Salida:
@@ -156,7 +156,7 @@ Prioridad: Gradle property, `local.properties`, environment variable, default de
 Ejemplo manual:
 
 ```bash
-./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=4
+./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=5 -PANDROID_VERSION_NAME=1.0.2
 ```
 
 GitHub Actions usa `github.run_number` como `ANDROID_VERSION_CODE`, por lo que los artefactos de CI tienen codigo creciente automaticamente.
@@ -171,7 +171,7 @@ GitHub Actions usa `github.run_number` como `ANDROID_VERSION_CODE`, por lo que l
 Configuracion esperada en RevenueCat:
 
 - Entitlement: `pro`.
-- Offering: `default`.
+- Offering: `pro` recomendado. La app tambien acepta `default` o el current offering como fallback.
 - Packages:
   - `$rc_monthly` -> `fxalways_pro_monthly`
   - `$rc_annual` -> `fxalways_pro_annual`

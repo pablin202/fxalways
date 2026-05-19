@@ -36,10 +36,10 @@ If these values are absent, Gradle can still compile an unsigned release artifac
 Release builds use `ANDROID_VERSION_CODE` when provided through Gradle properties, `local.properties`, or environment variables:
 
 ```bash
-./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=3
+./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=5 -PANDROID_VERSION_NAME=1.0.2
 ```
 
-GitHub Actions passes `github.run_number` as `ANDROID_VERSION_CODE`, so CI release artifacts get an increasing Play-compatible code automatically. Local builds default to the base value in `composeApp/build.gradle.kts`; increase it or pass `-PANDROID_VERSION_CODE=...` before uploading manually to Play Console.
+GitHub Actions passes `github.run_number` as `ANDROID_VERSION_CODE`, so CI release artifacts get an increasing Play-compatible code automatically. Local builds default to the base values in `composeApp/build.gradle.kts`; increase `ANDROID_VERSION_CODE` before uploading manually to Play Console.
 
 ## Production config reminders
 
