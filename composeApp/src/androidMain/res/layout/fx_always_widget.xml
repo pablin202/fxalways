@@ -4,7 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/fx_widget_background"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,7 +23,7 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:text="FX Always"
-            android:textColor="#F7FAFF"
+            android:textColor="#FFFFFF"
             android:textSize="15sp"
             android:textStyle="bold" />
 
@@ -38,11 +40,13 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <View
+    <TextView
         android:layout_width="56dp"
         android:layout_height="3dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/fx_widget_accent_line" />
+        android:background="@drawable/fx_widget_accent_line"
+        android:includeFontPadding="false"
+        android:text="" />
 
     <TextView
         android:id="@+id/widget_primary_pair"
@@ -65,7 +69,7 @@
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="0.9200"
-        android:textColor="#F7FAFF"
+        android:textColor="#FFFFFF"
         android:textSize="31sp"
         android:textStyle="bold" />
 

@@ -223,4 +223,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 17. [x] P4: add copyable internal test plan for tester distribution.
 18. [x] P5: add store listing kit with release copy and disclaimer.
 19. [x] P5: add copyable store listing draft for release prep.
-20. Release: close legal content, store listing, release signing and full instrumentation run.
+20. [x] P6: add price scanner foundation with local-vs-live hidden cost check.
+21. [x] P6: add widget quick setup for rates pair and traveler destination.
+22. [x] P6: harden Android widget layout rendering for Samsung/RemoteViews.
+23. Release: close legal content, store listing, release signing and full instrumentation run.

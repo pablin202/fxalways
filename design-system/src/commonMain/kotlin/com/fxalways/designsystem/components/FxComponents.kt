@@ -324,18 +324,36 @@ fun CurrencyRow(
 @Composable
 fun KeyValueRow(label: String, value: String, subtitle: String? = null, modifier: Modifier = Modifier) {
     val colors = FxTheme.colors
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-        Text(label, style = FxTheme.typography.caption, color = colors.textDim)
-        Canvas(Modifier.weight(1f).height(1.dp).padding(horizontal = 10.dp)) {
-            var x = 0f
-            while (x < size.width) {
-                drawLine(colors.border, Offset(x, 0f), Offset((x + 4.dp.toPx()).coerceAtMost(size.width), 0f), strokeWidth = 1f)
-                x += 8.dp.toPx()
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(0.42f),
+            style = FxTheme.typography.caption,
+            color = colors.textDim,
+        )
+        Column(
+            modifier = Modifier.weight(0.58f),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                value,
+                style = FxTheme.typography.numberBody,
+                color = colors.text,
+                textAlign = TextAlign.End,
+            )
+            if (subtitle != null) {
+                Text(
+                    subtitle,
+                    style = FxTheme.typography.captionMono,
+                    color = colors.textFaint,
+                    textAlign = TextAlign.End,
+                )
             }
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(value, style = FxTheme.typography.numberBody, color = colors.text)
-            if (subtitle != null) Text(subtitle, style = FxTheme.typography.captionMono, color = colors.textFaint)
         }
     }
 }

@@ -92,6 +92,7 @@ import com.fxalways.app.UserBackupGateway
 import com.fxalways.app.UserBackupSnapshot
 import com.fxalways.app.UserBackupState
 import com.fxalways.app.isDefaultLocalBackup
+import com.fxalways.app.refreshFxWidgets
 import com.fxalways.app.data.mock.CompareRates
 import com.fxalways.app.data.mock.ConverterRates
 import com.fxalways.app.data.mock.CryptoRates
@@ -276,6 +277,20 @@ private val uiTranslations = mapOf(
         "Local market" to "Mercado local",
         "Local spread" to "Spread local",
         "Track official vs informal rates before exchanging cash." to "Sigue rates oficiales vs informales antes de cambiar efectivo.",
+        "PRICE SCANNER" to "SCANNER DE PRECIOS",
+        "Camera-ready price check" to "Chequeo de precio listo para cámara",
+        "Scanned price" to "Precio escaneado",
+        "At live rate" to "A rate live",
+        "With local rate" to "Con rate local",
+        "Potential hidden cost" to "Costo oculto potencial",
+        "Type or paste a shelf price now; camera OCR can feed this same check next." to "Escribe o pega un precio ahora; OCR de cámara puede alimentar este mismo chequeo después.",
+        "Compare a shop, cash desk or card terminal price against the live mid-market rate." to "Compara un precio de tienda, caja o terminal contra el rate mid-market live.",
+        "WIDGET SETUP" to "SETUP DE WIDGETS",
+        "Widget quick setup" to "Setup rápido de widgets",
+        "Rates widget pair" to "Par del widget de rates",
+        "Traveler widget destination" to "Destino del widget viajero",
+        "Tap to pin this currency to widgets and refresh Android home screen cards." to "Toca para fijar esta moneda en widgets y refrescar las tarjetas del home Android.",
+        "Widgets refreshed" to "Widgets actualizados",
         "PROVIDER HISTORY" to "HISTORIAL DE PROVEEDORES",
         "route history" to "historial de ruta",
         "Pro shows more route history by amount." to "Pro muestra más historial de ruta por monto.",
@@ -2455,6 +2470,7 @@ fun ConverterScreen(
     var customFeePercentText by remember { mutableStateOf("1.00") }
     var customMarkupPercentText by remember { mutableStateOf("2.50") }
     var remittanceCadence by remember { mutableStateOf("Monthly") }
+    var scannedPriceText by remember { mutableStateOf("25") }
     val sourceRate = rates.firstOrNull { it.code == sourceCode }
         ?: rates.firstOrNull { it.code == liveState.baseCurrency }
         ?: rates.first()
@@ -2636,6 +2652,16 @@ fun ConverterScreen(
             localMarketRate = localMarketRate,
             onLocalMarketRateChange = { localMarketRateText = sanitizeAmountInput(it) },
         )
+        SectionLabel("${ui("PRICE SCANNER")} · ${targetRate.code} → ${sourceRate.code}", right = if (subscriptionState.isPremium) "OCR beta" else ui("Preview"))
+        PriceScannerCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            scannedPriceText = scannedPriceText,
+            localMarketRate = localMarketRate,
+            isPremium = subscriptionState.isPremium,
+            onScannedPriceChange = { scannedPriceText = sanitizeAmountInput(it) },
+            onOpenPaywall = onOpenPaywall,
+        )
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
         FeeRealityCheckCard(
             quote = bestRealWorldQuote ?: bestQuote,
@@ -2782,6 +2808,69 @@ private fun LocalRateNotebookCard(
                 ui("Track official vs informal rates before exchanging cash."),
                 modifier = Modifier.testTag("local_rate_market"),
             )
+        }
+    }
+}
+
+@Composable
+private fun PriceScannerCard(
+    sourceRate: FxRate,
+    targetRate: FxRate,
+    scannedPriceText: String,
+    localMarketRate: Double,
+    isPremium: Boolean,
+    onScannedPriceChange: (String) -> Unit,
+    onOpenPaywall: () -> Unit,
+) {
+    val scannedPrice = parseAmountInput(scannedPriceText)
+    val liveSourceCost = if (targetRate.rate > 0.0) scannedPrice / targetRate.rate else 0.0
+    val localSourceCost = if (localMarketRate > 0.0) scannedPrice / localMarketRate else liveSourceCost
+    val hiddenCost = localSourceCost - liveSourceCost
+    BentoCard(Modifier.testTag("converter_price_scanner"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("Camera-ready price check"))
+                Pill(if (isPremium) "OCR beta" else ui("Preview"), variant = if (isPremium) PillVariant.Accent else PillVariant.Ghost)
+            }
+            Text(
+                ui("Compare a shop, cash desk or card terminal price against the live mid-market rate."),
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textDim,
+            )
+            FeeInputField(
+                label = ui("Scanned price"),
+                value = scannedPriceText,
+                suffix = targetRate.code,
+                modifier = Modifier.fillMaxWidth().testTag("price_scanner_input"),
+                onValueChange = onScannedPriceChange,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(
+                    ui("At live rate"),
+                    "${sourceRate.code} ${formatRate(liveSourceCost)}",
+                    "${targetRate.code} ${formatRate(scannedPrice)}",
+                    Modifier.weight(1f).testTag("price_scanner_live_cost"),
+                )
+                MetricTile(
+                    ui("With local rate"),
+                    "${sourceRate.code} ${formatRate(localSourceCost)}",
+                    "${formatRate(localMarketRate)} ${targetRate.code}",
+                    Modifier.weight(1f).testTag("price_scanner_local_cost"),
+                )
+            }
+            KeyValueRow(
+                ui("Potential hidden cost"),
+                formatSignedAmount(sourceRate.code, hiddenCost),
+                ui("Type or paste a shelf price now; camera OCR can feed this same check next."),
+                modifier = Modifier.testTag("price_scanner_hidden_cost"),
+            )
+            if (!isPremium) {
+                GhostButton(
+                    text = ui("Pro unlocks the complete provider list; estimates update with your amount."),
+                    modifier = Modifier.fillMaxWidth().testTag("price_scanner_upsell"),
+                    onClick = onOpenPaywall,
+                )
+            }
         }
     }
 }
@@ -6594,6 +6683,12 @@ fun SettingsScreen(
             )
         }
 
+        SectionLabel(ui("WIDGET SETUP"))
+        WidgetQuickSetupCard(
+            baseCurrency = baseCurrency,
+            availableCurrencies = fullBaseCurrencies,
+        )
+
         if (PlatformConfig.isDebug) {
             SectionLabel(ui("RELEASE READINESS"))
             ReleaseReadinessCard(
@@ -6808,6 +6903,91 @@ private fun StoreListingKitCard(
                     copied = true
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun WidgetQuickSetupCard(
+    baseCurrency: String,
+    availableCurrencies: List<FxRate>,
+) {
+    val candidates = remember(baseCurrency, availableCurrencies) {
+        val byCode = availableCurrencies.associateBy { it.code }
+        (listOf("EUR", "JPY", "GBP", "MXN", "BRL", "AUD", "CAD", "CHF") + PopularCurrencyCodes)
+            .filter { it != baseCurrency }
+            .distinct()
+            .mapNotNull { byCode[it] }
+            .take(6)
+            .ifEmpty { availableCurrencies.filterNot { it.code == baseCurrency }.take(6) }
+    }
+    var widgetTarget by remember { mutableStateOf(AppSettingsPrefs.converterCurrencyCodes().firstOrNull() ?: candidates.firstOrNull()?.code.orEmpty()) }
+    var travelerTarget by remember { mutableStateOf(AppSettingsPrefs.travelerCurrency()) }
+    var feedback by remember { mutableStateOf<String?>(null) }
+    BentoCard(Modifier.testTag("settings_widget_setup"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("Widget quick setup"))
+                feedback?.let { Pill(ui(it), variant = PillVariant.Accent) }
+            }
+            Text(
+                ui("Tap to pin this currency to widgets and refresh Android home screen cards."),
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textDim,
+            )
+            KeyValueRow(
+                ui("Rates widget pair"),
+                "$baseCurrency → ${widgetTarget.ifBlank { "--" }}",
+                ui("Converted to"),
+                modifier = Modifier.testTag("widget_setup_rates_pair"),
+            )
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                candidates.forEach { rate ->
+                    TransactionChip(
+                        label = rate.code,
+                        selected = widgetTarget == rate.code,
+                        modifier = Modifier.testTag("widget_setup_rate_${rate.code}"),
+                        onClick = {
+                            widgetTarget = rate.code
+                            AppSettingsPrefs.setConverterCurrencyCodes(
+                                (listOf(rate.code) + AppSettingsPrefs.converterCurrencyCodes())
+                                    .filter { it != baseCurrency }
+                                    .distinct()
+                                    .take(4),
+                            )
+                            refreshFxWidgets()
+                            feedback = "Widgets refreshed"
+                        },
+                    )
+                }
+            }
+            KeyValueRow(
+                ui("Traveler widget destination"),
+                travelerTarget.ifBlank { "--" },
+                travelerDestination(travelerTarget.ifBlank { "JPY" }).city,
+                modifier = Modifier.testTag("widget_setup_traveler_destination"),
+            )
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                candidates.forEach { rate ->
+                    TransactionChip(
+                        label = rate.code,
+                        selected = travelerTarget == rate.code,
+                        modifier = Modifier.testTag("widget_setup_traveler_${rate.code}"),
+                        onClick = {
+                            travelerTarget = rate.code
+                            AppSettingsPrefs.setTravelerCurrency(rate.code)
+                            refreshFxWidgets()
+                            feedback = "Widgets refreshed"
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -7684,6 +7864,11 @@ private fun formatPercentValue(value: Double): String =
 private fun formatSignedPercent(value: Double): String {
     val sign = if (value >= 0.0) "+" else "-"
     return "$sign${formatPercentValue(kotlin.math.abs(value))}%"
+}
+
+private fun formatSignedAmount(code: String, value: Double): String {
+    val sign = if (value >= 0.0) "+" else "-"
+    return "$sign$code ${formatRate(kotlin.math.abs(value))}"
 }
 
 private fun shortAgeLabel(millis: Long): String {

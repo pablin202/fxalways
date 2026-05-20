@@ -170,6 +170,19 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun widgetQuickSetupPinsRatesAndTravelerWidgets() {
+        renderSettings(subscriptionState = SubscriptionState(isPremium = true))
+
+        compose.onNodeWithTag("settings_widget_setup").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("widget_setup_rates_pair").assertIsDisplayed()
+        compose.onNodeWithTag("widget_setup_rate_EUR").performScrollTo().performClick()
+        compose.onNodeWithText("Widgets refreshed").assertIsDisplayed()
+        compose.onNodeWithTag("widget_setup_traveler_destination").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("widget_setup_traveler_JPY").performScrollTo().performClick()
+        compose.onNodeWithText("Widgets refreshed").assertIsDisplayed()
+    }
+
+    @Test
     fun freeBaseCurrencyMoreOpensPaywallInsteadOfFullPicker() {
         val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = false))
 

@@ -128,6 +128,13 @@ These items should move FX Always from a polished converter into a product that 
 - Store listing kit with title, short description, keywords and disclaimer. Started in Settings and UI-tested.
 - Copyable store listing draft for release prep. Started in Settings and UI-tested.
 
+## P6
+
+- Market competitiveness pass for Android against XE, Wise, Revolut, Currency Converter Plus, MyCurrency and Currency.Wiki.
+- Price scanner foundation in Convert: users can type or paste a shelf/cash-desk price, compare it against live mid-market and local market rates, and see potential hidden cost. UI-tested.
+- Widget quick setup in Settings: users can pin the rates widget pair and traveler widget destination, then refresh Android widgets immediately. UI-tested.
+- Widget rendering hardening for Samsung/RemoteViews: solid backgrounds, explicit padding and safe widget view classes.
+
 ## Immediate Implementation Order
 
 1. Strengthen Convert with an explicit fee/spread reality check card.
@@ -135,3 +142,4 @@ These items should move FX Always from a polished converter into a product that 
 3. Improve Traveler into an offline trip pack.
 4. Add grouped watchlists.
 5. Expand widgets after the core data model is stable.
+6. Add scanner/OCR, configurable widgets and stronger offline travel clarity as the next competitiveness layer.

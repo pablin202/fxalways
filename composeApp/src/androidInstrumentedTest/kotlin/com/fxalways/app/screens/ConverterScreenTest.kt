@@ -157,6 +157,21 @@ class ConverterScreenTest {
     }
 
     @Test
+    fun freeUserChecksScannedPriceAgainstLiveAndLocalRates() {
+        val harness = renderConverter(isPremium = false)
+
+        compose.onNodeWithText("PRICE SCANNER · EUR → USD").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_price_scanner").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fee_input_Scanned price").performScrollTo().performTextReplacement("42")
+        compose.onNodeWithTag("price_scanner_live_cost").assertIsDisplayed()
+        compose.onNodeWithTag("price_scanner_local_cost").assertIsDisplayed()
+        compose.onNodeWithTag("price_scanner_hidden_cost").assertIsDisplayed()
+        compose.onNodeWithTag("price_scanner_upsell").performScrollTo().performClick()
+
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+    }
+
+    @Test
     fun proUserSeesFullProviderHistoryWithoutUpsell() {
         renderConverter(isPremium = true)
 
