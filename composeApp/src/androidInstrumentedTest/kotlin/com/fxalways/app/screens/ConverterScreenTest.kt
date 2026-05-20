@@ -118,7 +118,7 @@ class ConverterScreenTest {
 
         compose.onNodeWithText("Your custom cost").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText("Lost", substring = true).assertCountEquals(2)
+        compose.onNodeWithTag("converter_provider_history").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -135,6 +135,36 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_timing_upsell").performClick()
 
         compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+    }
+
+    @Test
+    fun freeUserTracksLocalRateNotebookAndPreviewProviderHistory() {
+        val harness = renderConverter(isPremium = false)
+
+        compose.onNodeWithText("LOCAL RATE NOTEBOOK · USD → EUR").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_local_rate_notebook").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("local_rate_official").assertIsDisplayed()
+        compose.onNodeWithTag("local_rate_spread").assertIsDisplayed()
+        compose.onNodeWithTag("fee_input_Local market").performScrollTo().performTextReplacement("1.05")
+        compose.onNodeWithTag("local_rate_market").performScrollTo().assertIsDisplayed()
+
+        compose.onNodeWithTag("converter_provider_history").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("provider_history_row_0").assertIsDisplayed()
+        compose.onNodeWithTag("provider_history_row_1").assertIsDisplayed()
+        compose.onAllNodesWithTag("provider_history_row_2").assertCountEquals(0)
+        compose.onNodeWithTag("provider_history_upsell").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+    }
+
+    @Test
+    fun proUserSeesFullProviderHistoryWithoutUpsell() {
+        renderConverter(isPremium = true)
+
+        compose.onNodeWithTag("converter_provider_history").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("provider_history_row_0").assertIsDisplayed()
+        compose.onNodeWithTag("provider_history_row_1").assertIsDisplayed()
+        compose.onNodeWithTag("provider_history_row_2").assertIsDisplayed()
+        compose.onAllNodesWithTag("provider_history_upsell").assertCountEquals(0)
     }
 
     @Test

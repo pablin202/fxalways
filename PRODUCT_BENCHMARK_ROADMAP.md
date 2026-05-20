@@ -107,9 +107,9 @@ These items should move FX Always from a polished converter into a product that 
 
 ## P2
 
-- Manual/local rate notebook for markets with official vs informal rates.
-- City/country travel cost templates.
-- Provider comparison history by route and amount.
+- Manual/local rate notebook for markets with official vs informal rates. Started in Convert and UI-tested.
+- City/country travel cost templates. Started in Traveler and UI-tested.
+- Provider comparison history by route and amount. Started in Convert and UI-tested.
 - OCR price/receipt converter.
 - More explicit family/remittance workflows.
 

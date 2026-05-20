@@ -214,4 +214,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 8. [x] P1: improve portfolio exposure with concentration, scenario impact and digest.
 9. [x] P1: add shareable rate cards with source, timestamp and disclaimer.
 10. [x] P1: add daily/weekly notification digest.
-11. Release: close legal content, store listing, release signing and full instrumentation run.
+11. [x] P2: add manual/local rate notebook for official vs informal markets.
+12. [x] P2: add city/country travel cost templates.
+13. [x] P2: add provider comparison history by route and amount.
+14. Release: close legal content, store listing, release signing and full instrumentation run.

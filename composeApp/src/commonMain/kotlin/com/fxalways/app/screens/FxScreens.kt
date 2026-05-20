@@ -271,6 +271,14 @@ private val uiTranslations = mapOf(
         "Before payday" to "Antes del cobro",
         "Pro unlocks reminder planning and extra cadences." to "Pro desbloquea recordatorios y cadencias extra.",
         "based on current best route" to "según la mejor ruta actual",
+        "LOCAL RATE NOTEBOOK" to "NOTEBOOK DE RATE LOCAL",
+        "Official mid-market" to "Mid-market oficial",
+        "Local market" to "Mercado local",
+        "Local spread" to "Spread local",
+        "Track official vs informal rates before exchanging cash." to "Sigue rates oficiales vs informales antes de cambiar efectivo.",
+        "PROVIDER HISTORY" to "HISTORIAL DE PROVEEDORES",
+        "route history" to "historial de ruta",
+        "Pro shows more route history by amount." to "Pro muestra más historial de ruta por monto.",
         "Best received" to "Mejor recepción",
         "Worst loss" to "Mayor pérdida",
         "vs mid-market" to "vs mercado medio",
@@ -393,6 +401,12 @@ private val uiTranslations = mapOf(
         "Local meals" to "Comidas locales",
         "guide estimate" to "estimado guía",
         "Formula" to "Fórmula",
+        "COST TEMPLATES" to "TEMPLATES DE COSTOS",
+        "Backpacker" to "Mochilero",
+        "Comfort" to "Confort",
+        "Business" to "Business",
+        "daily template" to "template diario",
+        "Pro unlocks premium city templates." to "Pro desbloquea templates premium por ciudad.",
         "OFFLINE PACK" to "PACK OFFLINE",
         "Saved snapshot" to "Snapshot guardado",
         "Ready from cached rates" to "Listo con rates cacheados",
@@ -2412,7 +2426,9 @@ fun ConverterScreen(
     val targetRate = rates.firstOrNull { it.code == targetCode && it.code != sourceRate.code }
         ?: rates.firstOrNull { it.code != sourceRate.code }
         ?: sourceRate
+    var localMarketRateText by remember(sourceRate.code, targetRate.code) { mutableStateOf(formatRate(targetRate.rate * 1.08)) }
     val amountValue = parseAmountInput(amountText)
+    val localMarketRate = parseAmountInput(localMarketRateText).takeIf { it > 0.0 } ?: targetRate.rate
     val customFee = CustomFeeInput(
         fixedFee = parseAmountInput(customFixedFeeText),
         feePercent = parseAmountInput(customFeePercentText),
@@ -2577,6 +2593,14 @@ fun ConverterScreen(
             isPremium = subscriptionState.isPremium,
             onOpenPaywall = onOpenPaywall,
         )
+        SectionLabel("${ui("LOCAL RATE NOTEBOOK")} · ${sourceRate.code} → ${targetRate.code}")
+        LocalRateNotebookCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            localMarketRateText = localMarketRateText,
+            localMarketRate = localMarketRate,
+            onLocalMarketRateChange = { localMarketRateText = sanitizeAmountInput(it) },
+        )
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
         FeeRealityCheckCard(
             quote = bestRealWorldQuote ?: bestQuote,
@@ -2635,6 +2659,14 @@ fun ConverterScreen(
                 }
             }
         }
+        ProviderComparisonHistoryCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            customFee = customFee,
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+        )
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Eyebrow(ui("CUSTOM COST"))
@@ -2675,6 +2707,115 @@ fun ConverterScreen(
         }
         }
     }
+}
+
+@Composable
+private fun LocalRateNotebookCard(
+    sourceRate: FxRate,
+    targetRate: FxRate,
+    localMarketRateText: String,
+    localMarketRate: Double,
+    onLocalMarketRateChange: (String) -> Unit,
+) {
+    val localSpreadPct = if (targetRate.rate > 0.0) ((localMarketRate / targetRate.rate) - 1.0) * 100.0 else 0.0
+    BentoCard(Modifier.testTag("converter_local_rate_notebook"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(
+                    ui("Official mid-market"),
+                    formatRate(targetRate.rate),
+                    "${sourceRate.code}/${targetRate.code}",
+                    Modifier.weight(1f).testTag("local_rate_official"),
+                )
+                MetricTile(
+                    ui("Local spread"),
+                    formatSignedPercent(localSpreadPct),
+                    ui("vs mid-market"),
+                    Modifier.weight(1f).testTag("local_rate_spread"),
+                )
+            }
+            FeeInputField(
+                label = ui("Local market"),
+                value = localMarketRateText,
+                suffix = targetRate.code,
+                modifier = Modifier.fillMaxWidth().testTag("local_rate_input"),
+                onValueChange = onLocalMarketRateChange,
+            )
+            KeyValueRow(
+                ui("Local market"),
+                "${formatRate(localMarketRate)} ${targetRate.code}",
+                ui("Track official vs informal rates before exchanging cash."),
+                modifier = Modifier.testTag("local_rate_market"),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProviderComparisonHistoryCard(
+    sourceRate: FxRate,
+    targetRate: FxRate,
+    amountValue: Double,
+    customFee: CustomFeeInput,
+    isPremium: Boolean,
+    onOpenPaywall: () -> Unit,
+) {
+    val history = remember(sourceRate, targetRate, amountValue, customFee, isPremium) {
+        providerComparisonHistory(sourceRate, targetRate, amountValue, customFee, isPremium)
+    }
+    BentoCard(Modifier.testTag("converter_provider_history"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Eyebrow("${ui("PROVIDER HISTORY")} · ${ui("route history")}")
+            history.forEachIndexed { index, item ->
+                KeyValueRow(
+                    item.amountLabel,
+                    "${ui(item.provider)} · ${item.recipientAmount}",
+                    "${ui("Lost")} ${item.loss} · ${ui("Effective rate")} ${item.effectiveRate}",
+                    modifier = Modifier.testTag("provider_history_row_$index"),
+                )
+            }
+            if (!isPremium) {
+                GhostButton(
+                    text = ui("Pro shows more route history by amount."),
+                    modifier = Modifier.fillMaxWidth().testTag("provider_history_upsell"),
+                    onClick = onOpenPaywall,
+                )
+            }
+        }
+    }
+}
+
+private data class ProviderHistoryItem(
+    val amountLabel: String,
+    val provider: String,
+    val recipientAmount: String,
+    val loss: String,
+    val effectiveRate: String,
+)
+
+private fun providerComparisonHistory(
+    sourceRate: FxRate,
+    targetRate: FxRate,
+    amountValue: Double,
+    customFee: CustomFeeInput,
+    isPremium: Boolean,
+): List<ProviderHistoryItem> {
+    val baseAmount = amountValue.takeIf { it > 0.0 } ?: 100.0
+    return listOf(baseAmount * 0.5, baseAmount, baseAmount * 2.0)
+        .take(if (isPremium) 3 else 2)
+        .map { amount ->
+            val quote = estimatedFeeQuotes(sourceRate, targetRate, amount, customFee)
+                .filterNot { it.provider == "Mid-market" }
+                .minByOrNull { it.lossTargetValue }
+                ?: estimatedFeeQuotes(sourceRate, targetRate, amount, customFee).first()
+            ProviderHistoryItem(
+                amountLabel = "${sourceRate.code} ${formatMoneyValue(amount)}",
+                provider = quote.provider,
+                recipientAmount = quote.amount,
+                loss = quote.loss,
+                effectiveRate = quote.effectiveRate,
+            )
+        }
 }
 
 @Composable
@@ -3999,6 +4140,14 @@ fun TravelerScreen(
             }
         }
 
+        SectionLabel(ui("COST TEMPLATES"), right = destination.city)
+        TravelerCostTemplatesCard(
+            destination = destination,
+            dailyBudgetLocal = dailyBudgetLocal,
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+        )
+
         SectionLabel(ui("OFFLINE PACK"), right = if (liveState.isLive) ui("Live") else ui("CACHED"))
         BentoCard(Modifier.testTag("traveler_offline_pack"), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -4085,6 +4234,64 @@ private data class TravelerPriceGuide(
     val label: String,
     val localAmount: Double,
 )
+
+@Composable
+private fun TravelerCostTemplatesCard(
+    destination: TravelerDestination,
+    dailyBudgetLocal: Double,
+    isPremium: Boolean,
+    onOpenPaywall: () -> Unit,
+) {
+    val templates = remember(destination.code, dailyBudgetLocal) {
+        travelerCostTemplates(destination, dailyBudgetLocal)
+    }
+    BentoCard(Modifier.testTag("traveler_cost_templates"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            templates.take(if (isPremium) templates.size else 2).forEachIndexed { index, template ->
+                KeyValueRow(
+                    ui(template.label),
+                    "${destination.symbol}${formatMoneyValue(template.dailyTotal)}",
+                    "${ui("daily template")} · ${template.detail}",
+                    modifier = Modifier.testTag("traveler_cost_template_$index"),
+                )
+            }
+            if (!isPremium) {
+                GhostButton(
+                    text = ui("Pro unlocks premium city templates."),
+                    modifier = Modifier.fillMaxWidth().testTag("traveler_cost_template_upsell"),
+                    onClick = onOpenPaywall,
+                )
+            }
+        }
+    }
+}
+
+private data class TravelerCostTemplate(
+    val label: String,
+    val dailyTotal: Double,
+    val detail: String,
+)
+
+private fun travelerCostTemplates(
+    destination: TravelerDestination,
+    dailyBudgetLocal: Double,
+): List<TravelerCostTemplate> {
+    val meal = destination.priceGuide.firstOrNull { it.label.contains("meal", ignoreCase = true) || it.label.contains("ramen", ignoreCase = true) || it.label.contains("tacos", ignoreCase = true) }
+        ?: destination.priceGuide.firstOrNull()
+    val transit = destination.priceGuide.firstOrNull { it.label.contains("metro", ignoreCase = true) || it.label.contains("transit", ignoreCase = true) || it.label.contains("tube", ignoreCase = true) }
+    val coffee = destination.priceGuide.firstOrNull { it.label.contains("coffee", ignoreCase = true) }
+    val mealAmount = meal?.localAmount ?: dailyBudgetLocal * 0.35
+    val transitAmount = transit?.localAmount ?: dailyBudgetLocal * 0.10
+    val coffeeAmount = coffee?.localAmount ?: dailyBudgetLocal * 0.05
+    return listOf(
+        TravelerCostTemplate("Backpacker", mealAmount + transitAmount + coffeeAmount, "${meal?.label ?: "Meal"} + ${transit?.label ?: "Transit"}"),
+        TravelerCostTemplate("Comfort", mealAmount * 2.0 + transitAmount * 2.0 + coffeeAmount, "${meal?.label ?: "Meal"} x2 + ${transit?.label ?: "Transit"}"),
+        TravelerCostTemplate("Business", mealAmount * 3.0 + transitAmount * 2.0 + coffeeAmount * 2.0, "${meal?.label ?: "Meal"} x3 + taxiTemplateLabel(destination)"),
+    )
+}
+
+private fun taxiTemplateLabel(destination: TravelerDestination): String =
+    destination.priceGuide.firstOrNull { it.label.contains("taxi", ignoreCase = true) }?.label ?: "Taxi"
 
 private fun travelerDestination(code: String): TravelerDestination =
     travelerDestinations[code] ?: TravelerDestination(
