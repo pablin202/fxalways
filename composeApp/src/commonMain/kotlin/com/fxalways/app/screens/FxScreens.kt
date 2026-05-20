@@ -1559,8 +1559,8 @@ fun FxAppShell() {
                 )
             }
         }
-        }
     }
+}
 }
 
 @Composable
@@ -1591,8 +1591,10 @@ private fun ScreenScaffold(content: @Composable ColumnScope.() -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        content = content,
-    )
+    ) {
+        content()
+        Spacer(Modifier.height(152.dp))
+    }
 }
 
 private data class ProfileCopy(
@@ -1897,7 +1899,7 @@ fun DashboardScreen(
                 LiveDot(Modifier.size(9.dp))
                 Eyebrow(if (liveState.isLive) ui("LIVE") else ui("CACHED"), color = FxTheme.colors.accent)
             }
-            Text(localizedRuntimeLabel(liveState.updatedLabel), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, textAlign = TextAlign.End)
+            Text(compactRuntimeLabel(liveState.updatedLabel), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, textAlign = TextAlign.End)
         }
         ScreenHeader(
             title = ui("Rates"),
@@ -2046,8 +2048,8 @@ private fun RateTrustCard(
                     TrustMetricSkeleton(ui("Source"), Modifier.weight(1f).testTag("rate_trust_source_loading"))
                     TrustMetricSkeleton(ui("Updated"), Modifier.weight(1f).testTag("rate_trust_updated_loading"))
                 } else {
-                    TrustMetric(ui("Source"), source, Modifier.weight(1f).testTag("rate_trust_source"))
-                    TrustMetric(ui("Updated"), localizedRuntimeLabel(updated), Modifier.weight(1f).testTag("rate_trust_updated"))
+                    TrustMetric(ui("Source"), compactProviderLabel(source), Modifier.weight(1f).testTag("rate_trust_source"))
+                    TrustMetric(ui("Updated"), compactRuntimeLabel(updated), Modifier.weight(1f).testTag("rate_trust_updated"))
                 }
             }
             Text(
@@ -2134,11 +2136,60 @@ private fun LoadingSkeletonCard(title: String, rows: Int, modifier: Modifier = M
     }
 }
 
+@Composable
+private fun InlineSkeletonRows(rows: Int, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "inlineSkeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.34f,
+        targetValue = 0.82f,
+        animationSpec = infiniteRepeatable(animation = tween(820), repeatMode = RepeatMode.Reverse),
+        label = "inlineSkeletonAlpha",
+    )
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        repeat(rows) { index ->
+            Box(
+                Modifier
+                    .fillMaxWidth(if (index % 2 == 0) 1f else 0.68f)
+                    .height(14.dp)
+                    .clip(FxTheme.shapes.field)
+                    .background(FxTheme.colors.surface3.copy(alpha = alpha)),
+            )
+        }
+    }
+}
+
 private fun LiveRatesState.rateProviderLabel(): String {
     val parts = updatedLabel.split("·").map { it.trim() }.filter { it.isNotBlank() }
     return parts.getOrNull(1)
         ?.takeUnless { it.contains("refreshed", ignoreCase = true) || it.contains("cached", ignoreCase = true) }
         ?: if (crypto.isNotEmpty()) "FX backend / CoinPaprika" else "FX backend"
+}
+
+private fun compactProviderLabel(label: String): String =
+    when {
+        label.contains("Frankfurter", ignoreCase = true) ||
+            label.contains("European Central Bank", ignoreCase = true) -> "ECB / Frankfurter"
+        label.contains("CoinPaprika", ignoreCase = true) -> "FX / CoinPaprika"
+        label.length > 24 -> label.take(21).trimEnd() + "..."
+        else -> label
+    }
+
+@Composable
+private fun compactRuntimeLabel(label: String): String {
+    val localized = localizedRuntimeLabel(label)
+    return when {
+        localized == ui("loading") -> ui("loading")
+        label.contains("Frankfurter", ignoreCase = true) ||
+            label.contains("European Central Bank", ignoreCase = true) -> {
+            val date = label.substringBefore("·").trim().takeIf { it.isNotBlank() }
+            val refreshed = label.substringAfterLast("refreshed", "").trim()
+            listOfNotNull(date, refreshed.takeIf { it.isNotBlank() }?.let { "${ui("refreshed")} $it" })
+                .joinToString(" · ")
+                .ifBlank { "ECB" }
+        }
+        localized.length > 34 -> localized.take(31).trimEnd() + "..."
+        else -> localized
+    }
 }
 
 private fun LiveRatesState.isInitialRateLoading(): Boolean =
@@ -2332,7 +2383,7 @@ fun ConverterScreen(
             LiveDot()
             Eyebrow(ui("MID"), color = FxTheme.colors.accent)
             Text(
-                localizedRuntimeLabel(liveState.updatedLabel),
+                compactRuntimeLabel(liveState.updatedLabel),
                 style = FxTheme.typography.captionMono,
                 color = FxTheme.colors.textFaint,
                 maxLines = 1,
@@ -3291,8 +3342,20 @@ fun CompareScreen(
         ScreenHeader(
             ui("Compare"),
             sub = "${liveState.baseCurrency} ${ui("BASE")}",
-            subtitle = "${compareRates.size} ${ui("currencies")} · ${ui(sortMode.label).lowercase()} · ${localizedRuntimeLabel(liveState.updatedLabel)}",
+            subtitle = "${compareRates.size} ${ui("currencies")} · ${ui(sortMode.label).lowercase()} · ${compactRuntimeLabel(liveState.updatedLabel)}",
         )
+        if (liveState.isInitialRateLoading()) {
+            LoadingSkeletonCard(
+                title = ui("Preparing comparison board"),
+                rows = 5,
+                modifier = Modifier.testTag("compare_loading_skeleton"),
+            )
+            LoadingSkeletonCard(
+                title = ui("Preparing market cards"),
+                rows = 6,
+                modifier = Modifier.testTag("compare_tiles_loading_skeleton"),
+            )
+        } else {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CompareSortMode.entries.forEach { mode ->
                 Pill(
@@ -3375,6 +3438,7 @@ fun CompareScreen(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -3460,8 +3524,20 @@ fun TravelerScreen(
         ScreenHeader(
             ui("Traveler"),
             sub = "${destination.city.uppercase()} · ${selectedRate.code}",
-            subtitle = if (liveState.isLive) "${ui("Live")} ${liveState.baseCurrency} ${ui("rates")} · ${localizedRuntimeLabel(liveState.updatedLabel)}" else "${ui("Offline snapshot")} · ${liveState.baseCurrency} ${ui("base")}",
+            subtitle = if (liveState.isLive) "${ui("Live")} ${liveState.baseCurrency} ${ui("rates")} · ${compactRuntimeLabel(liveState.updatedLabel)}" else "${ui("Offline snapshot")} · ${liveState.baseCurrency} ${ui("base")}",
         )
+        if (liveState.isInitialRateLoading()) {
+            LoadingSkeletonCard(
+                title = ui("Preparing traveler rates"),
+                rows = 5,
+                modifier = Modifier.testTag("traveler_loading_skeleton"),
+            )
+            LoadingSkeletonCard(
+                title = ui("Preparing destination tools"),
+                rows = 6,
+                modifier = Modifier.testTag("traveler_destination_loading_skeleton"),
+            )
+        } else {
         BentoCard(Modifier.fillMaxWidth().height(156.dp).testTag("traveler_hero"), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.18f))
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
@@ -3616,6 +3692,7 @@ fun TravelerScreen(
                     KeyValueRow(ui(item.label), "${destination.symbol}${formatMoneyValue(item.localAmount)} · ${liveState.baseCurrency} ${formatMoneyValue(basePrice)}")
                 }
             }
+        }
         }
     }
 }
@@ -3869,11 +3946,6 @@ fun MoreScreen(
                 )
             }
         }
-        SectionLabel(ui("COMING NEXT"))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricTile(ui("WIDGETS"), ui("Next"), ui("home screen and watch glance"), Modifier.weight(1f))
-            MetricTile("PRO", if (subscriptionState.isPremium) ui("Active") else ui("Ready"), ui("monthly plan controls"), Modifier.weight(1f))
-        }
     }
 }
 
@@ -3983,6 +4055,18 @@ fun AlertsScreen(
             }
         }
 
+        if (liveState.isInitialRateLoading()) {
+            LoadingSkeletonCard(
+                title = ui("Preparing smart alerts"),
+                rows = 5,
+                modifier = Modifier.testTag("alerts_loading_skeleton"),
+            )
+            LoadingSkeletonCard(
+                title = ui("Preparing alert builder"),
+                rows = 6,
+                modifier = Modifier.testTag("alerts_builder_loading_skeleton"),
+            )
+        } else {
         SectionLabel(ui("SMART ALERTS"), right = if (subscriptionState.isPremium) "FX/ PRO" else ui("Preview"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -4224,6 +4308,7 @@ fun AlertsScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -4273,6 +4358,18 @@ fun WatchlistScreen(
         }
 	        ScreenHeader(ui("Watchlist"), sub = ui("CUSTOM TRACKING"), subtitle = "$limitLabel ${ui("currencies")} · ${liveState.baseCurrency} ${ui("base")}")
 
+        if (liveState.isInitialRateLoading()) {
+            LoadingSkeletonCard(
+                title = ui("Preparing watchlist"),
+                rows = 5,
+                modifier = Modifier.testTag("watchlist_loading_skeleton"),
+            )
+            LoadingSkeletonCard(
+                title = ui("Preparing portfolio rows"),
+                rows = 6,
+                modifier = Modifier.testTag("watchlist_holdings_loading_skeleton"),
+            )
+        } else {
         BentoCard(Modifier.fillMaxWidth().heightIn(min = 148.dp).testTag("watchlist_summary"), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.12f))
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -4438,9 +4535,10 @@ fun WatchlistScreen(
             )
         }
     }
+    }
 }
 
-@Composable
+	@Composable
 private fun PortfolioTransactionsCard(
     baseCurrency: String,
     holdings: List<PortfolioHolding>,
@@ -4526,8 +4624,8 @@ private fun PortfolioTransactionsCard(
                 }
             }
         }
+        }
     }
-}
 
 @Composable
 private fun PortfolioImportExportCard(
@@ -5328,7 +5426,11 @@ fun NewsScreen(
         ScreenHeader(
 	            ui("News"),
 	            sub = if (access.canUseAdvancedNews) ui("MARKET STREAM") else ui("MARKET PREVIEW"),
-	            subtitle = "${newsState.provider} · ${newsState.region} · ${newsState.selectedCurrency} ${ui("focus")} · ${localizedRuntimeLabel(newsState.refreshedLabel)}",
+	            subtitle = if (newsState.isLoading && newsState.stories.isEmpty()) {
+                "${ui("Loading market stream")} · ${newsState.selectedCurrency} ${ui("focus")}"
+            } else {
+                "${compactProviderLabel(newsState.provider)} · ${newsState.region} · ${newsState.selectedCurrency} ${ui("focus")} · ${compactRuntimeLabel(newsState.refreshedLabel)}"
+            },
             right = {
                 Text(
                     if (newsState.isLoading) "…" else "↻",
@@ -5346,14 +5448,18 @@ fun NewsScreen(
 	                        Eyebrow(ui("REFRESHING"), color = FxTheme.colors.accent)
                     }
                 }
-                SentimentBar(newsState.bullish, newsState.neutral, newsState.bearish)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-	                    LegendDot("${ui("BULLISH")} ${newsState.bullish}%", FxTheme.colors.up)
-	                    LegendDot("${ui("NEUTRAL")} ${newsState.neutral}%", FxTheme.colors.textGhost)
-	                    LegendDot("${ui("BEARISH")} ${newsState.bearish}%", FxTheme.colors.down)
+                if (newsState.isLoading && newsState.stories.isEmpty()) {
+                    InlineSkeletonRows(rows = 4, modifier = Modifier.testTag("news_sentiment_loading"))
+                } else {
+                    SentimentBar(newsState.bullish, newsState.neutral, newsState.bearish)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+	                        LegendDot("${ui("BULLISH")} ${newsState.bullish}%", FxTheme.colors.up)
+	                        LegendDot("${ui("NEUTRAL")} ${newsState.neutral}%", FxTheme.colors.textGhost)
+	                        LegendDot("${ui("BEARISH")} ${newsState.bearish}%", FxTheme.colors.down)
+                    }
+	                    KeyValueRow(ui("Feed"), "${newsState.language.uppercase()} · ${newsState.trackedCurrencies.joinToString(", ")}")
+	                    KeyValueRow(ui("Updated"), "${compactProviderLabel(newsState.provider)} · ${compactRuntimeLabel(newsState.refreshedLabel)}")
                 }
-	                KeyValueRow(ui("Feed"), "${newsState.language.uppercase()} · ${newsState.trackedCurrencies.joinToString(", ")}")
-	                KeyValueRow(ui("Updated"), "${newsState.provider} · ${localizedRuntimeLabel(newsState.refreshedLabel)}")
             }
         }
         if (newsState.isLoading && newsState.stories.isEmpty()) {
@@ -5400,7 +5506,14 @@ fun NewsScreen(
             }
         }
 	        SectionLabel("${ui("RECENT LINES")} · ${filteredStories.size}")
-        if (visibleStories.isEmpty()) {
+        if (newsState.errorMessage != null && newsState.stories.isEmpty()) {
+            BentoCard(modifier = Modifier.fillMaxWidth(), padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(ui("Market stream unavailable"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    Text(userFriendlyNetworkError(newsState.errorMessage), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                }
+            }
+        } else if (visibleStories.isEmpty() && !(newsState.isLoading && newsState.stories.isEmpty())) {
             BentoCard(modifier = Modifier.fillMaxWidth(), padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
 	                    Text(ui(emptyCopy.first), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
@@ -5414,7 +5527,7 @@ fun NewsScreen(
         visibleStories.forEach { story ->
             StoryCard(story, onClick = { onOpenStory(story) })
         }
-        if (!access.canUseAdvancedNews || visibleStories.size < filteredStories.size) {
+        if ((!access.canUseAdvancedNews || visibleStories.size < filteredStories.size) && !(newsState.isLoading && newsState.stories.isEmpty())) {
             ProUpsellCard(
 	                title = ui("Personalize the market stream"),
                 subtitle = if (visibleStories.size < filteredStories.size) {
@@ -5832,7 +5945,7 @@ private fun AccountBackupCard(
                 Text(formatLastSyncedLocalized(lastSyncedAtMillis), style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
             }
             if (backupState.errorMessage != null) {
-                Text(backupState.errorMessage, style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
+                Text(userFriendlyNetworkError(backupState.errorMessage), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
             }
         }
         Pill(
@@ -6177,7 +6290,7 @@ private fun UserBackupState.subtitle(lastSyncedAtMillis: Long?): String {
         isAvailable -> "Preferences, alerts and watchlist sync to Firebase"
         else -> "Firebase Auth has not started on this platform"
     }
-    return if (errorMessage != null) "$base · $errorMessage" else "$base$syncLabel"
+    return "$base$syncLabel"
 }
 
 @Composable
@@ -6190,7 +6303,7 @@ private fun UserBackupState.localizedSubtitle(lastSyncedAtMillis: Long?): String
         isAvailable -> ui("Preferences, alerts and watchlist sync to Firebase")
         else -> ui("Firebase Auth has not started on this platform")
     }
-    return if (errorMessage != null) "$base · $errorMessage" else "$base$syncLabel"
+    return "$base$syncLabel"
 }
 
 private val UserBackupState.actionLabel: String
@@ -6225,6 +6338,21 @@ private fun formatLastSyncedLocalized(millis: Long): String {
 @Composable
 private fun formatLastSyncedLocalized(millis: Long?): String =
     millis?.let { formatLastSyncedLocalized(it) } ?: ui("Sync pending")
+
+@Composable
+private fun userFriendlyNetworkError(message: String?): String {
+    if (message.isNullOrBlank()) {
+        return ui("Please check your connection and try again.")
+    }
+    return when {
+        message.contains("network", ignoreCase = true) ||
+            message.contains("timeout", ignoreCase = true) ||
+            message.contains("interrupted", ignoreCase = true) ||
+            message.contains("unreachable", ignoreCase = true) -> ui("Please check your connection and try again.")
+        message.contains("RevenueCat", ignoreCase = true) -> ui("Purchases are temporarily unavailable. Try again later.")
+        else -> message
+    }
+}
 
 @Composable
 private fun localizedRuntimeLabel(label: String): String =
@@ -7241,8 +7369,16 @@ fun PaywallScreen(
                 Eyebrow("${ui("FOR YOU")} · ${ui(profileCopy.label)}", color = FxTheme.colors.accent)
                 Text(ui(profileCopy.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 Text(ui(profileCopy.proFocus), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
-                KeyValueRow(ui("Suggested pair"), profilePreset.suggestedPair, profilePreset.suggestedProvider)
-                KeyValueRow(ui("Suggested alert"), ui(profilePreset.suggestedAlert), ui(profilePreset.suggestedHolding))
+                PaywallProfileSignal(
+                    label = ui("Suggested pair"),
+                    value = profilePreset.suggestedPair,
+                    detail = profilePreset.suggestedProvider,
+                )
+                PaywallProfileSignal(
+                    label = ui("Suggested alert"),
+                    value = ui(profilePreset.suggestedAlert),
+                    detail = ui(profilePreset.suggestedHolding),
+                )
             }
         }
         if (subscriptionState.isPremium) {
@@ -7315,6 +7451,8 @@ fun PaywallScreen(
 	                !subscriptionState.canPurchase -> ui("Purchases unavailable")
 	                else -> ui("Start FX/ Pro")
             },
+            enabled = !actionInProgress && (subscriptionState.isPremium || subscriptionState.canPurchase),
+            isLoading = actionInProgress,
             onClick = {
                 if (actionInProgress) {
                     return@PrimaryButton
@@ -7348,6 +7486,22 @@ fun PaywallScreen(
                 modifier = Modifier.testTag("paywall_privacy").clickable { onOpenUrl(privacyPolicyUrl(appLanguage)) },
             )
         }
+    }
+}
+
+@Composable
+private fun PaywallProfileSignal(label: String, value: String, detail: String) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Text(label, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+        Text(value, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+        Text(detail, style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
     }
 }
 
@@ -7777,16 +7931,31 @@ private fun OnboardingGlyph(glyph: String) {
 }
 
 @Composable
-private fun PrimaryButton(text: String, modifier: Modifier = Modifier.fillMaxWidth(), onClick: () -> Unit = {}) {
+private fun PrimaryButton(
+    text: String,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    onClick: () -> Unit = {},
+) {
     Box(
         modifier
             .clip(FxTheme.shapes.field)
-            .background(FxTheme.colors.accent)
-            .clickable(onClick = onClick)
+            .background(if (enabled) FxTheme.colors.accent else FxTheme.colors.surface3)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.bg)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = FxTheme.colors.bg,
+                    strokeWidth = 2.dp,
+                )
+            }
+            Text(text, style = FxTheme.typography.bodyStrong, color = if (enabled) FxTheme.colors.bg else FxTheme.colors.textDim)
+        }
     }
 }
 
