@@ -43,7 +43,8 @@ class WatchlistScreenTest {
 
         compose.onNodeWithText("3/4 currencies · USD base").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_groups").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("watchlist_group_travel").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_group_tracking_only").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_group_fiat").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_currency_CHF").performScrollTo().performClick()
         compose.onNodeWithTag("watchlist_holding_CHF").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Track unlimited currencies").performScrollTo().assertIsDisplayed()
@@ -69,7 +70,8 @@ class WatchlistScreenTest {
         renderWatchlist(isPremium = true, initialWatchlist = Watchlist(codes = listOf("EUR", "GBP", "JPY", "CHF")))
 
         compose.onNodeWithText("Unlimited currencies · USD base").assertIsDisplayed()
-        compose.onNodeWithTag("watchlist_group_crypto").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_group_fiat").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("watchlist_group_crypto").assertCountEquals(0)
         compose.onNodeWithTag("watchlist_currency_MXN").performScrollTo().performClick()
 
         compose.onNodeWithTag("watchlist_holding_MXN").performScrollTo().assertIsDisplayed()
@@ -116,6 +118,8 @@ class WatchlistScreenTest {
         )
 
         compose.onNodeWithTag("watchlist_portfolio_insights").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_group_valued").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_group_crypto").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("watchlist_unrealized_pnl").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_cost_basis").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_allocation").assertIsDisplayed()
@@ -123,6 +127,7 @@ class WatchlistScreenTest {
         compose.onNodeWithTag("watchlist_concentration").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_scenario_down_5").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_daily_digest").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_action_plan").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_chart_range").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_portfolio_chart").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("watchlist_cost_BTC").performScrollTo().assertIsDisplayed()

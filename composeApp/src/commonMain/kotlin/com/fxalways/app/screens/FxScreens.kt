@@ -10,7 +10,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -53,7 +52,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -156,941 +154,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
-enum class FxTab(val label: String) {
-    Rates("Rates"),
-    Convert("Convert"),
-    Compare("Compare"),
-    News("News"),
-    More("More"),
-}
-
-private enum class MoreRoute {
-    Menu,
-    Alerts,
-    Watchlist,
-    Traveler,
-    Settings,
-}
-
-private val MoreRoute.analyticsName: String
-    get() = when (this) {
-        MoreRoute.Menu -> "more"
-        MoreRoute.Alerts -> "alerts"
-        MoreRoute.Watchlist -> "watchlist"
-        MoreRoute.Traveler -> "traveler"
-        MoreRoute.Settings -> "settings"
-    }
-
-private val LocalAppLanguage = staticCompositionLocalOf { "en" }
-
-@Composable
-private fun ui(text: String): String = localizedUiText(LocalAppLanguage.current, text)
-
-private fun localizedUiText(language: String, text: String): String {
-    val normalized = language.lowercase().substringBefore("-").substringBefore("_")
-    return uiTranslations[normalized]?.get(text) ?: uiTranslations["en"]?.get(text) ?: text
-}
-
-private val uiTranslations = mapOf(
-    "en" to mapOf(
-        "No topic stories" to "No topic stories",
-        "No currency stories" to "No currency stories",
-        "No matching stories" to "No matching stories",
-        "Try a broader filter or refresh the feed." to "Try a broader filter or refresh the feed.",
-        "No live stories match this search." to "No live stories match this search.",
-        "OCR beta" to "OCR beta",
-        "Scan price" to "Scan price",
-        "OCR price scanner" to "OCR price scanner",
-        "PRICE CHECK HISTORY" to "PRICE CHECK HISTORY",
-        "Last scanned checks" to "Last scanned checks",
-        "Copy price check" to "Copy price check",
-        "Copied price check" to "Copied price check",
-        "Scan traveler price" to "Scan traveler price",
-        "Trip price check" to "Trip price check",
-        "Use OCR in traveler mode to check local prices against your trip budget." to "Use OCR in traveler mode to check local prices against your trip budget.",
-        "PROFILE ACTION" to "PROFILE ACTION",
-        "Next best action" to "Next best action",
-        "Scan a local price" to "Scan a local price",
-        "Open your travel price scanner and compare against the live mid-market rate." to "Open your travel price scanner and compare against the live mid-market rate.",
-        "Create a movement alert" to "Create a movement alert",
-        "Turn your profile signal into an alert before the rate moves away." to "Turn your profile signal into an alert before the rate moves away.",
-        "Review transfer cost" to "Review transfer cost",
-        "Check provider loss and hidden markup before sending money." to "Check provider loss and hidden markup before sending money.",
-        "Check invoice currency" to "Check invoice currency",
-        "Keep your working pair, fees and timing visible." to "Keep your working pair, fees and timing visible.",
-        "Review allocation drift" to "Review allocation drift",
-        "Track savings currencies and long-range movement from one place." to "Track savings currencies and long-range movement from one place.",
-        "ALERT TEMPLATES" to "ALERT TEMPLATES",
-        "Good travel rate" to "Good travel rate",
-        "Alert when the destination rate improves for a trip." to "Alert when the destination rate improves for a trip.",
-        "Daily breakout" to "Daily breakout",
-        "Alert when a pair moves sharply in one day." to "Alert when a pair moves sharply in one day.",
-        "Better remittance window" to "Better remittance window",
-        "Alert before a repeat transfer window improves." to "Alert before a repeat transfer window improves.",
-        "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices.",
-        "Manual entry" to "Manual entry",
-        "Live camera OCR + currency detection" to "Live camera OCR + currency detection",
-    ),
-    "es" to mapOf(
-        "Rates" to "Tipos",
-        "Convert" to "Convertir",
-        "Compare" to "Comparar",
-        "News" to "Noticias",
-        "More" to "Más",
-        "LIVE" to "EN VIVO",
-        "CACHED" to "CACHÉ",
-        "Edit" to "Editar",
-        "See all" to "Ver todo",
-        "CRYPTO MARKET" to "MERCADO CRYPTO",
-        "Crypto" to "Crypto",
-        "Fiat" to "Fiat",
-        "Stablecoins" to "Stablecoins",
-        "Stablecoin" to "Stablecoin",
-        "24H avg" to "Prom. 24H",
-        "Strongest" to "Más fuerte",
-        "major crypto assets" to "activos crypto principales",
-        "per coin" to "por moneda",
-        "live crypto movers" to "movimientos crypto en vivo",
-        "No crypto rates yet" to "Sin rates crypto todavía",
-        "Pro shows the full crypto board across compare, alerts and portfolio." to "Pro muestra el tablero crypto completo en comparación, alertas y portfolio.",
-        "Pro" to "Pro",
-        "Free" to "Free",
-        "Preview" to "Vista previa",
-        "Live" to "En vivo",
-        "Loading" to "Cargando",
-        "Estimated" to "Estimado",
-        "Active" to "Activo",
-        "Ready" to "Listo",
-        "Next" to "Siguiente",
-        "Unlimited" to "Ilimitado",
-        "Preparing workspace" to "Preparando espacio",
-        "Loading account, preferences and rates" to "Cargando cuenta, preferencias y tipos",
-        "Live backend unavailable · using cached UI data" to "Backend no disponible · usando datos en caché",
-        "base" to "base",
-        "favorites" to "favoritos",
-        "VOLATILITY · 24H" to "VOLATILIDAD · 24H",
-        "FAVORITES" to "FAVORITOS",
-        "Unlock full watchlists" to "Desbloquear watchlists completas",
-        "Pro adds more favorites, extended history, alerts and complete fee comparison." to "Pro agrega más favoritos, histórico extendido, alertas y comparación completa de fees.",
-        "CRYPTO" to "CRYPTO",
-        "pinned" to "fijado",
-        "Edit converter list" to "Editar lista del conversor",
-        "Edit list" to "Editar lista",
-        "Reverse" to "Invertir",
-        "Pro unlocks more converter currencies" to "Pro desbloquea más monedas en el conversor",
-        "MID" to "MEDIO",
-        "Multi-currency · live to 4 decimals" to "Multimoneda · en vivo a 4 decimales",
-        "YOU SEND" to "ENVIAS",
-        "Converted to" to "Convertido a",
-        "FEES" to "FEES",
-        "REALITY CHECK" to "REALITY CHECK",
-        "Best real-world route" to "Mejor ruta real",
-        "Recipient should get" to "Destinatario debería recibir",
-        "Estimated loss" to "Pérdida estimada",
-        "against mid-market" to "contra mercado medio",
-        "No markup" to "Sin margen",
-        "Low cost" to "Bajo costo",
-        "Expensive" to "Caro",
-        "Avoid" to "Evitar",
-        "This estimate helps you spot hidden fees before you convert." to "Este estimado ayuda a detectar fees ocultos antes de convertir.",
-        "REMITTANCE PLAN" to "PLAN DE REMESA",
-        "Family route" to "Ruta familiar",
-        "Recipient estimate" to "Estimado destinatario",
-        "Recurring amount" to "Monto recurrente",
-        "Reminder cadence" to "Cadencia de recordatorio",
-        "Monthly" to "Mensual",
-        "Biweekly" to "Quincenal",
-        "One-time" to "Una vez",
-        "Before payday" to "Antes del cobro",
-        "Pro unlocks reminder planning and extra cadences." to "Pro desbloquea recordatorios y cadencias extra.",
-        "based on current best route" to "según la mejor ruta actual",
-        "LOCAL RATE NOTEBOOK" to "NOTEBOOK DE RATE LOCAL",
-        "Official mid-market" to "Mid-market oficial",
-        "Local market" to "Mercado local",
-        "Local spread" to "Spread local",
-        "Track official vs informal rates before exchanging cash." to "Sigue rates oficiales vs informales antes de cambiar efectivo.",
-        "PRICE SCANNER" to "SCANNER DE PRECIOS",
-        "Camera-ready price check" to "Chequeo de precio listo para cámara",
-        "Scanned price" to "Precio escaneado",
-        "Scan price" to "Escanear precio",
-        "OCR beta" to "OCR beta",
-        "OCR price scanner" to "Scanner OCR de precios",
-        "PRICE CHECK HISTORY" to "HISTORIAL DE PRECIOS",
-        "Last scanned checks" to "Últimos chequeos escaneados",
-        "Copy price check" to "Copiar chequeo de precio",
-        "Copied price check" to "Chequeo copiado",
-        "Scan traveler price" to "Escanear precio de viaje",
-        "Trip price check" to "Chequeo de precio de viaje",
-        "Use OCR in traveler mode to check local prices against your trip budget." to "Usa OCR en modo viajero para comparar precios locales contra tu presupuesto.",
-        "PROFILE ACTION" to "ACCIÓN DE PERFIL",
-        "Next best action" to "Siguiente mejor acción",
-        "Scan a local price" to "Escanear un precio local",
-        "Open your travel price scanner and compare against the live mid-market rate." to "Abre el scanner de viaje y compara contra el mid-market en vivo.",
-        "Create a movement alert" to "Crear alerta de movimiento",
-        "Turn your profile signal into an alert before the rate moves away." to "Convierte la señal de tu perfil en alerta antes de que el rate se mueva.",
-        "Review transfer cost" to "Revisar costo de transferencia",
-        "Check provider loss and hidden markup before sending money." to "Revisa pérdida por proveedor y markup oculto antes de enviar dinero.",
-        "Check invoice currency" to "Revisar moneda de factura",
-        "Keep your working pair, fees and timing visible." to "Mantén visible tu par de trabajo, fees y timing.",
-        "Review allocation drift" to "Revisar desvío de allocation",
-        "Track savings currencies and long-range movement from one place." to "Sigue monedas de ahorro y movimiento largo desde un solo lugar.",
-        "ALERT TEMPLATES" to "TEMPLATES DE ALERTAS",
-        "Good travel rate" to "Buen rate de viaje",
-        "Alert when the destination rate improves for a trip." to "Alerta cuando mejora el rate destino para un viaje.",
-        "Daily breakout" to "Ruptura diaria",
-        "Alert when a pair moves sharply in one day." to "Alerta cuando un par se mueve fuerte en un día.",
-        "Better remittance window" to "Mejor ventana de remesa",
-        "Alert before a repeat transfer window improves." to "Alerta antes de que mejore una ventana de envío frecuente.",
-        "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "El scanner de cámara completa el chequeo de costo oculto desde precios de góndola, recibo o caja.",
-        "Manual entry" to "Entrada manual",
-        "Live camera OCR + currency detection" to "OCR de cámara en vivo + detección de moneda",
-        "Live price scanner" to "Scanner de precio en vivo",
-        "Point at one price. We'll detect the amount before filling it." to "Apunta a un precio. Detectaremos el monto antes de cargarlo.",
-        "Use detected price" to "Usar precio detectado",
-        "Current scanner currency" to "Moneda actual del scanner",
-        "Switching scanner to detected currency" to "Cambiando scanner a la moneda detectada",
-        "Close" to "Cerrar",
-        "Reading price" to "Leyendo precio",
-        "Detected" to "Detectado",
-        "No price found. Center one price and try again." to "No se encontró precio. Centra un precio y prueba otra vez.",
-        "At live rate" to "A rate live",
-        "With local rate" to "Con rate local",
-        "Potential hidden cost" to "Costo oculto potencial",
-        "Type, paste or scan a shelf price; OCR fills this same check automatically." to "Escribe, pega o escanea un precio; OCR completa este chequeo automáticamente.",
-        "Compare a shop, cash desk or card terminal price against the live mid-market rate." to "Compara un precio de tienda, caja o terminal contra el rate mid-market live.",
-        "WIDGET SETUP" to "SETUP DE WIDGETS",
-        "Widget quick setup" to "Setup rápido de widgets",
-        "Rates widget pair" to "Par del widget de rates",
-        "Traveler widget destination" to "Destino del widget viajero",
-        "Tap to pin this currency to widgets and refresh Android home screen cards." to "Toca para fijar esta moneda en widgets y refrescar las tarjetas del home Android.",
-        "Widgets refreshed" to "Widgets actualizados",
-        "PROVIDER HISTORY" to "HISTORIAL DE PROVEEDORES",
-        "route history" to "historial de ruta",
-        "Pro shows more route history by amount." to "Pro muestra más historial de ruta por monto.",
-        "Best received" to "Mejor recepción",
-        "Worst loss" to "Mayor pérdida",
-        "vs mid-market" to "vs mercado medio",
-        "Mid-market value" to "Valor medio",
-        "Your custom cost" to "Tu costo personalizado",
-        "Effective rate" to "Tasa efectiva",
-        "CUSTOM COST" to "COSTO PERSONALIZADO",
-        "Fixed fee" to "Fee fijo",
-        "Fee %" to "Fee %",
-        "FX markup" to "Margen FX",
-        "Fee" to "Fee",
-        "Markup" to "Margen",
-        "Lost" to "Perdido",
-        "Card payment" to "Pago con tarjeta",
-        "ATM cash" to "Cajero ATM",
-        "Airport exchange" to "Cambio en aeropuerto",
-        "Custom" to "Personalizado",
-        "avoid" to "evitar",
-        "See the real transfer cost" to "Ver el costo real de transferencia",
-        "Pro unlocks the complete provider list; estimates update with your amount." to "Pro desbloquea la lista completa de proveedores; los estimados se actualizan con tu monto.",
-        "Base currency · source amount" to "Moneda base · monto origen",
-        "Selected destination" to "Destino seleccionado",
-        "Mid-market" to "Mercado medio",
-        "best" to "mejor",
-        "Bank transfer" to "Transferencia bancaria",
-        "high fee" to "fee alto",
-        "cached preview" to "vista en caché",
-        "mid-market" to "mercado medio",
-        "LOADING HISTORY" to "CARGANDO HISTÓRICO",
-        "HISTORY" to "HISTÓRICO",
-        "24H RANGE" to "RANGO 24H",
-        "History unavailable · using cached preview" to "Histórico no disponible · usando vista en caché",
-        "Unlock long-range history" to "Desbloquear histórico largo",
-        "Pro adds 1Y and all-time detail, full event context and deeper market overlays." to "Pro agrega 1A y todo el histórico, contexto de eventos y overlays de mercado.",
-        "SHARE RATE CARD" to "COMPARTIR RATE CARD",
-        "Copy rate card" to "Copiar rate card",
-        "Copied rate card" to "Rate card copiada",
-        "Indicative only. Check provider fees before sending money." to "Solo indicativo. Revisa fees del proveedor antes de enviar dinero.",
-        "ECONOMIC CALENDAR" to "CALENDARIO ECONÓMICO",
-        "Impact" to "Impacto",
-        "Central bank" to "Banco central",
-        "Inflation" to "Inflación",
-        "Jobs" to "Empleo",
-        "Growth" to "Crecimiento",
-        "Network" to "Red",
-        "Liquidity" to "Liquidez",
-        "Protocol" to "Protocolo",
-        "Medium" to "Medio",
-        "Next 7 days" to "Próximos 7 días",
-        "Pro unlocks the full calendar and impact filters." to "Pro desbloquea el calendario completo y filtros de impacto.",
-        "STATISTICS" to "ESTADÍSTICAS",
-        "Open" to "Apertura",
-        "High" to "Máximo",
-        "Low" to "Mínimo",
-        "Range" to "Rango",
-        "Volatility" to "Volatilidad",
-        "Average" to "Promedio",
-        "RELATED NEWS" to "NOTICIAS RELACIONADAS",
-        "Loading related news" to "Cargando noticias relacionadas",
-        "No related news" to "Sin noticias relacionadas",
-        "EVENTS · ANNOTATED" to "EVENTOS · ANOTADOS",
-        "No annotated events" to "Sin eventos anotados",
-        "Add another alert" to "Agregar otra alerta",
-        "Alert me above" to "Alertarme arriba de",
-        "TRIGGER HISTORY" to "HISTORIAL DE DISPAROS",
-        "No alert hits yet" to "Sin alertas disparadas todavía",
-        "Triggered alerts will appear here after Android checks rates." to "Las alertas disparadas aparecerán aquí después de que Android revise los rates.",
-        "Last hit" to "Último disparo",
-        "Alert triggered" to "Alerta disparada",
-        "Edit comparison" to "Editar comparación",
-        "Pro unlocks more comparison currencies" to "Pro desbloquea más monedas para comparar",
-        "Movers" to "Movimientos",
-        "Strongest" to "Más fuertes",
-        "Weakest" to "Más débiles",
-        "STRONGEST" to "MÁS FUERTE",
-        "WEAKEST" to "MÁS DÉBIL",
-        "No data" to "Sin datos",
-        "No comparison currencies" to "Sin monedas para comparar",
-        "The saved list is unavailable for" to "La lista guardada no está disponible para",
-        "Edit the comparison set to choose active currencies." to "Edita el set de comparación para elegir monedas activas.",
-        "Compare every tracked currency" to "Comparar todas las monedas seguidas",
-        "Free compares" to "Free compara",
-        "COMPARE BOARD" to "TABLERO",
-        "Average move" to "Movimiento promedio",
-        "Momentum spread" to "Spread momentum",
-        "Asset mix" to "Mix de activos",
-        "crypto" to "crypto",
-        "Pro unlocks the full board and advanced overlays." to "Pro desbloquea el panel completo y overlays avanzados.",
-        "OVERLAY · 1M" to "OVERLAY · 1M",
-        "per 1" to "por 1",
-        "Choose destination" to "Elegir destino",
-        "Traveler" to "Viajes",
-        "Converter" to "Conversor",
-        "Watchlist" to "Watchlist",
-        "Settings" to "Ajustes",
-        "Alerts" to "Alertas",
-        "DESTINATION" to "DESTINO",
-        "More destinations" to "Más destinos",
-        "Search supported live currencies" to "Buscar monedas soportadas en vivo",
-        "Search" to "Buscar",
-        "supported live currencies" to "monedas soportadas en vivo",
-        "live currencies" to "monedas en vivo",
-        "Free shows" to "Free muestra",
-        "Pro unlocks every supported currency" to "Pro desbloquea todas las monedas soportadas",
-        "more +" to "más +",
-        "Free keeps the destination picker focused on the most common travel currencies." to "Free mantiene el selector enfocado en las monedas de viaje más comunes.",
-        "TRIP BUDGET" to "PRESUPUESTO",
-        "BUDGET" to "PRESUPUESTO",
-        "LOCAL" to "LOCAL",
-        "Trip days" to "Días de viaje",
-        "Daily budget = local budget / days" to "Presupuesto diario = presupuesto local / días",
-        "Local budget" to "Presupuesto local",
-        "Daily range" to "Rango diario",
-        "Cash buffer" to "Reserva de efectivo",
-        "of local budget" to "del presupuesto local",
-        "SPEND PLAN" to "PLAN DE GASTO",
-        "Daily budget" to "Presupuesto diario",
-        "Card spend" to "Gasto con tarjeta",
-        "after cash buffer" to "después de reserva",
-        "Local meals" to "Comidas locales",
-        "guide estimate" to "estimado guía",
-        "Formula" to "Fórmula",
-        "COST TEMPLATES" to "TEMPLATES DE COSTOS",
-        "Backpacker" to "Mochilero",
-        "Comfort" to "Confort",
-        "Business" to "Business",
-        "daily template" to "template diario",
-        "Pro unlocks premium city templates." to "Pro desbloquea templates premium por ciudad.",
-        "OFFLINE PACK" to "PACK OFFLINE",
-        "Saved snapshot" to "Snapshot guardado",
-        "Ready from cached rates" to "Listo con rates cacheados",
-        "Rate snapshot" to "Snapshot de rate",
-        "ATM cash target" to "Objetivo de efectivo ATM",
-        "DCC rule" to "Regla DCC",
-        "Decline conversion; pay in local currency." to "Rechaza la conversión; paga en moneda local.",
-        "Receipt check" to "Chequeo de recibo",
-        "Compare terminal rate against this mid-market snapshot." to "Compara el rate del terminal contra este snapshot mid-market.",
-        "CHEAT SHEET" to "GUÍA RÁPIDA",
-        "Unlock full traveler mode" to "Desbloquear modo viajero completo",
-        "Pro adds complete cheat sheets, offline context and more local money tips." to "Pro agrega guías completas, contexto offline y más consejos locales.",
-        "LOCAL ETIQUETTE" to "COSTUMBRES LOCALES",
-        "TIPPING" to "PROPINA",
-        "TAX" to "IMPUESTO",
-        "CARDS ACCEPTED" to "TARJETAS ACEPTADAS",
-        "LOCAL PRICE GUIDE" to "GUÍA DE PRECIOS",
-        "Estimates" to "Estimados",
-        "TOOLS" to "HERRAMIENTAS",
-        "Travel, preferences and account" to "Viajes, preferencias y cuenta",
-        "Local cheat sheets and offline rates" to "Guías locales y rates offline",
-        "Market stream and sentiment" to "Noticias de mercado y sentimiento",
-        "Theme mode, base currency and version" to "Tema, moneda base y versión",
-        "Upgrade to Pro" to "Actualizar a Pro",
-        "Language" to "Idioma",
-        "Local base" to "Base local",
-        "Region" to "Región",
-        "COMING NEXT" to "PRÓXIMO",
-        "WIDGETS" to "WIDGETS",
-        "home screen and watch glance" to "inicio y vista rápida",
-        "monthly plan controls" to "controles del plan mensual",
-        "PRICE TARGETS" to "OBJETIVOS DE PRECIO",
-        "Watch breakouts without watching charts." to "Sigue rupturas sin mirar gráficos.",
-        "Android checks every 15 min when online. iOS saves alerts now; push delivery is next." to "Android revisa cada 15 min online. iOS guarda alertas ahora; push viene después.",
-        "NOTIFICATION DIGEST" to "DIGEST DE NOTIFICACIONES",
-        "Daily" to "Diario",
-        "Weekly" to "Semanal",
-        "Weekly digest" to "Resumen semanal",
-        "Digest includes" to "El digest incluye",
-        "Active alerts and recent hits" to "Alertas activas y disparos recientes",
-        "Tap to enable digest reminders." to "Toca para activar recordatorios de digest.",
-        "Pro unlocks weekly digest." to "Pro desbloquea el digest semanal.",
-        "CUSTOM ALERT" to "ALERTA PERSONALIZADA",
-        "Target rate" to "Tipo objetivo",
-        "Daily move %" to "Movimiento diario %",
-        "Keep existing alert active" to "Mantener alerta existente activa",
-        "Reactivate existing alert" to "Reactivar alerta existente",
-        "Unlock custom alerts" to "Desbloquear alertas personalizadas",
-        "QUICK CREATE" to "CREACIÓN RÁPIDA",
-        "Create unlimited alerts" to "Crear alertas ilimitadas",
-        "Enter a target above 0" to "Ingresa un objetivo mayor a 0",
-        "ACTIVE ALERTS" to "ALERTAS ACTIVAS",
-        "NO ALERTS YET" to "SIN ALERTAS",
-        "Create one from a favorite currency or from any detail screen." to "Crea una desde una moneda favorita o desde detalles.",
-        "CUSTOM TRACKING" to "SEGUIMIENTO",
-        "Tracked currencies" to "Monedas seguidas",
-        "Add amounts below to value your portfolio." to "Agrega montos abajo para valorar tu portfolio.",
-        "PORTFOLIO HOLDINGS" to "PORTFOLIO",
-        "Choose currencies below to start tracking." to "Elige monedas abajo para empezar.",
-        "HOW IT WORKS" to "CÓMO FUNCIONA",
-        "Watchlist follows rates. Portfolio value appears after you enter how much you hold." to "La watchlist sigue los rates. El valor aparece al ingresar cuánto tienes.",
-        "WATCHLIST GROUPS" to "GRUPOS DE WATCHLIST",
-        "Travel" to "Viajes",
-        "Family" to "Familia",
-        "Savings" to "Ahorro",
-        "Work" to "Trabajo",
-        "tracked here" to "seguidas aqui",
-        "Add" to "Agregar",
-        "No matching rates yet" to "Sin rates compatibles todavia",
-        "Concentration" to "Concentración",
-        "Scenario -5%" to "Escenario -5%",
-        "Daily digest" to "Resumen diario",
-        "largest holding weight" to "peso de la posición mayor",
-        "estimated portfolio shock" to "shock estimado del portfolio",
-        "largest daily driver" to "mayor driver diario",
-        "ADD OR REMOVE" to "AGREGAR O QUITAR",
-        "Track unlimited currencies" to "Seguir monedas ilimitadas",
-        "amount" to "monto",
-        "done" to "listo",
-        "tracked" to "seguida",
-        "pro" to "pro",
-        "add" to "agregar",
-        "on" to "activa",
-        "paused" to "pausada",
-        "CURRENT" to "ACTUAL",
-        "24H MOVE" to "MOV. 24H",
-        "LAST HIT" to "ÚLTIMO HIT",
-        "Never" to "Nunca",
-        "monitoring" to "monitoreando",
-        "pause" to "pausar",
-        "resume" to "reanudar",
-        "test" to "probar",
-        "MARKET STREAM" to "MERCADO",
-        "MARKET PREVIEW" to "VISTA MERCADO",
-        "SENTIMENT" to "SENTIMIENTO",
-        "REFRESHING" to "ACTUALIZANDO",
-        "BULLISH" to "ALCISTA",
-        "NEUTRAL" to "NEUTRAL",
-        "BEARISH" to "BAJISTA",
-        "Feed" to "Feed",
-        "Updated" to "Actualizado",
-        "Current" to "Actual",
-        "REGION" to "REGIÓN",
-        "CURRENCY" to "MONEDA",
-        "TOPIC" to "TEMA",
-        "RECENT LINES" to "LÍNEAS RECIENTES",
-        "Refreshing market stream…" to "Actualizando mercado…",
-        "Personalize the market stream" to "Personalizar noticias de mercado",
-        "Market update" to "Actualización de mercado",
-        "Latest currency market context." to "Último contexto del mercado de divisas.",
-        "News detail" to "Detalle de noticia",
-        "Market source" to "Fuente de mercado",
-        "MARKET MOVES" to "MOVIMIENTOS",
-        "No direct currency move was detected for this story." to "No se detectó movimiento directo para esta noticia.",
-        "SOURCE" to "FUENTE",
-        "Publisher" to "Publicador",
-        "Published" to "Publicado",
-        "Open original source" to "Abrir fuente original",
-        "Choose base currency" to "Elegir moneda base",
-        "FX/ Pro active" to "FX/ Pro activo",
-        "FX/ Free" to "FX/ Free",
-        "Signed in with" to "Sesión iniciada con",
-        "DEV" to "DEV",
-        "Debug-only local gate override" to "Override local solo debug",
-        "Version" to "Versión",
-        "Search currency" to "Buscar moneda",
-        "No currencies found" to "No se encontraron monedas",
-        "Cancel" to "Cancelar",
-        "Apply" to "Aplicar",
-        "System" to "Sistema",
-        "Light" to "Claro",
-        "Dark" to "Oscuro",
-        "Follow device appearance" to "Seguir apariencia del dispositivo",
-        "Use the bright interface" to "Usar interfaz clara",
-        "Use the dark trading interface" to "Usar interfaz oscura",
-        "Guest backup active" to "Backup invitado activo",
-        "Backup unavailable" to "Backup no disponible",
-        "Preferences, alerts and watchlist sync to Firebase" to "Preferencias, alertas y watchlist sincronizan con Firebase",
-        "Firebase Auth has not started on this platform" to "Firebase Auth no inició en esta plataforma",
-        "Firebase guest" to "Invitado Firebase",
-        "Local iOS guest" to "Invitado local iOS",
-        "Restores on any signed-in device" to "Se restaura en cualquier dispositivo con sesión",
-        "account" to "cuenta",
-        "active" to "activo",
-        "ACTIVE" to "ACTIVO",
-        "offline" to "offline",
-        "syncing" to "sincronizando",
-        "Sync pending" to "Sync pendiente",
-        "Target" to "Objetivo",
-        "Daily move" to "Movimiento diario",
-        "Above" to "Arriba",
-        "Below" to "Abajo",
-        "Down" to "Abajo",
-        "create" to "crear",
-        "waiting" to "esperando",
-        "target hit" to "objetivo alcanzado",
-        "target reached" to "objetivo alcanzado",
-        "base changed" to "base cambiada",
-        "MOVES" to "MOVIMIENTOS",
-        "Search headlines, tags or currencies" to "Buscar titulares, tags o monedas",
-        "No market stories yet" to "Sin noticias de mercado",
-        "No search matches" to "Sin coincidencias",
-        "No topic stories" to "Sin noticias de este tema",
-        "No currency stories" to "Sin noticias para esta moneda",
-        "No matching stories" to "Sin noticias coincidentes",
-        "Try a broader filter or refresh the feed." to "Prueba un filtro más amplio o actualiza el feed.",
-        "No live stories match this search." to "No hay noticias en vivo para esta búsqueda.",
-        "No live market stories have arrived yet." to "Aún no llegaron noticias de mercado en vivo.",
-        "Open strongest" to "Abrir más fuerte",
-        "Watching" to "Siguiendo",
-        "alert" to "alerta",
-        "alerts" to "alertas",
-        "PAIR" to "PAR",
-        "Create" to "Crear",
-        "Existing alert reactivated" to "Alerta existente reactivada",
-        "alert created" to "alerta creada",
-        "current" to "actual",
-        "holding" to "posición",
-        "held" to "en cartera",
-        "Tracking live rate" to "Siguiendo rate en vivo",
-        "enter amount held" to "ingresa el monto en cartera",
-        "holdings valued" to "posiciones valoradas",
-        "selected" to "seleccionadas",
-        "every supported currency available" to "todas las monedas disponibles",
-        "Pro unlocks the full list" to "Pro desbloquea la lista completa",
-        "focus" to "foco",
-        "Showing" to "Mostrando",
-        "stories" to "noticias",
-        "News backend unavailable" to "Backend de noticias no disponible",
-        "tap for details" to "toca para detalles",
-        "MED" to "MEDIO",
-        "HIGH" to "ALTO",
-        "LOW" to "BAJO",
-        "No live headlines are currently tied to" to "No hay titulares en vivo vinculados a",
-        "Fetching market headlines" to "Buscando titulares de mercado para",
-        "Events will appear here when stories include" to "Los eventos aparecerán aquí cuando las noticias incluyan",
-        "Derived" to "Derivado",
-        "Market source" to "Fuente de mercado",
-        "This item is generated from the fallback market brief, so there is no external article link." to "Este item viene del resumen de respaldo, por eso no hay link externo.",
-        "not customary" to "no es habitual",
-        "often included" to "a menudo incluido",
-        "cash useful" to "efectivo útil",
-        "service dependent" to "depende del servicio",
-        "VAT in price" to "IVA incluido",
-        "cards common" to "tarjetas comunes",
-        "often optional" to "suele ser opcional",
-        "contactless first" to "contactless primero",
-        "restaurants" to "restaurantes",
-        "usually included" to "normalmente incluido",
-        "carry cash" to "llevar efectivo",
-        "often service charge" to "suele ser cargo de servicio",
-        "varies by item" to "varía por item",
-        "optional" to "opcional",
-        "GST included" to "GST incluido",
-        "often added" to "suele agregarse",
-        "round up" to "redondear",
-        "Check" to "Revisar",
-        "Varies" to "Variable",
-        "verify locally" to "verificar localmente",
-        "mixed payments" to "pagos mixtos",
-        "Coffee" to "Café",
-        "Casual meal" to "Comida casual",
-        "Taxi start" to "Inicio taxi",
-        "Metro ride" to "Viaje metro",
-        "Transit ticket" to "Ticket transporte",
-        "Transit ride" to "Viaje transporte",
-        "Transit fare" to "Tarifa transporte",
-        "Pub meal" to "Comida pub",
-        "Lunch" to "Almuerzo",
-        "Active plan" to "Plan activo",
-        "Entitlement is active" to "Entitlement activo",
-        "Alerts, extended history and unlimited watchlists" to "Alertas, histórico extendido y watchlists ilimitadas",
-        "The full picture.\nMore rates. More context." to "El panorama completo.\nMás rates. Más contexto.",
-        "Unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists on one membership." to "Alertas ilimitadas, más histórico, comparaciones ampliadas, viajes y watchlists en una membresía.",
-        "Built for people who move money, travel, track currencies or need alerts before rates move away." to "Hecho para quienes mueven dinero, viajan, siguen monedas o necesitan alertas antes de que cambien los rates.",
-        "PRO UNLOCKS" to "PRO DESBLOQUEA",
-        "FREE VS PRO" to "FREE VS PRO",
-        "Free" to "Free",
-        "Pro unlock" to "Pro desbloquea",
-        "Custom alerts" to "Alertas custom",
-        "1 active alert" to "1 alerta activa",
-        "Unlimited pairs + ranges" to "Pares y rangos ilimitados",
-        "Compare board" to "Tablero comparativo",
-        "4 currencies" to "4 monedas",
-        "Every tracked currency" to "Toda moneda seguida",
-        "Crypto catalog" to "Catálogo crypto",
-        "BTC, ETH, USDT, USDC" to "BTC, ETH, USDT, USDC",
-        "Search and add up to 200 crypto assets" to "Busca y agrega hasta 200 activos crypto",
-        "Traveler" to "Viajes",
-        "Focused destinations" to "Destinos principales",
-        "All destinations + full cheat sheet" to "Todos los destinos + guía completa",
-        "Watchlist" to "Watchlist",
-        "4 tracked currencies" to "4 monedas seguidas",
-        "Unlimited portfolio tracking" to "Portfolio ilimitado",
-        "News" to "Noticias",
-        "Top stories only" to "Solo historias principales",
-        "Full regional stream" to "Stream regional completo",
-        "History" to "Histórico",
-        "30 days" to "30 días",
-        "1Y + all-time where available" to "1A + todo el histórico donde esté disponible",
-        "Fresh market rates" to "Rates frescos",
-        "Backend-backed mid-market rates with automatic refresh." to "Rates de mercado medio desde backend con actualización automática.",
-        "Unlimited alerts" to "Alertas ilimitadas",
-        "Price, range, daily and weekly targets." to "Objetivos de precio, rango, diarios y semanales.",
-        "Traveler mode" to "Modo viajero",
-        "Auto-location, cheat sheets and offline rates." to "Auto-ubicación, guías rápidas y rates offline.",
-        "Fee comparison" to "Comparación de fees",
-        "Expanded provider estimates by amount and currency pair." to "Estimados ampliados por proveedor, monto y par.",
-        "Bigger watchlists" to "Watchlists más grandes",
-        "Track more currencies across converter, compare and portfolio." to "Sigue más monedas en conversor, comparación y portfolio.",
-        "Long-range history" to "Histórico largo",
-        "Unlock 1Y and all-time detail views where history is available." to "Desbloquea 1A y todo el histórico donde esté disponible.",
-        "Billed through Google Play on Android and App Store on iOS." to "Facturado por Google Play en Android y App Store en iOS.",
-        "Recurring subscription billed through Google Play on Android and App Store on iOS." to "Suscripción recurrente facturada por Google Play en Android y App Store en iOS.",
-        "Monthly or annual Pro unlocks unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists." to "Pro mensual o anual desbloquea alertas ilimitadas, histórico profundo, comparaciones ampliadas, herramientas de viaje y watchlists.",
-        "RATE TRUST" to "CONFIANZA DEL RATE",
-        "Source" to "Fuente",
-        "Updated" to "Actualizado",
-        "Cached" to "Cache",
-        "Preview" to "Preview",
-        "Indicative mid-market rates. Final transfer or card rates can include provider fees and markups." to "Rates mid-market indicativos. Transfers o tarjetas pueden incluir fees y markups del proveedor.",
-        "Loading rates" to "Cargando rates",
-        "Preparing converter rates" to "Preparando rates del conversor",
-        "Loading market stream" to "Cargando stream de mercado",
-        "Processing..." to "Procesando...",
-        "Continue" to "Continuar",
-        "Purchases unavailable" to "Compras no disponibles",
-        "Start FX/ Pro" to "Empezar FX/ Pro",
-        "Restore purchase  ·  Terms  ·  Privacy" to "Restaurar compra  ·  Términos  ·  Privacidad",
-        "RELEASE READINESS" to "LISTO PARA RELEASE",
-        "Build" to "Build",
-        "Backup" to "Backup",
-        "Legal" to "Legal",
-        "Support snapshot" to "Snapshot de soporte",
-        "Copy support snapshot" to "Copiar snapshot de soporte",
-        "Copied support snapshot" to "Snapshot de soporte copiado",
-        "Ready for tester reports" to "Listo para reportes de testers",
-        "Tester context includes plan, base, language and backup state." to "El contexto de tester incluye plan, base, idioma y estado de backup.",
-        "Policies linked" to "Políticas vinculadas",
-        "guest" to "invitado",
-        "signed in" to "con sesión",
-        "INTERNAL TEST PLAN" to "PLAN DE TESTING INTERNO",
-        "Manual QA checklist" to "Checklist QA manual",
-        "Free limits" to "Límites Free",
-        "Pro unlocks" to "Desbloqueos Pro",
-        "Offline/cache" to "Offline/cache",
-        "Paywall/legal" to "Paywall/legal",
-        "Copy test plan" to "Copiar plan de test",
-        "Copied test plan" to "Plan de test copiado",
-        "Cover before each internal build." to "Cubrir antes de cada build interna.",
-        "Validate limits, previews and upsells." to "Validar límites, previews y upsells.",
-        "Validate expanded calendars, histories and portfolios." to "Validar calendarios, historiales y portfolios ampliados.",
-        "Validate cached rates and traveler offline pack." to "Validar rates cacheados y pack offline de viaje.",
-        "Validate restore, manage subscription, terms and privacy." to "Validar restaurar, gestionar suscripción, términos y privacidad.",
-        "STORE LISTING KIT" to "KIT DE LISTING",
-        "Listing draft" to "Draft de listing",
-        "Short description" to "Descripción corta",
-        "Keywords" to "Keywords",
-        "Store disclaimer" to "Disclaimer de store",
-        "Copy store listing" to "Copiar listing",
-        "Copied store listing" to "Listing copiado",
-        "Live currency converter, alerts, travel tools and portfolio tracking." to "Conversor live, alertas, herramientas de viaje y portfolio.",
-        "currency converter, exchange rates, travel money, rate alerts" to "conversor moneda, exchange rates, dinero viaje, alertas rate",
-        "Rates are indicative and may differ from provider, card or cash exchange rates." to "Los rates son indicativos y pueden diferir de proveedor, tarjeta o efectivo.",
-        "FX/ Pro is active" to "FX/ Pro está activo",
-        "Available" to "Disponible",
-        "Not configured" to "No configurado",
-        "Monthly" to "Mensual",
-        "Yearly" to "Anual",
-        "monthly" to "mensual",
-        "yearly" to "anual",
-        "Paid every month" to "Pago mensual",
-        "Best long-term value" to "Mejor valor a largo plazo",
-        "BEST VALUE" to "MEJOR VALOR",
-        "month" to "mes",
-        "year" to "año",
-        "Pro active" to "Pro activo",
-        "No RevenueCat package is configured for" to "No hay paquete RevenueCat configurado para",
-        "No offering packages are configured in RevenueCat." to "No hay paquetes de offering configurados en RevenueCat.",
-        "RevenueCat unavailable." to "RevenueCat no disponible.",
-        "RevenueCat key missing. Add REVENUECAT_API_KEY to enable live purchases." to "Falta la key de RevenueCat. Agrega REVENUECAT_API_KEY para activar compras reales.",
-        "RevenueCat key missing. Add REVENUECAT_API_KEY before testing purchases." to "Falta la key de RevenueCat. Agrega REVENUECAT_API_KEY antes de probar compras.",
-        "RevenueCat key missing. Restore is not connected yet." to "Falta la key de RevenueCat. Restaurar todavía no está conectado.",
-        "Purchase did not complete." to "La compra no se completó.",
-        "Restore failed." to "La restauración falló.",
-        "Dev override only affects local debug gating." to "El override dev solo afecta el acceso local debug.",
-        "saved" to "guardado",
-        "allowed" to "permitidas",
-        "review" to "revisar",
-        "Notifications allowed" to "Notificaciones permitidas",
-        "Notifications unavailable on this device" to "Notificaciones no disponibles en este dispositivo",
-        "Notifications can be enabled from Android settings" to "Puedes activar notificaciones desde Ajustes de Android",
-        "Android can deliver local price alerts while checks run in the background" to "Android puede enviar alertas locales mientras los chequeos corren en segundo plano",
-        "Android permission is required before local price alerts can be delivered" to "Android necesita permiso antes de enviar alertas locales",
-        "Alerts sync with your account; iOS push delivery is next" to "Las alertas sincronizan con tu cuenta; push en iOS viene después",
-        "Review" to "Revisar",
-        "Android phone" to "teléfono Android",
-        "iPhone" to "iPhone",
-        "Auto-refresh off" to "Auto-refresh apagado",
-        "Auto-refresh every" to "Auto-refresh cada",
-        "min" to "min",
-        "cached" to "caché",
-        "loading" to "cargando",
-        "updated just now" to "actualizado recién",
-        "updated" to "actualizado",
-        "refreshed" to "actualizado",
-        "synced just now" to "sincronizado recién",
-        "synced" to "sincronizado",
-        "ago" to "atrás",
-        "away" to "restante",
-        "pts away" to "pts restante",
-        "to target" to "al objetivo",
-        "pts to move" to "pts al movimiento",
-        "waiting for live rate" to "esperando rate en vivo",
-        "waiting for 24h change" to "esperando cambio 24h",
-        "target" to "objetivo",
-        "alert at" to "alerta en",
-        "Now" to "Ahora",
-        "min stale" to "min desactualizado",
-        "saved locally" to "guardado localmente",
-        "BASE" to "BASE",
-        "currencies" to "monedas",
-        "rates" to "rates",
-        "Offline snapshot" to "Snapshot offline",
-        "price targets and breakouts" to "objetivos y rupturas",
-        "custom tracking" to "seguimiento personalizado",
-        "Free includes" to "Free incluye",
-        "Pro unlocks every pair, range and breakout alert." to "Pro desbloquea cada par, rango y alerta de ruptura.",
-        "Pro unlocks bigger watchlists across rates, alerts and portfolio tracking." to "Pro desbloquea watchlists más grandes en rates, alertas y portfolio.",
-        "added" to "agregada",
-        "select" to "seleccionar",
-        "set free" to "poner free",
-        "set pro" to "poner pro",
-        "Simulate" to "Simular",
-        "US Dollar" to "Dólar estadounidense",
-        "Euro" to "Euro",
-        "British Pound" to "Libra esterlina",
-        "Japanese Yen" to "Yen japonés",
-        "Australian Dollar" to "Dólar australiano",
-        "Canadian Dollar" to "Dólar canadiense",
-        "Swiss Franc" to "Franco suizo",
-        "Chinese Yuan" to "Yuan chino",
-        "Brazilian Real" to "Real brasileño",
-        "Mexican Peso" to "Peso mexicano",
-        "No connection" to "Sin conexión",
-        "OFFLINE" to "OFFLINE",
-        "LAST KNOWN" to "ÚLTIMO CONOCIDO",
-        "Retry connection" to "Reintentar conexión",
-        "Showing rates from your last sync · 4 min ago" to "Mostrando rates del último sync · hace 4 min",
-        "CACHED FAVORITES" to "FAVORITOS EN CACHÉ",
-        "Skip" to "Saltar",
-        "Get started" to "Empezar",
-        "Next  →" to "Siguiente  →",
-        "Fresh rates.\nAlways ready." to "Rates frescos.\nSiempre listos.",
-        "The app starts with your local base currency and keeps rates refreshed from the backend." to "La app inicia con tu moneda local y mantiene los rates actualizados desde el backend.",
-        "See the cost\nbefore you send." to "Ve el costo\nantes de enviar.",
-        "Compare estimated provider fees by amount and currency pair, then unlock deeper comparisons with Pro." to "Compara fees estimados por monto y par de monedas, y desbloquea comparaciones más profundas con Pro.",
-        "Your wallet\nfollows the map." to "Tu billetera\nsigue el mapa.",
-        "Auto-detect local currency on landing. Offline-safe last rates. Per-country tipping built in." to "Detecta la moneda local al iniciar. Últimos rates disponibles offline. Propinas por país incluidas.",
-        "Start private.\nRestore later." to "Empieza privado.\nRestaura después.",
-        "A guest backup is created silently. You can connect Google on Android or Apple on iOS when you want portability." to "Se crea un backup invitado en silencio. Puedes conectar Google en Android o Apple en iOS cuando quieras portabilidad.",
-        "STEP 01 · LIVE RATES" to "PASO 01 · RATES EN VIVO",
-        "STEP 02 · FEES THAT MATTER" to "PASO 02 · FEES IMPORTANTES",
-        "STEP 03 · TRAVEL READY" to "PASO 03 · LISTO PARA VIAJAR",
-        "STEP 04 · BACKUP" to "PASO 04 · BACKUP",
-        "FOR YOU" to "PARA TI",
-        "Profile" to "Perfil",
-        "Choose your focus" to "Elige tu foco",
-        "Travel money setup" to "Setup de dinero para viajes",
-        "Trip budget, local cash buffer and destination rates stay near the top." to "Presupuesto, efectivo local y tasas de destino quedan cerca del inicio.",
-        "Budget + core destinations" to "Presupuesto + destinos core",
-        "Full cheat sheet + all destinations" to "Guia completa + todos los destinos",
-        "Crypto holder" to "Crypto holder",
-        "Crypto portfolio focus" to "Foco en portfolio crypto",
-        "Crypto board, stablecoins and holdings get priority across Home and Portfolio." to "Crypto, stablecoins y posiciones tienen prioridad en Home y Portfolio.",
-        "BTC, ETH, USDT, USDC" to "BTC, ETH, USDT, USDC",
-        "Expanded crypto catalog + holdings" to "Catalogo crypto expandido + holdings",
-        "Remittances" to "Remesas",
-        "Send money smarter" to "Enviar dinero mejor",
-        "Provider cost, timing and alerts stay visible for repeat transfers." to "Costo por proveedor, timing y alertas quedan visibles para envios frecuentes.",
-        "Mid-market + custom cost" to "Mid-market + costo custom",
-        "Full provider comparison + alerts" to "Comparacion completa + alertas",
-        "Freelancer" to "Freelancer",
-        "Multi-currency income" to "Ingresos multi-moneda",
-        "Converter, base currency and income pairs are tuned for cross-border work." to "Conversor, moneda base y pares de ingreso se ajustan al trabajo cross-border.",
-        "Converter + saved pairs" to "Conversor + pares guardados",
-        "Timing + portfolio + alerts" to "Timing + portfolio + alertas",
-        "Savings" to "Ahorro",
-        "Savings and allocation" to "Ahorro y allocation",
-        "Portfolio allocation, long-range context and alerts are treated as the main workflow." to "Allocation, contexto largo y alertas pasan a ser el flujo principal.",
-        "Portfolio snapshot" to "Snapshot de portfolio",
-        "P&L, allocation and long history" to "P&L, allocation e historico largo",
-        "Free focus" to "Foco Free",
-        "Pro focus" to "Foco Pro",
-        "Suggested pair" to "Par sugerido",
-        "Suggested alert" to "Alerta sugerida",
-        "Create suggested alert" to "Crear alerta sugerida",
-        "Suggested alert active" to "Alerta sugerida activa",
-        "Reactivate suggested alert" to "Reactivar alerta sugerida",
-        "Unlock suggested alert" to "Desbloquear alerta sugerida",
-        "Show all" to "Mostrar todo",
-        "Showing top" to "Mostrando top",
-        "Destination rate near 30d high" to "Rate de destino cerca del maximo 30d",
-        "Trip cash budget" to "Presupuesto efectivo de viaje",
-        "BTC/ETH daily move above 3%" to "Movimiento diario BTC/ETH mayor a 3%",
-        "BTC, ETH and stablecoins" to "BTC, ETH y stablecoins",
-        "Target rate above last 7d average" to "Rate objetivo sobre promedio 7d",
-        "Receiver currency balance" to "Balance en moneda destino",
-        "Invoice pair moves 1% in a day" to "Par de factura se mueve 1% en un dia",
-        "Client payment currencies" to "Monedas de pago de clientes",
-        "Portfolio allocation drift above 5%" to "Desvio de allocation mayor a 5%",
-        "Core savings currencies" to "Monedas core de ahorro",
-        "Pro unlocks the full regional stream." to "Pro desbloquea el stream regional completo.",
-        "Pro unlocks more stories and filters by region, currencies and topics." to "Pro desbloquea más noticias y filtros por región, monedas y temas.",
-        "fees" to "fees",
-        "today" to "hoy",
-        "days" to "días",
-    ),
-    "pt" to mapOf(
-        "Rates" to "Cotações", "Convert" to "Converter", "Compare" to "Comparar", "News" to "Notícias", "More" to "Mais",
-        "Settings" to "Ajustes", "Alerts" to "Alertas", "Watchlist" to "Watchlist", "Traveler" to "Viagem",
-        "LIVE" to "AO VIVO", "CACHED" to "CACHE", "Edit" to "Editar", "See all" to "Ver tudo", "Preview" to "Prévia",
-        "OCR beta" to "OCR beta", "Scan price" to "Escanear preço", "OCR price scanner" to "Scanner OCR de preços",
-        "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "O scanner da câmera preenche o cheque de custo oculto a partir de preços de prateleira, recibo ou caixa.",
-        "Manual entry" to "Entrada manual", "Live camera OCR + currency detection" to "OCR de câmera ao vivo + detecção de moeda",
-        "Live" to "Ao vivo", "Loading" to "Carregando", "Estimated" to "Estimado", "Active" to "Ativo", "Ready" to "Pronto",
-        "Next" to "Próximo", "Unlimited" to "Ilimitado", "Preparing workspace" to "Preparando área", "base" to "base",
-        "favorites" to "favoritos", "FAVORITES" to "FAVORITOS", "CRYPTO" to "CRYPTO", "pinned" to "fixado",
-        "MID" to "MÉDIO", "YOU SEND" to "VOCÊ ENVIA", "Converted to" to "Convertido para", "FEES" to "TAXAS",
-        "Reverse" to "Inverter", "Edit list" to "Editar lista", "HISTORY" to "HISTÓRICO", "STATISTICS" to "ESTATÍSTICAS",
-        "Open" to "Abertura", "High" to "Máxima", "Low" to "Mínima", "Range" to "Faixa", "Volatility" to "Volatilidade",
-        "Average" to "Média", "RELATED NEWS" to "NOTÍCIAS RELACIONADAS", "Movers" to "Movimentos", "Strongest" to "Mais fortes",
-        "Weakest" to "Mais fracas", "STRONGEST" to "MAIS FORTE", "WEAKEST" to "MAIS FRACA",
-        "No data" to "Sem dados", "The saved list is unavailable for" to "A lista salva não está disponível para",
-        "Edit the comparison set to choose active currencies." to "Edite o conjunto de comparação para escolher moedas ativas.",
-        "DESTINATION" to "DESTINO", "TRIP BUDGET" to "ORÇAMENTO", "BUDGET" to "ORÇAMENTO",
-        "LOCAL" to "LOCAL", "Daily range" to "Faixa diária", "Cash buffer" to "Reserva em dinheiro", "CHEAT SHEET" to "GUIA RÁPIDO",
-        "LOCAL ETIQUETTE" to "COSTUMES LOCAIS", "TIPPING" to "GORJETA", "TAX" to "IMPOSTO", "CARDS ACCEPTED" to "CARTÕES ACEITOS",
-        "LOCAL PRICE GUIDE" to "GUIA DE PREÇOS", "TOOLS" to "FERRAMENTAS", "COMING NEXT" to "EM BREVE",
-        "PRICE TARGETS" to "ALVOS DE PREÇO", "CUSTOM ALERT" to "ALERTA PERSONALIZADO", "Target rate" to "Taxa alvo",
-        "Daily move %" to "Movimento diário %", "QUICK CREATE" to "CRIAÇÃO RÁPIDA", "ACTIVE ALERTS" to "ALERTAS ATIVOS",
-        "CUSTOM TRACKING" to "RASTREAMENTO", "Tracked currencies" to "Moedas acompanhadas", "PORTFOLIO HOLDINGS" to "CARTEIRA",
-        "HOW IT WORKS" to "COMO FUNCIONA", "ADD OR REMOVE" to "ADICIONAR OU REMOVER", "amount" to "valor", "done" to "pronto",
-        "tracked" to "seguida", "add" to "adicionar", "on" to "ativo", "paused" to "pausado", "CURRENT" to "ATUAL",
-        "LAST HIT" to "ÚLTIMO ACERTO", "Never" to "Nunca", "monitoring" to "monitorando", "pause" to "pausar", "resume" to "retomar",
-        "test" to "testar", "MARKET STREAM" to "MERCADO", "MARKET PREVIEW" to "PRÉVIA", "SENTIMENT" to "SENTIMENTO",
-        "REFRESHING" to "ATUALIZANDO", "BULLISH" to "ALTA", "NEUTRAL" to "NEUTRO", "BEARISH" to "BAIXA",
-        "Feed" to "Feed", "Updated" to "Atualizado", "REGION" to "REGIÃO", "CURRENCY" to "MOEDA", "TOPIC" to "TEMA",
-        "RECENT LINES" to "LINHAS RECENTES", "Market update" to "Atualização de mercado", "News detail" to "Detalhe da notícia",
-        "SOURCE" to "FONTE", "Publisher" to "Publicador", "Published" to "Publicado", "Choose base currency" to "Escolher moeda base",
-        "Search currency" to "Buscar moeda", "No currencies found" to "Nenhuma moeda encontrada", "Cancel" to "Cancelar", "Apply" to "Aplicar",
-        "System" to "Sistema", "Light" to "Claro", "Dark" to "Escuro", "Version" to "Versão", "active" to "ativo",
-        "offline" to "offline", "Target" to "Alvo", "Daily move" to "Movimento diário", "Above" to "Acima", "Below" to "Abaixo",
-        "Down" to "Baixo", "MOVES" to "MOVIMENTOS", "Continue" to "Continuar", "Processing..." to "Processando...",
-        "Purchases unavailable" to "Compras indisponíveis", "Available" to "Disponível", "Not configured" to "Não configurado",
-        "Monthly" to "Mensal", "Yearly" to "Anual", "monthly" to "mensal", "yearly" to "anual",
-        "Paid every month" to "Pago todo mês", "Best long-term value" to "Melhor valor no longo prazo",
-        "BEST VALUE" to "MELHOR VALOR", "allowed" to "permitidas", "review" to "revisar",
-        "Recurring subscription billed through Google Play on Android and App Store on iOS." to "Assinatura recorrente cobrada pelo Google Play no Android e pela App Store no iOS.",
-        "Monthly or annual Pro unlocks unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists." to "Pro mensal ou anual libera alertas ilimitados, histórico profundo, comparações ampliadas, ferramentas de viagem e watchlists.",
-        "RATE TRUST" to "CONFIANÇA DA COTAÇÃO", "Source" to "Fonte", "Updated" to "Atualizado", "Cached" to "Cache", "Preview" to "Prévia",
-        "Indicative mid-market rates. Final transfer or card rates can include provider fees and markups." to "Cotações mid-market indicativas. Transferências ou cartões podem incluir tarifas e margem do provedor.",
-        "Loading rates" to "Carregando cotações", "Preparing converter rates" to "Preparando cotações do conversor", "Loading market stream" to "Carregando stream de mercado",
-        "Notifications allowed" to "Notificações permitidas", "Review" to "Revisar",
-        "Android can deliver local price alerts while checks run in the background" to "Android pode enviar alertas locais enquanto as verificações rodam em segundo plano",
-        "Android permission is required before local price alerts can be delivered" to "Android precisa de permissão antes de enviar alertas locais",
-        "Android phone" to "telefone Android", "Auto-refresh off" to "Auto-refresh desligado", "Auto-refresh every" to "Auto-refresh a cada",
-        "min" to "min", "cached" to "cache", "loading" to "carregando", "updated just now" to "atualizado agora",
-        "updated" to "atualizado", "refreshed" to "atualizado", "synced just now" to "sincronizado agora",
-        "synced" to "sincronizado", "ago" to "atrás", "away" to "distante", "to target" to "até o alvo",
-        "waiting for live rate" to "aguardando taxa ao vivo", "waiting for 24h change" to "aguardando variação 24h",
-        "target" to "alvo", "alert at" to "alerta em", "Now" to "Agora", "min stale" to "min desatualizado",
-        "saved locally" to "salvo localmente", "BASE" to "BASE", "currencies" to "moedas", "rates" to "taxas",
-        "Search" to "Buscar", "supported live currencies" to "moedas ao vivo suportadas", "live currencies" to "moedas ao vivo",
-        "Offline snapshot" to "Snapshot offline", "select" to "selecionar", "added" to "adicionada",
-        "No connection" to "Sem conexão", "Skip" to "Pular", "Get started" to "Começar", "Next  →" to "Próximo  →",
-    ),
-    "fr" to mapOf(
-        "Rates" to "Taux", "Convert" to "Convertir", "Compare" to "Comparer", "News" to "Actus", "More" to "Plus",
-        "Settings" to "Réglages", "Alerts" to "Alertes", "Watchlist" to "Suivi", "Traveler" to "Voyage",
-        "LIVE" to "EN DIRECT", "CACHED" to "CACHE", "Edit" to "Modifier", "See all" to "Tout voir", "Preview" to "Aperçu",
-        "OCR beta" to "OCR bêta", "Scan price" to "Scanner le prix", "OCR price scanner" to "Scanner de prix OCR",
-        "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "Le scanner caméra remplit le contrôle de coût caché depuis un prix en rayon, reçu ou caisse.",
-        "Manual entry" to "Saisie manuelle", "Live camera OCR + currency detection" to "OCR caméra en direct + détection de devise",
-        "Live" to "En direct", "Loading" to "Chargement", "Estimated" to "Estimé", "Active" to "Actif", "Ready" to "Prêt",
-        "Unlimited" to "Illimité", "base" to "base", "favorites" to "favoris", "FAVORITES" to "FAVORIS", "FEES" to "FRAIS",
-        "Reverse" to "Inverser", "Edit list" to "Modifier", "HISTORY" to "HISTORIQUE", "STATISTICS" to "STATISTIQUES",
-        "Open" to "Ouverture", "High" to "Haut", "Low" to "Bas", "Range" to "Plage", "Average" to "Moyenne",
-        "RELATED NEWS" to "ACTUS LIÉES", "STRONGEST" to "PLUS FORT", "WEAKEST" to "PLUS FAIBLE", "No data" to "Aucune donnée",
-        "DESTINATION" to "DESTINATION", "TRIP BUDGET" to "BUDGET", "CHEAT SHEET" to "AIDE-MÉMOIRE", "TIPPING" to "POURBOIRE",
-        "TAX" to "TAXE", "TOOLS" to "OUTILS", "PRICE TARGETS" to "OBJECTIFS", "CUSTOM ALERT" to "ALERTE PERSONNALISÉE",
-        "Target rate" to "Taux cible", "Daily move %" to "Variation quotidienne %", "ACTIVE ALERTS" to "ALERTES ACTIVES",
-        "Tracked currencies" to "Devises suivies", "PORTFOLIO HOLDINGS" to "PORTEFEUILLE", "ADD OR REMOVE" to "AJOUTER OU RETIRER",
-        "amount" to "montant", "done" to "terminé", "tracked" to "suivi", "add" to "ajouter", "paused" to "en pause",
-        "CURRENT" to "ACTUEL", "Never" to "Jamais", "pause" to "pause", "resume" to "reprendre", "test" to "tester",
-        "MARKET STREAM" to "MARCHÉ", "SENTIMENT" to "SENTIMENT", "BULLISH" to "HAUSSIER", "NEUTRAL" to "NEUTRE", "BEARISH" to "BAISSIER",
-        "Updated" to "Mis à jour", "REGION" to "RÉGION", "CURRENCY" to "DEVISE", "TOPIC" to "SUJET", "News detail" to "Détail",
-        "SOURCE" to "SOURCE", "Publisher" to "Éditeur", "Choose base currency" to "Choisir la devise de base",
-        "Search currency" to "Chercher une devise", "No currencies found" to "Aucune devise trouvée", "Cancel" to "Annuler", "Apply" to "Appliquer",
-        "System" to "Système", "Light" to "Clair", "Dark" to "Sombre", "Version" to "Version", "active" to "actif",
-        "Above" to "Au-dessus", "Below" to "En dessous", "Continue" to "Continuer", "Processing..." to "Traitement...",
-        "Available" to "Disponible", "No connection" to "Pas de connexion", "Skip" to "Ignorer", "Get started" to "Commencer", "Next  →" to "Suivant  →",
-    ),
-    "de" to mapOf(
-        "Rates" to "Kurse", "Convert" to "Umrechnen", "Compare" to "Vergleichen", "News" to "News", "More" to "Mehr",
-        "Settings" to "Einstellungen", "Alerts" to "Alarme", "Watchlist" to "Watchlist", "Traveler" to "Reise",
-        "LIVE" to "LIVE", "CACHED" to "CACHE", "Edit" to "Bearbeiten", "See all" to "Alle sehen", "Preview" to "Vorschau",
-        "OCR beta" to "OCR-Beta", "Scan price" to "Preis scannen", "OCR price scanner" to "OCR-Preisscanner",
-        "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "Der Kamerascanner füllt den versteckten Kostencheck aus Regal-, Beleg- oder Kassenpreisen.",
-        "Manual entry" to "Manuelle Eingabe", "Live camera OCR + currency detection" to "Live-Kamera-OCR + Währungserkennung",
-        "Loading" to "Laden", "Estimated" to "Geschätzt", "Active" to "Aktiv", "Ready" to "Bereit", "Unlimited" to "Unbegrenzt",
-        "favorites" to "Favoriten", "FAVORITES" to "FAVORITEN", "FEES" to "GEBÜHREN", "Reverse" to "Umkehren", "HISTORY" to "HISTORIE",
-        "STATISTICS" to "STATISTIK", "Open" to "Start", "High" to "Hoch", "Low" to "Tief", "Range" to "Spanne", "Average" to "Durchschnitt",
-        "STRONGEST" to "STÄRKSTE", "WEAKEST" to "SCHWÄCHSTE", "No data" to "Keine Daten", "DESTINATION" to "ZIEL",
-        "TRIP BUDGET" to "REISEBUDGET", "CHEAT SHEET" to "KURZINFO", "TIPPING" to "TRINKGELD", "TAX" to "STEUER",
-        "TOOLS" to "TOOLS", "CUSTOM ALERT" to "EIGENER ALARM", "Target rate" to "Zielkurs", "ACTIVE ALERTS" to "AKTIVE ALARME",
-        "Tracked currencies" to "Verfolgte Währungen", "ADD OR REMOVE" to "HINZUFÜGEN ODER ENTFERNEN", "amount" to "Betrag",
-        "done" to "fertig", "tracked" to "verfolgt", "add" to "hinzufügen", "paused" to "pausiert", "CURRENT" to "AKTUELL",
-        "Never" to "Nie", "pause" to "pausieren", "resume" to "fortsetzen", "MARKET STREAM" to "MARKT", "SENTIMENT" to "STIMMUNG",
-        "BULLISH" to "BULLISCH", "NEUTRAL" to "NEUTRAL", "BEARISH" to "BÄRISCH", "Updated" to "Aktualisiert",
-        "REGION" to "REGION", "CURRENCY" to "WÄHRUNG", "TOPIC" to "THEMA", "SOURCE" to "QUELLE",
-        "Search currency" to "Währung suchen", "No currencies found" to "Keine Währungen gefunden", "Cancel" to "Abbrechen", "Apply" to "Anwenden",
-        "System" to "System", "Light" to "Hell", "Dark" to "Dunkel", "Version" to "Version", "Above" to "Über", "Below" to "Unter",
-        "Continue" to "Weiter", "Processing..." to "Verarbeitung...", "Available" to "Verfügbar", "No connection" to "Keine Verbindung",
-        "Skip" to "Überspringen", "Get started" to "Loslegen", "Next  →" to "Weiter  →",
-    ),
-    "id" to mapOf("Rates" to "Kurs", "Convert" to "Konversi", "Compare" to "Bandingkan", "News" to "Berita", "More" to "Lainnya", "Settings" to "Pengaturan", "Alerts" to "Peringatan", "Watchlist" to "Watchlist", "Traveler" to "Perjalanan", "LIVE" to "LIVE", "CACHED" to "CACHE", "Edit" to "Edit", "Preview" to "Pratinjau", "Loading" to "Memuat", "Unlimited" to "Tanpa batas", "FAVORITES" to "FAVORIT", "FEES" to "BIAYA", "HISTORY" to "RIWAYAT", "STATISTICS" to "STATISTIK", "DESTINATION" to "TUJUAN", "TRIP BUDGET" to "ANGGARAN", "TOOLS" to "ALAT", "CUSTOM ALERT" to "PERINGATAN KHUSUS", "ACTIVE ALERTS" to "PERINGATAN AKTIF", "amount" to "jumlah", "done" to "selesai", "tracked" to "dipantau", "add" to "tambah", "paused" to "jeda", "CURRENT" to "SAAT INI", "Never" to "Tidak pernah", "REGION" to "WILAYAH", "CURRENCY" to "MATA UANG", "TOPIC" to "TOPIK", "Search currency" to "Cari mata uang", "No currencies found" to "Mata uang tidak ditemukan", "Cancel" to "Batal", "Apply" to "Terapkan", "System" to "Sistem", "Light" to "Terang", "Dark" to "Gelap", "Version" to "Versi", "Continue" to "Lanjutkan", "Skip" to "Lewati", "Get started" to "Mulai", "Next  →" to "Berikutnya  →", "OCR beta" to "OCR beta", "Scan price" to "Pindai harga", "OCR price scanner" to "Pemindai harga OCR", "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "Pemindai kamera mengisi cek biaya tersembunyi dari harga rak, struk, atau kasir.", "Manual entry" to "Input manual", "Live camera OCR + currency detection" to "OCR kamera live + deteksi mata uang"),
-    "ru" to mapOf("Rates" to "Курсы", "Convert" to "Конвертер", "Compare" to "Сравнить", "News" to "Новости", "More" to "Ещё", "Settings" to "Настройки", "Alerts" to "Оповещения", "Watchlist" to "Список", "Traveler" to "Путешествия", "LIVE" to "ОНЛАЙН", "CACHED" to "КЭШ", "Edit" to "Изменить", "Preview" to "Просмотр", "Loading" to "Загрузка", "Unlimited" to "Без лимита", "FAVORITES" to "ИЗБРАННОЕ", "FEES" to "КОМИССИИ", "HISTORY" to "ИСТОРИЯ", "STATISTICS" to "СТАТИСТИКА", "DESTINATION" to "НАПРАВЛЕНИЕ", "TRIP BUDGET" to "БЮДЖЕТ", "TOOLS" to "ИНСТРУМЕНТЫ", "CUSTOM ALERT" to "СВОЁ ОПОВЕЩЕНИЕ", "ACTIVE ALERTS" to "АКТИВНЫЕ ОПОВЕЩЕНИЯ", "amount" to "сумма", "done" to "готово", "tracked" to "отслеживается", "add" to "добавить", "paused" to "пауза", "CURRENT" to "ТЕКУЩИЙ", "Never" to "Никогда", "REGION" to "РЕГИОН", "CURRENCY" to "ВАЛЮТА", "TOPIC" to "ТЕМА", "Search currency" to "Найти валюту", "No currencies found" to "Валюты не найдены", "Cancel" to "Отмена", "Apply" to "Применить", "System" to "Система", "Light" to "Светлая", "Dark" to "Тёмная", "Version" to "Версия", "Continue" to "Продолжить", "Skip" to "Пропустить", "Get started" to "Начать", "Next  →" to "Далее  →", "OCR beta" to "OCR бета", "Scan price" to "Сканировать цену", "OCR price scanner" to "OCR-сканер цен", "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "Камера заполняет проверку скрытых затрат по цене на полке, чеке или кассе.", "Manual entry" to "Ручной ввод", "Live camera OCR + currency detection" to "OCR с камеры + определение валюты"),
-    "zh" to mapOf("Rates" to "汇率", "Convert" to "换算", "Compare" to "比较", "News" to "新闻", "More" to "更多", "Settings" to "设置", "Alerts" to "提醒", "Watchlist" to "关注", "Traveler" to "旅行", "LIVE" to "实时", "CACHED" to "缓存", "Edit" to "编辑", "Preview" to "预览", "Loading" to "加载中", "Unlimited" to "无限", "FAVORITES" to "收藏", "FEES" to "费用", "HISTORY" to "历史", "STATISTICS" to "统计", "DESTINATION" to "目的地", "TRIP BUDGET" to "旅行预算", "TOOLS" to "工具", "CUSTOM ALERT" to "自定义提醒", "ACTIVE ALERTS" to "活动提醒", "amount" to "金额", "done" to "完成", "tracked" to "已关注", "add" to "添加", "paused" to "暂停", "CURRENT" to "当前", "Never" to "从未", "REGION" to "地区", "CURRENCY" to "货币", "TOPIC" to "主题", "Search currency" to "搜索货币", "No currencies found" to "未找到货币", "Cancel" to "取消", "Apply" to "应用", "System" to "系统", "Light" to "浅色", "Dark" to "深色", "Version" to "版本", "Continue" to "继续", "Skip" to "跳过", "Get started" to "开始", "Next  →" to "下一步  →", "OCR beta" to "OCR 测试版", "Scan price" to "扫描价格", "OCR price scanner" to "OCR 价格扫描器", "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "相机会从货架、收据或收银台价格填充隐藏成本检查。", "Manual entry" to "手动输入", "Live camera OCR + currency detection" to "实时相机 OCR + 货币识别"),
-    "ja" to mapOf("Rates" to "レート", "Convert" to "換算", "Compare" to "比較", "News" to "ニュース", "More" to "その他", "Settings" to "設定", "Alerts" to "アラート", "Watchlist" to "ウォッチ", "Traveler" to "旅行", "LIVE" to "ライブ", "CACHED" to "キャッシュ", "Edit" to "編集", "Preview" to "プレビュー", "Loading" to "読み込み中", "Unlimited" to "無制限", "FAVORITES" to "お気に入り", "FEES" to "手数料", "HISTORY" to "履歴", "STATISTICS" to "統計", "DESTINATION" to "目的地", "TRIP BUDGET" to "旅行予算", "TOOLS" to "ツール", "CUSTOM ALERT" to "カスタムアラート", "ACTIVE ALERTS" to "有効なアラート", "amount" to "金額", "done" to "完了", "tracked" to "追跡中", "add" to "追加", "paused" to "一時停止", "CURRENT" to "現在", "Never" to "なし", "REGION" to "地域", "CURRENCY" to "通貨", "TOPIC" to "トピック", "Search currency" to "通貨を検索", "No currencies found" to "通貨が見つかりません", "Cancel" to "キャンセル", "Apply" to "適用", "System" to "システム", "Light" to "ライト", "Dark" to "ダーク", "Version" to "バージョン", "Continue" to "続ける", "Skip" to "スキップ", "Get started" to "開始", "Next  →" to "次へ  →", "OCR beta" to "OCR ベータ", "Scan price" to "価格をスキャン", "OCR price scanner" to "OCR価格スキャナー", "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "カメラスキャナーが棚、レシート、レジの価格から隠れコストチェックを入力します。", "Manual entry" to "手入力", "Live camera OCR + currency detection" to "ライブカメラOCR + 通貨検出"),
-    "hi" to mapOf("Rates" to "दरें", "Convert" to "कन्वर्ट", "Compare" to "तुलना", "News" to "समाचार", "More" to "और", "Settings" to "सेटिंग्स", "Alerts" to "अलर्ट", "Watchlist" to "वॉचलिस्ट", "Traveler" to "यात्रा", "LIVE" to "लाइव", "CACHED" to "कैश", "Edit" to "संपादित", "Preview" to "पूर्वावलोकन", "Loading" to "लोड हो रहा", "Unlimited" to "असीमित", "FAVORITES" to "पसंदीदा", "FEES" to "शुल्क", "HISTORY" to "इतिहास", "STATISTICS" to "आंकड़े", "DESTINATION" to "गंतव्य", "TRIP BUDGET" to "यात्रा बजट", "TOOLS" to "टूल", "CUSTOM ALERT" to "कस्टम अलर्ट", "ACTIVE ALERTS" to "सक्रिय अलर्ट", "amount" to "राशि", "done" to "हो गया", "tracked" to "ट्रैक", "add" to "जोड़ें", "paused" to "रुका", "CURRENT" to "वर्तमान", "Never" to "कभी नहीं", "REGION" to "क्षेत्र", "CURRENCY" to "मुद्रा", "TOPIC" to "विषय", "Search currency" to "मुद्रा खोजें", "No currencies found" to "मुद्रा नहीं मिली", "Cancel" to "रद्द", "Apply" to "लागू", "System" to "सिस्टम", "Light" to "लाइट", "Dark" to "डार्क", "Version" to "संस्करण", "Continue" to "जारी रखें", "Skip" to "छोड़ें", "Get started" to "शुरू करें", "Next  →" to "अगला  →", "OCR beta" to "OCR बीटा", "Scan price" to "कीमत स्कैन करें", "OCR price scanner" to "OCR कीमत स्कैनर", "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "कैमरा स्कैनर शेल्फ, रसीद या कैश डेस्क कीमत से छिपी लागत जांच भरता है।", "Manual entry" to "मैनुअल एंट्री", "Live camera OCR + currency detection" to "लाइव कैमरा OCR + मुद्रा पहचान"),
-    "ar" to mapOf("Rates" to "الأسعار", "Convert" to "تحويل", "Compare" to "مقارنة", "News" to "الأخبار", "More" to "المزيد", "Settings" to "الإعدادات", "Alerts" to "تنبيهات", "Watchlist" to "المتابعة", "Traveler" to "السفر", "LIVE" to "مباشر", "CACHED" to "مخزن", "Edit" to "تعديل", "Preview" to "معاينة", "Loading" to "جار التحميل", "Unlimited" to "غير محدود", "FAVORITES" to "المفضلة", "FEES" to "الرسوم", "HISTORY" to "السجل", "STATISTICS" to "إحصاءات", "DESTINATION" to "الوجهة", "TRIP BUDGET" to "ميزانية السفر", "TOOLS" to "أدوات", "CUSTOM ALERT" to "تنبيه مخصص", "ACTIVE ALERTS" to "تنبيهات نشطة", "amount" to "المبلغ", "done" to "تم", "tracked" to "متابع", "add" to "إضافة", "paused" to "متوقف", "CURRENT" to "الحالي", "Never" to "أبداً", "REGION" to "المنطقة", "CURRENCY" to "العملة", "TOPIC" to "الموضوع", "Search currency" to "ابحث عن عملة", "No currencies found" to "لا توجد عملات", "Cancel" to "إلغاء", "Apply" to "تطبيق", "System" to "النظام", "Light" to "فاتح", "Dark" to "داكن", "Version" to "الإصدار", "Continue" to "متابعة", "Skip" to "تخطي", "Get started" to "ابدأ", "Next  →" to "التالي  →", "OCR beta" to "OCR تجريبي", "Scan price" to "مسح السعر", "OCR price scanner" to "ماسح أسعار OCR", "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "يملأ ماسح الكاميرا فحص التكلفة الخفية من سعر الرف أو الإيصال أو صندوق الدفع.", "Manual entry" to "إدخال يدوي", "Live camera OCR + currency detection" to "OCR مباشر بالكاميرا + اكتشاف العملة"),
-    "bn" to mapOf("Rates" to "রেট", "Convert" to "রূপান্তর", "Compare" to "তুলনা", "News" to "খবর", "More" to "আরও", "Settings" to "সেটিংস", "Alerts" to "অ্যালার্ট", "Watchlist" to "ওয়াচলিস্ট", "Traveler" to "ভ্রমণ", "LIVE" to "লাইভ", "CACHED" to "ক্যাশ", "Edit" to "সম্পাদনা", "Preview" to "প্রিভিউ", "Loading" to "লোড হচ্ছে", "Unlimited" to "সীমাহীন", "FAVORITES" to "প্রিয়", "FEES" to "ফি", "HISTORY" to "ইতিহাস", "STATISTICS" to "পরিসংখ্যান", "DESTINATION" to "গন্তব্য", "TRIP BUDGET" to "ভ্রমণ বাজেট", "TOOLS" to "টুল", "CUSTOM ALERT" to "কাস্টম অ্যালার্ট", "ACTIVE ALERTS" to "সক্রিয় অ্যালার্ট", "amount" to "পরিমাণ", "done" to "শেষ", "tracked" to "ট্র্যাক", "add" to "যোগ", "paused" to "বিরতি", "CURRENT" to "বর্তমান", "Never" to "কখনও না", "REGION" to "অঞ্চল", "CURRENCY" to "মুদ্রা", "TOPIC" to "বিষয়", "Search currency" to "মুদ্রা খুঁজুন", "No currencies found" to "মুদ্রা পাওয়া যায়নি", "Cancel" to "বাতিল", "Apply" to "প্রয়োগ", "System" to "সিস্টেম", "Light" to "লাইট", "Dark" to "ডার্ক", "Version" to "সংস্করণ", "Continue" to "চালিয়ে যান", "Skip" to "এড়িয়ে যান", "Get started" to "শুরু করুন", "Next  →" to "পরবর্তী  →", "OCR beta" to "OCR বেটা", "Scan price" to "দাম স্ক্যান করুন", "OCR price scanner" to "OCR দাম স্ক্যানার", "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "ক্যামেরা স্ক্যানার তাক, রসিদ বা ক্যাশ ডেস্কের দাম থেকে লুকানো খরচ চেক পূরণ করে।", "Manual entry" to "ম্যানুয়াল এন্ট্রি", "Live camera OCR + currency detection" to "লাইভ ক্যামেরা OCR + মুদ্রা শনাক্তকরণ"),
-    "ur" to mapOf("Rates" to "ریٹس", "Convert" to "کنورٹ", "Compare" to "موازنہ", "News" to "خبریں", "More" to "مزید", "Settings" to "ترتیبات", "Alerts" to "الرٹس", "Watchlist" to "واچ لسٹ", "Traveler" to "سفر", "LIVE" to "لائیو", "CACHED" to "کیش", "Edit" to "ترمیم", "Preview" to "پیش منظر", "Loading" to "لوڈ ہو رہا ہے", "Unlimited" to "لامحدود", "FAVORITES" to "پسندیدہ", "FEES" to "فیس", "HISTORY" to "تاریخ", "STATISTICS" to "اعداد", "DESTINATION" to "منزل", "TRIP BUDGET" to "سفر بجٹ", "TOOLS" to "ٹولز", "CUSTOM ALERT" to "کسٹم الرٹ", "ACTIVE ALERTS" to "فعال الرٹس", "amount" to "رقم", "done" to "ہو گیا", "tracked" to "ٹریک", "add" to "شامل", "paused" to "روکا", "CURRENT" to "موجودہ", "Never" to "کبھی نہیں", "REGION" to "علاقہ", "CURRENCY" to "کرنسی", "TOPIC" to "موضوع", "Search currency" to "کرنسی تلاش کریں", "No currencies found" to "کرنسی نہیں ملی", "Cancel" to "منسوخ", "Apply" to "لاگو", "System" to "سسٹم", "Light" to "لائٹ", "Dark" to "ڈارک", "Version" to "ورژن", "Continue" to "جاری رکھیں", "Skip" to "چھوڑیں", "Get started" to "شروع کریں", "Next  →" to "اگلا  →", "OCR beta" to "OCR بیٹا", "Scan price" to "قیمت اسکین کریں", "OCR price scanner" to "OCR قیمت اسکینر", "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "کیمرا اسکینر شیلف، رسید یا کیش ڈیسک کی قیمت سے پوشیدہ لاگت چیک بھرتا ہے۔", "Manual entry" to "دستی اندراج", "Live camera OCR + currency detection" to "لائیو کیمرا OCR + کرنسی شناخت"),
-)
-
 @Composable
 fun FxAppShell() {
     val initialProfile = remember { AppSettingsPrefs.userProfile() }
@@ -1108,6 +171,7 @@ fun FxAppShell() {
     var travelerBudgetBase by remember { mutableStateOf(AppSettingsPrefs.travelerBudgetBase()) }
     var converterCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.converterCurrencyCodes()) }
     var compareCurrencyCodes by remember { mutableStateOf(AppSettingsPrefs.compareCurrencyCodes()) }
+    var providerPreferenceCodes by remember { mutableStateOf(AppSettingsPrefs.providerPreferenceCodes().ifEmpty { defaultProviderPreferenceCodes(baseCurrency) }) }
     var userProfile by remember { mutableStateOf(AppSettingsPrefs.userProfile()) }
     val liveStore = remember { LiveRatesStore(initialBaseCurrency = baseCurrency) }
     val newsStore = remember { NewsStore(initialLanguage = appLanguage) }
@@ -1147,6 +211,9 @@ fun FxAppShell() {
         }
         if (AppSettingsPrefs.converterAmountText() == "1000" && initialPreset.suggestedAmount != "1000") {
             AppSettingsPrefs.setConverterAmountText(initialPreset.suggestedAmount)
+        }
+        if (AppSettingsPrefs.providerPreferenceCodes().isEmpty()) {
+            AppSettingsPrefs.setProviderPreferenceCodes(providerPreferenceCodes)
         }
     }
     fun selectTab(tab: FxTab) {
@@ -1221,6 +288,7 @@ fun FxAppShell() {
                     travelerBudgetBase,
                     converterCurrencyCodes,
                     compareCurrencyCodes,
+                    providerPreferenceCodes,
                     userProfile,
                     alertsState,
                     watchlistState,
@@ -1234,6 +302,7 @@ fun FxAppShell() {
                         liveStore = liveStore,
                         onConverterCurrencyCodes = { converterCurrencyCodes = it },
                         onCompareCurrencyCodes = { compareCurrencyCodes = it },
+                        onProviderPreferenceCodes = { providerPreferenceCodes = it.ifEmpty { defaultProviderPreferenceCodes(baseCurrency) } },
                         onTravelerCurrency = { travelerCurrency = it },
                         onTravelerBudgetBase = { travelerBudgetBase = it },
                         onUserProfile = { userProfile = it },
@@ -1257,7 +326,7 @@ fun FxAppShell() {
         backupReady = backupState.isAvailable
         startupReady = true
     }
-    LaunchedEffect(themeMode, appLanguage, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, compareCurrencyCodes, userProfile, alertsState, watchlistState, backupReady) {
+    LaunchedEffect(themeMode, appLanguage, baseCurrency, travelerCurrency, travelerBudgetBase, converterCurrencyCodes, compareCurrencyCodes, providerPreferenceCodes, userProfile, alertsState, watchlistState, backupReady) {
         if (backupReady) {
             runCatching {
                 val snapshot = buildUserBackupSnapshot(
@@ -1268,6 +337,7 @@ fun FxAppShell() {
                     travelerBudgetBase,
                     converterCurrencyCodes,
                     compareCurrencyCodes,
+                    providerPreferenceCodes,
                     userProfile,
                     alertsState,
                     watchlistState,
@@ -1480,8 +550,10 @@ fun FxAppShell() {
                         }
                         FxTab.Convert -> ConverterScreen(
                             liveState = liveState,
+                            alertsState = alertsState,
                             subscriptionState = subscriptionState,
                             selectedCurrencyCodes = converterCurrencyCodes,
+                            selectedProviderCodes = providerPreferenceCodes,
                             onCurrencyCodesChange = { codes ->
                                 Observability.event("converter_currencies_changed", mapOf("count" to codes.size.toString()))
                                 (codes - converterCurrencyCodes.toSet()).forEach { code ->
@@ -1491,6 +563,27 @@ fun FxAppShell() {
                                 AppSettingsPrefs.setConverterCurrencyCodes(codes)
                             },
                             onOpenPaywall = { openPaywall("converter") },
+                            onCreateTransferAlert = { source, target, alertTarget ->
+                                val existing = alertsState.alerts.findMatchingAlert(
+                                    baseCurrency = source.code,
+                                    quote = target.code,
+                                    target = alertTarget,
+                                    direction = AlertDirection.Above,
+                                    kind = AlertKind.Target,
+                                )
+                                when {
+                                    existing != null -> {
+                                        alertsStore.resumeAlert(existing.id)
+                                        Observability.event("transfer_intent_alert_reactivated", mapOf("source" to source.code, "target" to target.code))
+                                    }
+                                    canCreateAlert(subscriptionState, alertsState.alerts.size) -> {
+                                        alertsStore.addAlert(source.code, target.code, alertTarget, AlertDirection.Above, AlertKind.Target)
+                                        Observability.event("transfer_intent_alert_created", mapOf("source" to source.code, "target" to target.code))
+                                    }
+                                    else -> openPaywall("converter_transfer_alert_limit")
+                                }
+                            },
+                            onOpenProviderUrl = ExternalUrlOpener::open,
                         )
                         FxTab.Compare -> CompareScreen(
                             liveState = liveState,
@@ -1616,6 +709,7 @@ fun FxAppShell() {
                                 backupSyncing = backupSyncing,
                                 lastSyncedAtMillis = lastSyncedAtMillis,
                                 subscriptionState = subscriptionState,
+                                providerPreferenceCodes = providerPreferenceCodes,
                                 onBack = { moreRoute = MoreRoute.Menu },
                                 onOpenPaywall = { openPaywall("settings") },
                                 onOpenUrl = ExternalUrlOpener::open,
@@ -1640,6 +734,7 @@ fun FxAppShell() {
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
                                                 compareCurrencyCodes,
+                                                providerPreferenceCodes,
                                                 userProfile,
                                                 alertsState,
                                                 watchlistState,
@@ -1667,6 +762,7 @@ fun FxAppShell() {
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
                                                 compareCurrencyCodes,
+                                                providerPreferenceCodes,
                                                 userProfile,
                                                 alertsState,
                                                 watchlistState,
@@ -1683,6 +779,7 @@ fun FxAppShell() {
                                                 liveStore = liveStore,
                                                 onConverterCurrencyCodes = { converterCurrencyCodes = it },
                                                 onCompareCurrencyCodes = { compareCurrencyCodes = it },
+                                                onProviderPreferenceCodes = { providerPreferenceCodes = it.ifEmpty { defaultProviderPreferenceCodes(baseCurrency) } },
                                                 onTravelerCurrency = { travelerCurrency = it },
                                                 onTravelerBudgetBase = { travelerBudgetBase = it },
                                                 onUserProfile = { userProfile = it },
@@ -1716,6 +813,7 @@ fun FxAppShell() {
                                                 travelerBudgetBase,
                                                 converterCurrencyCodes,
                                                 compareCurrencyCodes,
+                                                providerPreferenceCodes,
                                                 userProfile,
                                                 alertsState,
                                                 watchlistState,
@@ -1772,6 +870,12 @@ fun FxAppShell() {
                                         watchlistStore.replaceFromBackup(Watchlist(codes = preset.watchlistCodes))
                                     }
                                 },
+                                onProviderPreferenceCodesChange = { codes ->
+                                    val normalized = normalizeProviderPreferenceCodes(codes, baseCurrency)
+                                    Observability.event("provider_preferences_changed", mapOf("count" to normalized.size.toString(), "base_currency" to baseCurrency))
+                                    providerPreferenceCodes = normalized
+                                    AppSettingsPrefs.setProviderPreferenceCodes(normalized)
+                                },
                             )
                         }
                     }
@@ -1790,40 +894,6 @@ fun FxAppShell() {
         }
     }
 }
-}
-
-@Composable
-private fun StartupLoadingScreen(baseCurrency: String, language: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(18.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        GridBg(Modifier.matchParentSize().alpha(0.10f), radialMask = false)
-        GridBg(Modifier.matchParentSize().alpha(0.22f))
-        BentoCard(padding = 18.dp) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                LiveDot(Modifier.size(10.dp))
-                Text("${localizedUiText(language, "Preparing workspace")} · $baseCurrency", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-                Text(localizedUiText(language, "Loading account, preferences and rates"), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ScreenScaffold(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        content()
-        Spacer(Modifier.height(152.dp))
-    }
 }
 
 private data class ProfileCopy(
@@ -1967,6 +1037,21 @@ private data class ProfileAction(
     val actionLabel: String,
 )
 
+private data class ProfileWorkflow(
+    val primary: String,
+    val nextStep: String,
+    val proFit: String,
+)
+
+private fun UserProfile.workflowCopy(): ProfileWorkflow =
+    when (this) {
+        UserProfile.Traveler -> ProfileWorkflow("Trip wallet + scanner", "Scan local price before paying", "Saved trips, OCR and full cheat sheet")
+        UserProfile.CryptoHolder -> ProfileWorkflow("Crypto watch + breakouts", "Create movement alert", "Expanded crypto catalog and advanced alerts")
+        UserProfile.Remittances -> ProfileWorkflow("Repeat transfer decision", "Compare provider route now", "Provider matrix, recurring plan and unlimited alerts")
+        UserProfile.Freelancer -> ProfileWorkflow("Invoice currency control", "Check invoice amount and timing", "Timing horizons and saved working pairs")
+        UserProfile.Savings -> ProfileWorkflow("Allocation watch", "Review drift and set alert", "Long-range history and portfolio alerts")
+    }
+
 private fun UserProfile.nextActionCopy(): ProfileAction =
     when (this) {
         UserProfile.Traveler -> ProfileAction(
@@ -2109,6 +1194,22 @@ private fun ProfileActionCard(
     }
 }
 
+@Composable
+private fun ProfileWorkflowCard(profile: UserProfile, isPremium: Boolean) {
+    val workflow = profile.workflowCopy()
+    BentoCard(Modifier.testTag("dashboard_profile_workflow"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("PROFILE WORKFLOW"), color = FxTheme.colors.accent)
+                Pill(if (isPremium) ui("Pro") else ui("Free"), variant = if (isPremium) PillVariant.Accent else PillVariant.Ghost)
+            }
+            KeyValueRow(ui("Primary workflow"), ui(workflow.primary), null, modifier = Modifier.testTag("dashboard_profile_workflow_primary"))
+            KeyValueRow(ui("Recommended next step"), ui(workflow.nextStep), null, modifier = Modifier.testTag("dashboard_profile_workflow_next"))
+            KeyValueRow(ui("Monetization fit"), ui(workflow.proFit), null, modifier = Modifier.testTag("dashboard_profile_workflow_pro"))
+        }
+    }
+}
+
 private val QuickAlertState.profileAlertActionLabel: String
     get() = when (this) {
         QuickAlertState.Create -> "Create suggested alert"
@@ -2209,6 +1310,10 @@ fun DashboardScreen(
             liveState = liveState,
             modifier = Modifier.testTag("dashboard_rate_trust"),
         )
+        RateTrustDetailsCard(
+            liveState = liveState,
+            modifier = Modifier.testTag("dashboard_trust_details"),
+        )
         if (liveState.errorMessage != null) {
             Text(ui("Live backend unavailable · using cached UI data"), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
         }
@@ -2237,6 +1342,10 @@ fun DashboardScreen(
                 onOpenConverter = onOpenConverter,
                 onOpenTraveler = onOpenTraveler,
                 onOpenWatchlist = onOpenWatchlist,
+            )
+            ProfileWorkflowCard(
+                profile = userProfile,
+                isPremium = subscriptionState.isPremium,
             )
             HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2323,9 +1432,6 @@ fun DashboardScreen(
         }
     }
 }
-
-private val DefaultCryptoCodes = listOf("BTC", "ETH", "USDT", "USDC")
-private val StablecoinCodes = setOf("USDT", "USDC", "DAI", "BUSD", "PYUSD", "USDS")
 
 @Composable
 private fun RateTrustCard(
@@ -2414,6 +1520,46 @@ private fun TrustMetric(label: String, value: String, modifier: Modifier = Modif
     ) {
         Text(label.uppercase(), style = FxTheme.typography.eyebrow, color = FxTheme.colors.textFaint, maxLines = 1)
         Text(value, style = FxTheme.typography.captionMono, color = FxTheme.colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun RateTrustDetailsCard(
+    liveState: LiveRatesState,
+    modifier: Modifier = Modifier,
+) {
+    val loading = liveState.isInitialRateLoading()
+    val decisionGrade = when {
+        loading -> "Loading"
+        liveState.isLive -> "Live"
+        else -> "Cached"
+    }
+    BentoCard(modifier, padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("TRUST DETAILS"), color = FxTheme.colors.accent)
+                Pill(ui(decisionGrade), variant = if (liveState.isLive) PillVariant.Up else PillVariant.Ghost)
+            }
+            if (loading) {
+                InlineSkeletonRows(
+                    rows = 4,
+                    modifier = Modifier.testTag("trust_details_loading_skeleton"),
+                )
+            } else {
+                KeyValueRow(
+                    ui("Decision grade"),
+                    ui(decisionGrade),
+                    "${ui("Source")} ${compactProviderLabel(liveState.rateProviderLabel())} · ${ui("Updated")} ${compactRuntimeLabel(liveState.updatedLabel)}",
+                    modifier = Modifier.testTag("trust_decision_grade"),
+                )
+                KeyValueRow(
+                    ui("Provider rates can differ"),
+                    ui("Fees + spread"),
+                    ui("We use mid-market rates for intelligence; providers can add fees, spread, delivery limits and card/cash markups."),
+                    modifier = Modifier.testTag("trust_provider_disclaimer"),
+                )
+            }
+        }
     }
 }
 
@@ -2603,10 +1749,14 @@ private fun HeroRateCard(rate: FxRate, baseCurrency: String) {
 @Composable
 fun ConverterScreen(
     liveState: LiveRatesState,
+    alertsState: AlertsState = AlertsState(),
     subscriptionState: SubscriptionState,
     selectedCurrencyCodes: List<String> = emptyList(),
+    selectedProviderCodes: List<String> = emptyList(),
     onCurrencyCodesChange: (List<String>) -> Unit = {},
     onOpenPaywall: () -> Unit,
+    onCreateTransferAlert: (FxRate, FxRate, Double) -> Unit = { _, _, _ -> },
+    onOpenProviderUrl: (String) -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
     val focusManager = LocalFocusManager.current
@@ -2638,6 +1788,8 @@ fun ConverterScreen(
     var customFeePercentText by remember { mutableStateOf("1.00") }
     var customMarkupPercentText by remember { mutableStateOf("2.50") }
     var remittanceCadence by remember { mutableStateOf("Monthly") }
+    var transferPurpose by remember { mutableStateOf("Family") }
+    var transferDecisionHistory by remember { mutableStateOf(emptyList<TransferDecision>()) }
     var scannedPriceText by remember { mutableStateOf("25") }
     var priceScannerHistory by remember { mutableStateOf(emptyList<PriceScannerHistoryEntry>()) }
     val sourceRate = rates.firstOrNull { it.code == sourceCode }
@@ -2654,11 +1806,15 @@ fun ConverterScreen(
         feePercent = parseAmountInput(customFeePercentText),
         markupPercent = parseAmountInput(customMarkupPercentText),
     )
-    val allFeeQuotes = estimatedFeeQuotes(sourceRate, targetRate, amountValue, customFee)
+    val providerCodes = remember(selectedProviderCodes, sourceRate.code, targetRate.code) {
+        normalizeProviderPreferenceCodes(selectedProviderCodes, sourceRate.code, targetRate.code)
+    }
+    val allFeeQuotes = estimatedFeeQuotes(sourceRate, targetRate, amountValue, customFee, providerCodes)
     val feeQuotes = if (access.canUseFullFeeComparison) {
         allFeeQuotes.take(EstimatedFeeQuoteCount)
     } else {
-        allFeeQuotes.filter { it.provider in FreeFeeProviders }
+        val freeProviderIds = FreeFeeProviderIds + providerCodes.quoteCapableProviderCodes().take(FreeQuoteProviderLimit)
+        allFeeQuotes.filter { it.providerId in freeProviderIds }
     }
     val bestQuote = feeQuotes.minByOrNull { it.lossTargetValue }
     val bestRealWorldQuote = feeQuotes
@@ -2709,6 +1865,10 @@ fun ConverterScreen(
             liveState = liveState,
             modifier = Modifier.testTag("converter_rate_trust"),
         )
+        RateTrustDetailsCard(
+            liveState = liveState,
+            modifier = Modifier.testTag("converter_trust_details"),
+        )
         if (liveState.isInitialRateLoading()) {
             LoadingSkeletonCard(
                 title = ui("Preparing converter rates"),
@@ -2738,6 +1898,7 @@ fun ConverterScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                     modifier = Modifier
+                        .testTag("converter_amount_input")
                         .fillMaxWidth()
                         .clip(FxTheme.shapes.field)
                         .background(if (amountFocused) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
@@ -2868,6 +2029,36 @@ fun ConverterScreen(
             onCadenceChange = { remittanceCadence = it },
             onOpenPaywall = onOpenPaywall,
         )
+        SectionLabel("${ui("TRANSFER INTENT")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
+        TransferIntentCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            quote = bestRealWorldQuote ?: bestQuote,
+            purpose = transferPurpose,
+            history = transferDecisionHistory,
+            matchingAlert = alertsState.alerts.findMatchingAlert(
+                baseCurrency = sourceRate.code,
+                quote = targetRate.code,
+                target = transferAlertTarget(sourceRate, targetRate),
+                direction = AlertDirection.Above,
+                kind = AlertKind.Target,
+            ),
+            isPremium = subscriptionState.isPremium,
+            onPurposeChange = { transferPurpose = it },
+            onDecisionSaved = { decision ->
+                transferDecisionHistory = (listOf(decision) + transferDecisionHistory).take(5)
+            },
+            onCreateAlert = { onCreateTransferAlert(sourceRate, targetRate, transferAlertTarget(sourceRate, targetRate)) },
+            onOpenProviderUrl = onOpenProviderUrl,
+            onOpenPaywall = onOpenPaywall,
+        )
+        SectionLabel(ui("PROVIDER MATRIX"), right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
+        ProviderMatrixCard(
+            quotes = feeQuotes.filterNot { it.provider == "Mid-market" },
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+        )
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2916,6 +2107,7 @@ fun ConverterScreen(
             targetRate = targetRate,
             amountValue = amountValue,
             customFee = customFee,
+            selectedProviderCodes = providerCodes,
             isPremium = subscriptionState.isPremium,
             onOpenPaywall = onOpenPaywall,
         )
@@ -3130,11 +2322,12 @@ private fun ProviderComparisonHistoryCard(
     targetRate: FxRate,
     amountValue: Double,
     customFee: CustomFeeInput,
+    selectedProviderCodes: List<String>,
     isPremium: Boolean,
     onOpenPaywall: () -> Unit,
 ) {
-    val history = remember(sourceRate, targetRate, amountValue, customFee, isPremium) {
-        providerComparisonHistory(sourceRate, targetRate, amountValue, customFee, isPremium)
+    val history = remember(sourceRate, targetRate, amountValue, customFee, selectedProviderCodes, isPremium) {
+        providerComparisonHistory(sourceRate, targetRate, amountValue, customFee, selectedProviderCodes, isPremium)
     }
     BentoCard(Modifier.testTag("converter_provider_history"), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -3171,16 +2364,17 @@ private fun providerComparisonHistory(
     targetRate: FxRate,
     amountValue: Double,
     customFee: CustomFeeInput,
+    selectedProviderCodes: List<String>,
     isPremium: Boolean,
 ): List<ProviderHistoryItem> {
     val baseAmount = amountValue.takeIf { it > 0.0 } ?: 100.0
     return listOf(baseAmount * 0.5, baseAmount, baseAmount * 2.0)
         .take(if (isPremium) 3 else 2)
         .map { amount ->
-            val quote = estimatedFeeQuotes(sourceRate, targetRate, amount, customFee)
+            val quote = estimatedFeeQuotes(sourceRate, targetRate, amount, customFee, selectedProviderCodes)
                 .filterNot { it.provider == "Mid-market" }
                 .minByOrNull { it.lossTargetValue }
-                ?: estimatedFeeQuotes(sourceRate, targetRate, amount, customFee).first()
+                ?: estimatedFeeQuotes(sourceRate, targetRate, amount, customFee, selectedProviderCodes).first()
             ProviderHistoryItem(
                 amountLabel = "${sourceRate.code} ${formatMoneyValue(amount)}",
                 provider = quote.provider,
@@ -3368,6 +2562,13 @@ private fun FeeComparisonRow(quote: EstimatedFeeQuote, rank: Int) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                Text(
+                    "${ui("Delivery")} ${ui(quote.deliverySpeed)} · ${ui("Payment")} ${ui(quote.paymentMethod)}",
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.textFaint,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(quote.amount, style = FxTheme.typography.numberBody, color = FxTheme.colors.text, textAlign = TextAlign.End)
@@ -3422,10 +2623,289 @@ private fun FeeRealityCheckCard(quote: EstimatedFeeQuote?) {
     }
 }
 
+@Composable
+private fun TransferIntentCard(
+    sourceRate: FxRate,
+    targetRate: FxRate,
+    amountValue: Double,
+    quote: EstimatedFeeQuote?,
+    purpose: String,
+    history: List<TransferDecision>,
+    matchingAlert: PriceAlert?,
+    isPremium: Boolean,
+    onPurposeChange: (String) -> Unit,
+    onDecisionSaved: (TransferDecision) -> Unit,
+    onCreateAlert: () -> Unit,
+    onOpenProviderUrl: (String) -> Unit,
+    onOpenPaywall: () -> Unit,
+) {
+    val clipboard = LocalClipboardManager.current
+    val purposes = if (isPremium) listOf("Family", "Travel", "Invoice", "Savings") else listOf("Family", "Travel")
+    val hasAmount = amountValue > 0.0
+    var selectedDecision by remember { mutableStateOf<TransferDecision?>(null) }
+    var copied by remember { mutableStateOf(false) }
+    val currentDecision = remember(sourceRate, targetRate, amountValue, quote, purpose) {
+        transferDecision(sourceRate, targetRate, amountValue, quote, purpose)
+    }
+    if (selectedDecision != null) {
+        TransferDecisionSheet(
+            decision = selectedDecision ?: currentDecision,
+            copied = copied,
+            onCopy = {
+                clipboard.setText(AnnotatedString((selectedDecision ?: currentDecision).shareText()))
+                copied = true
+                Observability.event("transfer_decision_copied", mapOf("provider" to (selectedDecision ?: currentDecision).provider))
+            },
+            onOpenProvider = {
+                val url = providerExternalUrl((selectedDecision ?: currentDecision).provider)
+                if (url != null) {
+                    onOpenProviderUrl(url)
+                    Observability.event("transfer_provider_opened", mapOf("provider" to (selectedDecision ?: currentDecision).provider))
+                }
+            },
+            onDismiss = { selectedDecision = null },
+        )
+    }
+    BentoCard(Modifier.testTag("converter_transfer_intent"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("TRANSFER INTENT"), color = FxTheme.colors.accent)
+                Pill(if (hasAmount) ui("Ready") else ui("Preview"), variant = if (hasAmount) PillVariant.Up else PillVariant.Ghost)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                purposes.forEach { option ->
+                    Pill(
+                        text = ui(option),
+                        variant = if (purpose == option) PillVariant.Accent else PillVariant.Ghost,
+                        modifier = Modifier
+                            .testTag("transfer_purpose_${option.lowercase()}")
+                            .clickable {
+                                onPurposeChange(option)
+                                Observability.event("transfer_intent_purpose_selected", mapOf("purpose" to option))
+                            },
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(ui("You send"), "${sourceRate.code} ${formatMoneyValue(amountValue)}", ui("Purpose") + " · " + ui(purpose), Modifier.weight(1f).testTag("transfer_intent_send"))
+                MetricTile(ui("Receiver gets"), quote?.amount ?: formatConvertedAmount(targetRate, convertedAmount(amountValue, sourceRate, targetRate)), quote?.provider?.let { ui(it) } ?: ui("Best route now"), Modifier.weight(1f).testTag("transfer_intent_receive"))
+            }
+            KeyValueRow(
+                ui("Best route now"),
+                quote?.provider?.let { ui(it) } ?: "--",
+                if (hasAmount) {
+                    "${ui("Delivery")} ${quote?.deliverySpeed?.let { ui(it) } ?: "--"} · ${ui("Risk")} ${quote?.riskLabel?.let { ui(it) } ?: "--"}"
+                } else {
+                    ui("Enter an amount to compare real routes.")
+                },
+                modifier = Modifier.testTag("transfer_intent_best_route"),
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton(
+                    text = ui("Use this route"),
+                    modifier = Modifier.weight(1f).testTag("transfer_intent_use_route"),
+                    onClick = {
+                        val decision = currentDecision
+                        copied = false
+                        selectedDecision = decision
+                        onDecisionSaved(decision)
+                        Observability.event("transfer_intent_route_used", mapOf("provider" to decision.provider))
+                    },
+                )
+                GhostButton(
+                    text = if (matchingAlert != null) ui("Better-rate alert active") else ui("Set better-rate alert"),
+                    modifier = Modifier.weight(1f).testTag("transfer_intent_set_alert"),
+                    onClick = {
+                        if (isPremium) {
+                            onCreateAlert()
+                            Observability.event("transfer_intent_alert_requested", mapOf("target" to targetRate.code))
+                        } else {
+                            onOpenPaywall()
+                        }
+                    },
+                )
+            }
+            if (history.isNotEmpty()) {
+                SectionLabel(ui("TRANSFER HISTORY"), right = ui("Last decisions"))
+                Column(Modifier.testTag("transfer_decision_history"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    history.take(if (isPremium) 5 else 2).forEachIndexed { index, decision ->
+                        KeyValueRow(
+                            "${decision.sourceCode} ${formatMoneyValue(decision.amountValue)} → ${decision.targetCode}",
+                            ui(decision.provider),
+                            "${ui("Receiver gets")} ${decision.receiverGets} · ${ui("Risk")} ${ui(decision.riskLabel)}",
+                            modifier = Modifier
+                                .testTag("transfer_decision_history_$index")
+                                .clickable {
+                                    copied = false
+                                    selectedDecision = decision
+                                },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransferDecisionSheet(
+    decision: TransferDecision,
+    copied: Boolean,
+    onCopy: () -> Unit,
+    onOpenProvider: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val providerUrl = providerExternalUrl(decision.provider)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = FxTheme.colors.surface1,
+        contentColor = FxTheme.colors.text,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .testTag("transfer_decision_sheet")
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Eyebrow(ui("TRANSFER DECISION"), color = FxTheme.colors.accent)
+                    Text(ui(decision.provider), style = FxTheme.typography.titleL, color = FxTheme.colors.text)
+                }
+                Pill(ui(decision.purpose), variant = PillVariant.Accent)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(ui("You send"), "${decision.sourceCode} ${formatMoneyValue(decision.amountValue)}", ui("Purpose") + " · " + ui(decision.purpose), Modifier.weight(1f))
+                MetricTile(ui("Receiver gets"), decision.receiverGets, ui(decision.provider), Modifier.weight(1f))
+            }
+            KeyValueRow(ui("Estimated loss"), decision.loss, "${ui("Effective rate")} ${decision.effectiveRate}")
+            KeyValueRow(ui("Delivery"), ui(decision.deliverySpeed), "${ui("Payment")} ${ui(decision.paymentMethod)} · ${ui("Risk")} ${ui(decision.riskLabel)}")
+            KeyValueRow(ui("External provider"), if (providerUrl == null) ui("Not connected yet") else ui("Open provider"), ui("Provider links can be enabled later with affiliate or deep-link URLs."))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton(
+                    text = if (copied) ui("Copied decision") else ui("Copy decision"),
+                    modifier = Modifier.weight(1f).testTag("transfer_decision_copy"),
+                    onClick = onCopy,
+                )
+                GhostButton(
+                    text = if (providerUrl == null) ui("Provider link pending") else ui("Open provider"),
+                    modifier = Modifier.weight(1f).testTag("transfer_decision_provider"),
+                    onClick = {
+                        if (providerUrl != null) {
+                            onOpenProvider()
+                        }
+                    },
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProviderMatrixCard(
+    quotes: List<EstimatedFeeQuote>,
+    isPremium: Boolean,
+    onOpenPaywall: () -> Unit,
+) {
+    val visibleQuotes = quotes.take(if (isPremium) 6 else 2)
+    BentoCard(Modifier.testTag("converter_provider_matrix"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            if (visibleQuotes.isEmpty()) {
+                Text(ui("Enter an amount to compare real routes."), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            }
+            visibleQuotes.forEachIndexed { index, quote ->
+                KeyValueRow(
+                    ui(quote.provider),
+                    "${ui("Delivery")} ${ui(quote.deliverySpeed)} · ${ui("Risk")} ${ui(quote.riskLabel)}",
+                    "${ui("Payment")} ${ui(quote.paymentMethod)} · ${ui("Best for")} ${ui(quote.bestFor)}",
+                    modifier = Modifier.testTag("provider_matrix_row_$index"),
+                )
+            }
+            if (!isPremium) {
+                GhostButton(
+                    text = ui("Pro unlocks the complete provider list; estimates update with your amount."),
+                    modifier = Modifier.fillMaxWidth().testTag("provider_matrix_upsell"),
+                    onClick = onOpenPaywall,
+                )
+            }
+        }
+    }
+}
+
 private data class FeeRealityVerdict(
     val label: String,
     val variant: PillVariant,
 )
+
+private data class TransferDecision(
+    val id: String,
+    val sourceCode: String,
+    val targetCode: String,
+    val amountValue: Double,
+    val purpose: String,
+    val provider: String,
+    val receiverGets: String,
+    val loss: String,
+    val effectiveRate: String,
+    val deliverySpeed: String,
+    val paymentMethod: String,
+    val riskLabel: String,
+    val createdAtMillis: Long,
+)
+
+private fun transferDecision(
+    sourceRate: FxRate,
+    targetRate: FxRate,
+    amountValue: Double,
+    quote: EstimatedFeeQuote?,
+    purpose: String,
+): TransferDecision {
+    val fallbackAmount = formatConvertedAmount(targetRate, convertedAmount(amountValue, sourceRate, targetRate))
+    val provider = quote?.provider ?: "Mid-market"
+    val createdAt = Clock.System.now().toEpochMilliseconds()
+    return TransferDecision(
+        id = "${sourceRate.code}-${targetRate.code}-$createdAt",
+        sourceCode = sourceRate.code,
+        targetCode = targetRate.code,
+        amountValue = amountValue,
+        purpose = purpose,
+        provider = provider,
+        receiverGets = quote?.amount ?: fallbackAmount,
+        loss = quote?.loss ?: "${targetRate.code} 0.00",
+        effectiveRate = quote?.effectiveRate ?: "${formatRate(if (sourceRate.rate == 0.0) 0.0 else targetRate.rate / sourceRate.rate)} ${targetRate.code}",
+        deliverySpeed = quote?.deliverySpeed ?: "Instant",
+        paymentMethod = quote?.paymentMethod ?: "Debit/bank",
+        riskLabel = quote?.riskLabel ?: "Low",
+        createdAtMillis = createdAt,
+    )
+}
+
+private fun transferAlertTarget(sourceRate: FxRate, targetRate: FxRate): Double {
+    val currentPairRate = if (sourceRate.rate == 0.0) targetRate.rate else targetRate.rate / sourceRate.rate
+    return currentPairRate * 1.01
+}
+
+private fun providerExternalUrl(provider: String): String? =
+    when (provider) {
+        // Keep these disabled until real affiliate/deep-link URLs are configured.
+        else -> null
+    }
+
+private fun TransferDecision.shareText(): String = buildString {
+    append("FX Always transfer decision\n")
+    append("Route: $provider\n")
+    append("Pair: $sourceCode/$targetCode\n")
+    append("You send: $sourceCode ${formatMoneyValue(amountValue)}\n")
+    append("Receiver gets: $receiverGets\n")
+    append("Estimated loss: $loss\n")
+    append("Effective rate: $effectiveRate\n")
+    append("Delivery: $deliverySpeed · Payment: $paymentMethod · Risk: $riskLabel")
+}
 
 private fun EstimatedFeeQuote.realityVerdict(): FeeRealityVerdict =
     when {
@@ -3450,6 +2930,18 @@ private fun RemittancePlannerCard(
         "Biweekly" -> 26
         "One-time" -> 1
         else -> 12
+    }
+    val yearlyLoss = (quote?.lossTargetValue ?: 0.0) * cadenceMultiplier
+    val nextSendWindow = when (cadence) {
+        "Biweekly" -> "Next 14 days"
+        "One-time" -> "This week"
+        else -> "Before payday"
+    }
+    val planConfidence = when {
+        quote == null || amountValue <= 0.0 -> "Needs amount"
+        quote.lossPercentValue < 1.0 -> "Good route"
+        quote.lossPercentValue < 3.0 -> "Watch fees"
+        else -> "Avoid route"
     }
     val cadenceOptions = if (isPremium) {
         listOf("One-time", "Monthly", "Biweekly")
@@ -3495,6 +2987,18 @@ private fun RemittancePlannerCard(
                 if (isPremium) ui("Before payday") else ui("Monthly"),
                 if (isPremium) "${ui("Family route")} · ${sourceRate.code}/${targetRate.code}" else ui("Pro unlocks reminder planning and extra cadences."),
                 modifier = Modifier.testTag("remittance_reminder_cadence"),
+            )
+            KeyValueRow(
+                ui("Next send window"),
+                ui(nextSendWindow),
+                "${ui("Plan confidence")} · ${ui(planConfidence)}",
+                modifier = Modifier.testTag("remittance_next_window"),
+            )
+            KeyValueRow(
+                ui("Annual fee drag"),
+                "${targetRate.code} ${formatMoneyValue(yearlyLoss)}",
+                "${cadenceMultiplier} ${ui("planned sends")} · ${ui("estimated from current route")}",
+                modifier = Modifier.testTag("remittance_annual_fee_drag"),
             )
             if (!isPremium) {
                 GhostButton(
@@ -3548,251 +3052,6 @@ private fun FeeInputField(
 }
 
 private const val EstimatedFeeQuoteCount = 8
-private val FreeFeeProviders = setOf("Mid-market", "Custom")
-
-private data class CustomFeeInput(
-    val fixedFee: Double,
-    val feePercent: Double,
-    val markupPercent: Double,
-)
-
-private data class EstimatedFeeQuote(
-    val provider: String,
-    val badge: String?,
-    val amount: String,
-    val fee: String,
-    val markup: String,
-    val loss: String,
-    val lossPercent: String,
-    val effectiveRate: String,
-    val lossTargetValue: Double,
-    val lossPercentValue: Double,
-    val isHighFee: Boolean = false,
-)
-
-private data class FeeProviderTemplate(
-    val provider: String,
-    val badge: String? = null,
-    val fixedFee: Double = 0.0,
-    val feePercent: Double = 0.0,
-    val markupPercent: Double = 0.0,
-)
-
-private data class SmartTimingInsight(
-    val score: Int,
-    val signal: String,
-    val action: String,
-    val travelAdvice: String,
-    val savingsAdvice: String,
-    val remittanceAdvice: String,
-    val horizons: List<TimingHorizon>,
-)
-
-private data class TimingHorizon(
-    val label: String,
-    val rangeLabel: String,
-    val positionLabel: String,
-    val trendLabel: String,
-    val volatilityLabel: String,
-    val position: Double,
-    val trendPct: Double,
-    val volatilityPct: Double,
-)
-
-private fun smartTimingInsight(sourceRate: FxRate, targetRate: FxRate): SmartTimingInsight {
-    val pairSeries = pairRateSeries(sourceRate, targetRate)
-    val horizons = listOf(
-        timingHorizon("7D", pairSeries, 7),
-        timingHorizon("30D", pairSeries, 30),
-        timingHorizon("90D", pairSeries, 90),
-    )
-    val primary = horizons.first()
-    val score = timingScore(primary)
-    val signal = when {
-        score >= 82 -> "Strong rate"
-        score >= 58 -> "Good time"
-        else -> "Wait"
-    }
-    val action = when (signal) {
-        "Strong rate" -> "Convert now: the pair is near the top of its recent range."
-        "Good time" -> "Convert in tranches: current rate is better than average but not stretched."
-        else -> "Wait or set an alert: current rate is below its recent advantage zone."
-    }
-    return SmartTimingInsight(
-        score = score,
-        signal = signal,
-        action = action,
-        travelAdvice = when (signal) {
-            "Wait" -> "Cover essentials only"
-            "Good time" -> "Buy partial budget"
-            else -> "Lock trip cash"
-        },
-        savingsAdvice = when (signal) {
-            "Wait" -> "Use alerts"
-            "Good time" -> "Average in"
-            else -> "Move larger slice"
-        },
-        remittanceAdvice = when (signal) {
-            "Wait" -> "Delay if flexible"
-            "Good time" -> "Send staged"
-            else -> "Send now"
-        },
-        horizons = horizons,
-    )
-}
-
-private fun pairRateSeries(sourceRate: FxRate, targetRate: FxRate): List<Double> {
-    val targetSeries = targetRate.sparkline.ifEmpty { listOf(targetRate.rate.toFloat()) }.map { it.toDouble() }
-    val sourceSeries = sourceRate.sparkline.ifEmpty { listOf(sourceRate.rate.toFloat()) }.map { it.toDouble() }
-    val points = maxOf(2, targetSeries.size, sourceSeries.size)
-    return List(points) { index ->
-        val target = targetSeries.valueAtScaledIndex(index, points, targetRate.rate)
-        val source = sourceSeries.valueAtScaledIndex(index, points, sourceRate.rate)
-        if (source == 0.0) 0.0 else target / source
-    }
-}
-
-private fun List<Double>.valueAtScaledIndex(index: Int, total: Int, fallback: Double): Double {
-    if (isEmpty()) return fallback
-    if (size == 1 || total <= 1) return first()
-    val scaled = (index.toDouble() / (total - 1).coerceAtLeast(1)) * (size - 1)
-    return this[scaled.toInt().coerceIn(0, lastIndex)]
-}
-
-private fun timingHorizon(label: String, series: List<Double>, points: Int): TimingHorizon {
-    val window = series.takeLast(points.coerceAtMost(series.size)).ifEmpty { series }
-    val current = window.lastOrNull() ?: 0.0
-    val open = window.firstOrNull() ?: current
-    val high = window.maxOrNull() ?: current
-    val low = window.minOrNull() ?: current
-    val average = window.average().takeIf { !it.isNaN() } ?: current
-    val spread = high - low
-    val position = if (spread <= 0.0) 0.5 else ((current - low) / spread).coerceIn(0.0, 1.0)
-    val trendPct = if (open == 0.0) 0.0 else ((current - open) / open) * 100.0
-    val volatilityPct = if (average == 0.0) 0.0 else (spread / average) * 100.0
-    return TimingHorizon(
-        label = label,
-        rangeLabel = "${formatRate(low)} - ${formatRate(high)}",
-        positionLabel = "${(position * 100).toInt()}% of range",
-        trendLabel = formatSignedPercent(trendPct),
-        volatilityLabel = "${formatRate(volatilityPct)}%",
-        position = position,
-        trendPct = trendPct,
-        volatilityPct = volatilityPct,
-    )
-}
-
-private fun timingScore(horizon: TimingHorizon): Int {
-    val positionScore = horizon.position * 72.0
-    val trendScore = ((horizon.trendPct + 2.0) / 4.0).coerceIn(0.0, 1.0) * 20.0
-    val volatilityPenalty = (horizon.volatilityPct / 12.0).coerceIn(0.0, 1.0) * 10.0
-    return (positionScore + trendScore + 18.0 - volatilityPenalty).toInt().coerceIn(0, 100)
-}
-
-private fun estimatedFeeQuotes(
-    sourceRate: FxRate,
-    targetRate: FxRate,
-    amount: Double,
-    customFee: CustomFeeInput,
-): List<EstimatedFeeQuote> {
-    val safeAmount = amount.coerceAtLeast(0.0)
-    val templates = listOf(
-        FeeProviderTemplate("Mid-market", "best"),
-        FeeProviderTemplate("Wise", fixedFee = 0.35, feePercent = 0.45),
-        FeeProviderTemplate("Revolut", feePercent = 0.80, markupPercent = 0.15),
-        FeeProviderTemplate("Card payment", feePercent = 0.30, markupPercent = 2.70),
-        FeeProviderTemplate("ATM cash", fixedFee = 4.0, feePercent = 1.0, markupPercent = 3.00),
-        FeeProviderTemplate("Bank transfer", "high fee", fixedFee = 5.0, feePercent = 0.80, markupPercent = 3.20),
-        FeeProviderTemplate("Airport exchange", "avoid", markupPercent = 8.50),
-        FeeProviderTemplate("Custom", fixedFee = customFee.fixedFee, feePercent = customFee.feePercent, markupPercent = customFee.markupPercent),
-    )
-    val midMarketTarget = convertedAmount(safeAmount, sourceRate, targetRate)
-    val rawRate = if (sourceRate.rate == 0.0) 0.0 else targetRate.rate / sourceRate.rate
-
-    return templates.map { template ->
-        val variableFee = safeAmount * template.feePercent.coerceAtLeast(0.0) / 100.0
-        val fixedFee = template.fixedFee.coerceAtLeast(0.0)
-        val sourceFee = (fixedFee + variableFee).coerceAtMost(safeAmount)
-        val netSource = (safeAmount - sourceFee).coerceAtLeast(0.0)
-        val markupMultiplier = (1.0 - template.markupPercent.coerceIn(0.0, 99.0) / 100.0)
-        val receivedTarget = netSource * rawRate * markupMultiplier
-        val lossTarget = (midMarketTarget - receivedTarget).coerceAtLeast(0.0)
-        val lossPct = if (midMarketTarget > 0.0) lossTarget / midMarketTarget * 100.0 else 0.0
-        val effectiveRate = if (safeAmount > 0.0) receivedTarget / safeAmount else 0.0
-        val highFee = lossPct >= 3.0 || template.badge in setOf("high fee", "avoid")
-        EstimatedFeeQuote(
-            provider = template.provider,
-            badge = template.badge ?: when {
-                lossPct == 0.0 -> "best"
-                lossPct >= 6.0 -> "avoid"
-                lossPct >= 3.0 -> "high fee"
-                else -> null
-            },
-            amount = formatConvertedAmount(targetRate, receivedTarget),
-            fee = "${sourceRate.code} ${formatMoneyValue(sourceFee)}",
-            markup = "${formatRate(template.markupPercent)}%",
-            loss = "${targetRate.code} ${formatMoneyValue(lossTarget)}",
-            lossPercent = "${formatRate(lossPct)}%",
-            effectiveRate = "${formatRate(effectiveRate)} ${targetRate.code}",
-            lossTargetValue = lossTarget,
-            lossPercentValue = lossPct,
-            isHighFee = highFee,
-        )
-    }.sortedWith(compareBy<EstimatedFeeQuote> { it.lossTargetValue }.thenBy { it.provider != "Custom" })
-}
-
-private fun convertedAmount(amount: Double, sourceRate: FxRate, targetRate: FxRate): Double =
-    if (sourceRate.rate == 0.0) {
-        0.0
-    } else {
-        amount / sourceRate.rate * targetRate.rate
-    }
-
-private fun formatConvertedAmount(rate: FxRate, amount: Double): String =
-    "${rate.code} ${if (rate.kind == CurrencyKind.Crypto) formatCryptoAmount(amount) else formatMoneyValue(amount)}"
-
-private fun formatCryptoAmount(value: Double): String =
-    when {
-        value <= 0.0 -> "0"
-        value < 0.000001 -> "<0.000001"
-        value < 1.0 -> formatRate(value)
-        else -> formatMoneyValue(value)
-    }
-
-private fun formatInputAmount(value: Double): String =
-    when {
-        value <= 0.0 -> ""
-        value >= 100.0 -> formatMoneyValue(value).replace(",", "")
-        value >= 1.0 -> formatRate(value)
-        else -> formatRate(value)
-    }
-
-private fun sanitizeAmountInput(value: String): String {
-    val filtered = value.filter { it.isDigit() || it == '.' || it == ',' }.take(14)
-    val decimalIndex = filtered.indexOfLast { it == '.' || it == ',' }
-    if (decimalIndex < 0) return filtered
-    val decimal = filtered[decimalIndex]
-    val before = filtered.take(decimalIndex).filter { it.isDigit() }
-    val after = filtered.drop(decimalIndex + 1).filter { it.isDigit() }
-    return "$before$decimal$after"
-}
-
-private data class PriceScannerHistoryEntry(
-    val amountText: String,
-    val targetCode: String,
-    val sourceCode: String,
-    val liveSourceCost: Double,
-    val hiddenCost: Double,
-)
-
-private fun liveSourceCostFor(scannedPrice: Double, targetRate: FxRate): Double =
-    if (targetRate.rate > 0.0) scannedPrice / targetRate.rate else 0.0
-
-private fun hiddenCostFor(scannedPrice: Double, targetRate: FxRate, localMarketRate: Double): Double {
-    val liveSourceCost = liveSourceCostFor(scannedPrice, targetRate)
-    val localSourceCost = if (localMarketRate > 0.0) scannedPrice / localMarketRate else liveSourceCost
-    return localSourceCost - liveSourceCost
-}
 
 @Composable
 fun DetailScreen(
@@ -4043,9 +3302,36 @@ private fun EconomicCalendarCard(
     onOpenPaywall: () -> Unit,
 ) {
     val events = remember(rate.code, rate.kind) { economicCalendarEvents(rate) }
+    var impactFilter by remember(rate.code, rate.kind) { mutableStateOf("All") }
+    val filteredEvents = remember(events, impactFilter, isPremium) {
+        if (!isPremium || impactFilter == "All") {
+            events
+        } else {
+            events.filter { it.impact == impactFilter }
+        }
+    }
     BentoCard(Modifier.testTag("detail_economic_calendar"), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            events.take(if (isPremium) events.size else 2).forEachIndexed { index, event ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("All", "High", "Medium").forEach { option ->
+                    val locked = option != "All" && !isPremium
+                    Pill(
+                        text = if (locked) "${ui(option)} · Pro" else ui(option),
+                        variant = if (impactFilter == option && !locked) PillVariant.Accent else PillVariant.Ghost,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("detail_calendar_filter_${option.lowercase()}")
+                            .clickable {
+                                if (locked) {
+                                    onOpenPaywall()
+                                } else {
+                                    impactFilter = option
+                                }
+                            },
+                    )
+                }
+            }
+            filteredEvents.take(if (isPremium) filteredEvents.size else 2).forEachIndexed { index, event ->
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -4063,6 +3349,12 @@ private fun EconomicCalendarCard(
                     Pill("${ui("Impact")} ${ui(event.impact)}", variant = event.impactVariant)
                 }
             }
+            KeyValueRow(
+                ui("Calendar plan"),
+                if (filteredEvents.any { it.impact == "High" }) ui("Watch high-impact windows") else ui("Low event risk"),
+                "${filteredEvents.size} ${ui("events")} · ${ui("Next 7 days")}",
+                modifier = Modifier.testTag("detail_calendar_plan"),
+            )
             if (!isPremium && events.size > 2) {
                 GhostButton(
                     text = ui("Pro unlocks the full calendar and impact filters."),
@@ -5104,6 +4396,12 @@ fun AlertsScreen(
             },
             onOpenPaywall = onOpenPaywall,
         )
+        AlertActionCenterCard(
+            alerts = alertsState.alerts,
+            currentRatesByCode = currentRatesByCode,
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+        )
 
         SectionLabel(ui("SMART ALERTS"), right = if (subscriptionState.isPremium) "FX/ PRO" else ui("Preview"))
         BentoCard(padding = 8.dp) {
@@ -5480,6 +4778,7 @@ fun WatchlistScreen(
         WatchlistGroupsCard(
             codes = watchlistState.watchlist.codes,
             allRates = allRates,
+            holdings = holdings,
         )
 
         if (subscriptionState.isPremium && nonZeroHoldings > 0) {
@@ -5538,6 +4837,12 @@ fun WatchlistScreen(
                         largestDailyDriver?.dailyChangeLabel(liveState.baseCurrency) ?: "${liveState.baseCurrency} 0.00",
                         largestDailyDriver?.let { "${it.rate.code} · ${ui("largest daily driver")}" },
                         modifier = Modifier.testTag("watchlist_daily_digest"),
+                    )
+                    KeyValueRow(
+                        ui("Action plan"),
+                        portfolioActionPlan(largestHolding, largestDailyDriver, portfolioDailyChange),
+                        ui("Review concentration before adding new exposure."),
+                        modifier = Modifier.testTag("watchlist_action_plan"),
                     )
                     if (portfolioSeries.size >= 2) {
                         KeyValueRow(
@@ -5636,38 +4941,76 @@ fun WatchlistScreen(
 private fun WatchlistGroupsCard(
     codes: List<String>,
     allRates: List<FxRate>,
+    holdings: List<PortfolioHolding>,
 ) {
-    val availableCodes = allRates.map { it.code }.toSet()
+    val ratesByCode = remember(allRates) { allRates.associateBy { it.code } }
+    val trackedRates = remember(codes, ratesByCode) { codes.mapNotNull { ratesByCode[it] } }
+    val valuedHoldingCodes = remember(holdings) { holdings.filter { it.amount > 0.0 }.map { it.rate.code }.toSet() }
+    val dynamicGroups = remember(trackedRates, valuedHoldingCodes) {
+        watchlistDynamicGroups(trackedRates, valuedHoldingCodes)
+    }
     BentoCard(Modifier.testTag("watchlist_groups"), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            watchlistGroupPresets.forEach { group ->
-                val supported = group.codes.filter { it in availableCodes }
-                val tracked = supported.filter { it in codes }
+            if (dynamicGroups.isEmpty()) {
                 KeyValueRow(
-                    ui(group.label),
-                    if (tracked.isNotEmpty()) tracked.joinToString(" · ") else "${ui("Add")} ${supported.take(3).joinToString(" · ")}".takeIf { supported.isNotEmpty() }
-                        ?: ui("No matching rates yet"),
-                    if (tracked.isNotEmpty()) "${tracked.size} ${ui("tracked here")}" else null,
-                    modifier = Modifier.testTag("watchlist_group_${group.id}"),
+                    ui("No tracked groups yet"),
+                    ui("Add currencies to build groups from your actual watchlist."),
+                    ui("No preset buckets"),
+                    modifier = Modifier.testTag("watchlist_group_empty"),
                 )
+            } else {
+                dynamicGroups.forEach { group ->
+                    KeyValueRow(
+                        ui(group.label),
+                        group.codes.joinToString(" · "),
+                        ui(group.subtitle),
+                        modifier = Modifier.testTag("watchlist_group_${group.id}"),
+                    )
+                }
             }
         }
     }
 }
 
-private data class WatchlistGroupPreset(
+private data class WatchlistDynamicGroup(
     val id: String,
     val label: String,
+    val subtitle: String,
     val codes: List<String>,
 )
 
-private val watchlistGroupPresets = listOf(
-    WatchlistGroupPreset("travel", "Travel", listOf("EUR", "GBP", "JPY", "CHF", "MXN", "AUD", "CAD", "SGD")),
-    WatchlistGroupPreset("family", "Family", listOf("MXN", "BRL", "EUR", "GBP", "PHP", "INR", "USD")),
-    WatchlistGroupPreset("savings", "Savings", listOf("USD", "EUR", "CHF", "GBP", "JPY")),
-    WatchlistGroupPreset("work", "Work", listOf("USD", "EUR", "GBP", "CAD", "AUD", "JPY", "SGD")),
-    WatchlistGroupPreset("crypto", "Crypto", listOf("BTC", "ETH", "USDT", "USDC", "SOL")),
-)
+private fun watchlistDynamicGroups(
+    trackedRates: List<FxRate>,
+    valuedHoldingCodes: Set<String>,
+): List<WatchlistDynamicGroup> {
+    val fiatCodes = trackedRates.filter { it.kind == CurrencyKind.Fiat }.map { it.code }
+    val cryptoCodes = trackedRates.filter { it.kind == CurrencyKind.Crypto }.map { it.code }
+    val valuedCodes = trackedRates.filter { it.code in valuedHoldingCodes }.map { it.code }
+    val trackingOnlyCodes = trackedRates.filter { it.code !in valuedHoldingCodes }.map { it.code }
+    val moverCodes = trackedRates
+        .sortedByDescending { kotlin.math.abs(it.change24h) }
+        .take(4)
+        .filter { kotlin.math.abs(it.change24h) > 0.0 }
+        .map { it.code }
+
+    return listOfNotNull(
+        valuedCodes.takeIf { it.isNotEmpty() }?.let {
+            WatchlistDynamicGroup("valued", "Valued holdings", "Currencies with entered amounts", it)
+        },
+        trackingOnlyCodes.takeIf { it.isNotEmpty() }?.let {
+            WatchlistDynamicGroup("tracking_only", "Tracking only", "No amount entered yet", it)
+        },
+        fiatCodes.takeIf { it.isNotEmpty() }?.let {
+            WatchlistDynamicGroup("fiat", "Fiat exposure", "Tracked government currencies", it)
+        },
+        cryptoCodes.takeIf { it.isNotEmpty() }?.let {
+            WatchlistDynamicGroup("crypto", "Crypto exposure", "Tracked crypto assets and stablecoins", it)
+        },
+        moverCodes.takeIf { it.isNotEmpty() }?.let {
+            WatchlistDynamicGroup("movers", "Largest movers", "Sorted by absolute 24h move", it)
+        },
+    )
+}
 
 @Composable
 private fun PortfolioTransactionsCard(
@@ -6374,6 +5717,67 @@ private fun AlertCard(
 }
 
 @Composable
+private fun AlertActionCenterCard(
+    alerts: List<PriceAlert>,
+    currentRatesByCode: Map<String, FxRate>,
+    isPremium: Boolean,
+    onOpenPaywall: () -> Unit,
+) {
+    val decisionAlert = alerts
+        .sortedWith(compareByDescending<PriceAlert> { it.lastTriggeredAtMillis ?: 0L }.thenByDescending { it.enabled })
+        .firstOrNull()
+    val currentRate = decisionAlert?.let { currentRatesByCode[it.quote]?.rate }
+    val currentChange = decisionAlert?.let { currentRatesByCode[it.quote]?.change24h }
+    val isHit = decisionAlert?.isHit(currentRate, currentChange) == true
+    BentoCard(Modifier.testTag("alert_action_center"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("ACTION CENTER"), color = FxTheme.colors.accent)
+                Pill(if (isPremium) ui("Pro") else ui("Preview"), variant = if (isPremium) PillVariant.Accent else PillVariant.Ghost)
+            }
+            if (decisionAlert == null) {
+                KeyValueRow(
+                    ui("No alert has fired yet"),
+                    ui("Set next alert"),
+                    ui("Create alerts first; fired alerts will become concrete decisions here."),
+                    modifier = Modifier.testTag("alert_action_empty"),
+                )
+            } else {
+                KeyValueRow(
+                    if (isHit) ui("Alert fired") else ui("Recommended next step"),
+                    "${decisionAlert.base}/${decisionAlert.quote} · ${ui(decisionAlert.direction.label(decisionAlert.kind))} ${decisionAlert.targetLabel()}",
+                    if (isHit) ui("Review provider cost before moving money.") else localizedAlertDistanceLabel(decisionAlert, currentRate, currentChange),
+                    modifier = Modifier.testTag("alert_action_decision"),
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GhostButton(
+                        text = ui("Convert now"),
+                        modifier = Modifier.weight(1f).testTag("alert_action_convert"),
+                        onClick = {
+                            if (isPremium) {
+                                Observability.event("alert_action_convert", mapOf("quote" to decisionAlert.quote))
+                            } else {
+                                onOpenPaywall()
+                            }
+                        },
+                    )
+                    GhostButton(
+                        text = ui("Set next alert"),
+                        modifier = Modifier.weight(1f).testTag("alert_action_next"),
+                        onClick = { Observability.event("alert_action_next_alert", mapOf("quote" to decisionAlert.quote)) },
+                    )
+                }
+                GhostButton(
+                    text = ui("Share decision"),
+                    modifier = Modifier.fillMaxWidth().testTag("alert_action_share"),
+                    onClick = { Observability.event("alert_action_share", mapOf("quote" to decisionAlert.quote, "hit" to isHit.toString())) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun AlertDigestCard(
     activeCount: Int,
     triggeredCount: Int,
@@ -6406,8 +5810,14 @@ private fun AlertDigestCard(
             KeyValueRow(
                 if (cadence == "Weekly") ui("Weekly digest") else ui("Daily digest"),
                 driver?.let { "${it.code} ${formatSignedPercent(it.change24h)}" } ?: "--",
-                ui("Tap to enable digest reminders."),
+                if (cadence == "Weekly") ui("Weekly digest groups active alerts, hits and largest watched move.") else ui("Daily digest highlights active alerts, latest hits and today's largest move."),
                 modifier = Modifier.testTag("alert_digest_driver"),
+            )
+            KeyValueRow(
+                ui("Next reminder"),
+                if (cadence == "Weekly") ui("Monday morning") else ui("Tomorrow morning"),
+                driver?.let { "${ui("Watch")} ${it.code} · ${formatSignedPercent(it.change24h)}" } ?: ui("Add alerts to personalize digest."),
+                modifier = Modifier.testTag("alert_digest_next_reminder"),
             )
             if (!isPremium) {
                 GhostButton(
@@ -6871,6 +6281,7 @@ fun SettingsScreen(
     backupSyncing: Boolean,
     lastSyncedAtMillis: Long?,
     subscriptionState: SubscriptionState,
+    providerPreferenceCodes: List<String> = emptyList(),
     onBack: (() -> Unit)? = null,
     onOpenPaywall: () -> Unit,
     onOpenUrl: (String) -> Unit,
@@ -6882,6 +6293,7 @@ fun SettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onLanguageChange: (String) -> Unit,
     onBaseCurrencyChange: (String) -> Unit,
+    onProviderPreferenceCodesChange: (List<String>) -> Unit = {},
     onUserProfileChange: (UserProfile) -> Unit = {},
 ) {
     val copy = settingsCopy(appLanguage)
@@ -7003,6 +6415,15 @@ fun SettingsScreen(
                 )
             }
         }
+
+        SectionLabel(ui("Provider preferences"))
+        ProviderPreferencesCard(
+            baseCurrency = baseCurrency,
+            selectedProviderCodes = normalizeProviderPreferenceCodes(providerPreferenceCodes, baseCurrency),
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+            onProviderPreferenceCodesChange = onProviderPreferenceCodesChange,
+        )
 
         SectionLabel(copy.notifications)
         BentoCard(padding = 8.dp) {
@@ -7445,358 +6866,6 @@ private fun ReleaseReadinessCard(
     }
 }
 
-@Composable
-private fun AccountBackupCard(
-    backupState: UserBackupState,
-    lastSyncedAtMillis: Long?,
-    backupSyncing: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val signedIn = backupState.isAvailable && !backupState.isAnonymous
-    val title = if (signedIn) {
-	        "${ui("Signed in with")} ${backupState.providerLabel ?: ui("account")}"
-    } else {
-	        ui(backupState.title)
-    }
-    val identity = when {
-        signedIn && backupState.email != null -> backupState.email
-        signedIn && backupState.displayName != null -> backupState.displayName
-        else -> backupState.localizedSubtitle(lastSyncedAtMillis)
-    }
-    val initial = when {
-        signedIn && !backupState.displayName.isNullOrBlank() -> backupState.displayName.first().uppercaseChar().toString()
-        signedIn && !backupState.email.isNullOrBlank() -> backupState.email.first().uppercaseChar().toString()
-        else -> "G"
-    }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(FxTheme.shapes.field)
-            .background(if (signedIn) FxTheme.colors.accentSoft else Color.Transparent)
-            .border(1.dp, if (signedIn) FxTheme.colors.accentLine else FxTheme.colors.border, FxTheme.shapes.field)
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(if (signedIn) FxTheme.colors.accent else FxTheme.colors.surface2),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(initial, style = FxTheme.typography.bodyStrong, color = if (signedIn) FxTheme.colors.bg else FxTheme.colors.text)
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-            Text(identity, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
-            if (signedIn) {
-                Text(formatLastSyncedLocalized(lastSyncedAtMillis), style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
-            }
-            if (backupState.errorMessage != null) {
-                Text(userFriendlyNetworkError(backupState.errorMessage), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
-            }
-        }
-        Pill(
-	            if (backupSyncing) ui("syncing") else if (signedIn) backupState.providerLabel ?: ui("account") else ui(backupState.actionLabel),
-            variant = if (signedIn || backupState.isAvailable) PillVariant.Accent else PillVariant.Ghost,
-        )
-    }
-}
-
-@Composable
-private fun SettingChoiceRow(
-    title: String,
-    subtitle: String,
-    selected: Boolean,
-	    actionLabel: String = if (selected) ui("active") else ui("select"),
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    isLoading: Boolean = false,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(FxTheme.shapes.field)
-            .background(if (selected) FxTheme.colors.accentSoft else Color.Transparent)
-            .border(if (selected) 1.dp else 0.dp, if (selected) FxTheme.colors.accentLine else Color.Transparent, FxTheme.shapes.field)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
-            Text(subtitle, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
-        }
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp).testTag("settings_link_account_loading"),
-                color = FxTheme.colors.accent,
-                strokeWidth = 2.dp,
-            )
-        }
-        Pill(actionLabel, variant = if (selected || isLoading) PillVariant.Accent else PillVariant.Ghost)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CurrencyPickerSheet(
-    title: String,
-    subtitle: String,
-    currencies: List<FxRate>,
-    selectedCode: String,
-    onDismiss: () -> Unit,
-    onSelect: (String) -> Unit,
-) {
-    var query by remember { mutableStateOf("") }
-    var showAll by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val rows = remember(currencies, query) {
-        val term = query.trim()
-        currencies
-            .distinctBy { it.code }
-            .filter { currency ->
-                term.isBlank() ||
-                    currency.code.contains(term, ignoreCase = true) ||
-                    currency.name.contains(term, ignoreCase = true)
-            }
-            .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.name })
-    }
-    val visibleRows = remember(rows, query, showAll, selectedCode) {
-        if (query.isNotBlank() || showAll || rows.size <= DefaultPickerVisibleLimit) {
-            rows
-        } else {
-            val selected = rows.firstOrNull { it.code == selectedCode }
-            (listOfNotNull(selected) + rows.filterNot { it.code == selectedCode })
-                .distinctBy { it.code }
-                .take(DefaultPickerVisibleLimit)
-        }
-    }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = FxTheme.colors.surface1,
-        contentColor = FxTheme.colors.text,
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(max = 620.dp)
-                .padding(horizontal = 18.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(title, style = FxTheme.typography.titleL, color = FxTheme.colors.text)
-                Text(subtitle, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
-            }
-            BentoCard(padding = 12.dp) {
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it.take(24) },
-                    singleLine = true,
-                    textStyle = FxTheme.typography.body.copy(color = FxTheme.colors.text),
-                    modifier = Modifier.fillMaxWidth().testTag("currency_picker_search"),
-                    decorationBox = { innerTextField ->
-                        if (query.isBlank()) {
-	                            Text(ui("Search currency"), style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
-                        }
-                        innerTextField()
-                    },
-                )
-            }
-            if (query.isBlank() && !showAll && rows.size > visibleRows.size) {
-                SettingChoiceRow(
-                    title = "${ui("Showing top")} ${visibleRows.size}/${rows.size}",
-                    subtitle = ui("Search currency"),
-                    selected = false,
-                    actionLabel = ui("Show all"),
-                    modifier = Modifier.testTag("currency_picker_show_all"),
-                    onClick = { showAll = true },
-                )
-            }
-            LazyColumn(
-                Modifier
-                    .fillMaxWidth()
-                    .height(390.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                items(visibleRows, key = { it.code }) { currency ->
-                    SettingChoiceRow(
-                        title = "${currency.glyph}  ${currency.code}",
-                        subtitle = "${assetKindLabel(currency)} · ${localizedCurrencyName(currency.name)}",
-                        selected = currency.code == selectedCode,
-                        modifier = Modifier.testTag("currency_picker_${currency.code}"),
-                        onClick = { onSelect(currency.code) },
-                    )
-                }
-                if (visibleRows.isEmpty()) {
-	                    item {
-	                        Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
-	                    }
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CurrencyListPickerSheet(
-    title: String,
-    lockedSubtitle: String,
-    currencies: List<FxRate>,
-    selectedCodes: List<String>,
-    limit: Int,
-    isPremium: Boolean,
-    onDismiss: () -> Unit,
-    onOpenPaywall: () -> Unit,
-    onApply: (List<String>) -> Unit,
-) {
-    var query by remember { mutableStateOf("") }
-    var showAll by remember { mutableStateOf(false) }
-    var draftCodes by remember(selectedCodes) { mutableStateOf(selectedCodes) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val effectiveLimit = limit.cap(currencies.size).coerceAtLeast(1)
-    fun applyDraftAndDismiss() {
-        if (draftCodes.isNotEmpty()) {
-            onApply(draftCodes.take(effectiveLimit))
-        } else {
-            onDismiss()
-        }
-    }
-    val rows = remember(currencies, query) {
-        val term = query.trim()
-        currencies
-            .distinctBy { it.code }
-            .filter { currency ->
-                term.isBlank() ||
-                    currency.code.contains(term, ignoreCase = true) ||
-                    currency.name.contains(term, ignoreCase = true)
-            }
-            .sortedWith(compareByDescending<FxRate> { it.code in PopularCurrencyCodes }.thenBy { it.code })
-    }
-    val visibleRows = remember(rows, query, showAll, draftCodes) {
-        if (query.isNotBlank() || showAll || rows.size <= DefaultPickerVisibleLimit) {
-            rows
-        } else {
-            val selected = rows.filter { it.code in draftCodes }
-            (selected + rows.filterNot { it.code in draftCodes })
-                .distinctBy { it.code }
-                .take(DefaultPickerVisibleLimit)
-        }
-    }
-    ModalBottomSheet(
-        onDismissRequest = { applyDraftAndDismiss() },
-        sheetState = sheetState,
-        containerColor = FxTheme.colors.surface1,
-        contentColor = FxTheme.colors.text,
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(max = 660.dp)
-                .padding(horizontal = 18.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(title, style = FxTheme.typography.titleL, color = FxTheme.colors.text)
-                Text(
-                    if (isPremium) {
-	                        "${draftCodes.size} ${ui("selected")} · ${ui("every supported currency available")}"
-                    } else {
-	                        "${draftCodes.size}/$effectiveLimit ${ui("selected")} · ${ui("Pro unlocks the full list")}"
-                    },
-                    style = FxTheme.typography.caption,
-                    color = FxTheme.colors.textFaint,
-                )
-            }
-            BentoCard(padding = 12.dp) {
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it.take(24) },
-                    singleLine = true,
-                    textStyle = FxTheme.typography.body.copy(color = FxTheme.colors.text),
-                    modifier = Modifier.fillMaxWidth().testTag("currency_list_search"),
-                    decorationBox = { innerTextField ->
-                        if (query.isBlank()) {
-	                            Text(ui("Search currency"), style = FxTheme.typography.body, color = FxTheme.colors.textGhost)
-                        }
-                        innerTextField()
-                    },
-                )
-            }
-            if (query.isBlank() && !showAll && rows.size > visibleRows.size) {
-                SettingChoiceRow(
-                    title = "${ui("Showing top")} ${visibleRows.size}/${rows.size}",
-                    subtitle = ui("Search currency"),
-                    selected = false,
-                    actionLabel = ui("Show all"),
-                    modifier = Modifier.testTag("currency_list_show_all"),
-                    onClick = { showAll = true },
-                )
-            }
-            LazyColumn(
-                Modifier
-                    .fillMaxWidth()
-                    .height(430.dp)
-                    .testTag("currency_list_scroll"),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                items(visibleRows, key = { it.code }) { currency ->
-                    val selected = currency.code in draftCodes
-                    val locked = !selected && draftCodes.size >= effectiveLimit
-                    SettingChoiceRow(
-                        title = "${currency.glyph}  ${currency.code}",
-                        subtitle = if (locked && !isPremium) lockedSubtitle else "${assetKindLabel(currency)} · ${localizedCurrencyName(currency.name)}",
-                        selected = selected,
-	                        actionLabel = if (selected) ui("added") else if (locked) ui("pro") else ui("add"),
-                        modifier = Modifier.testTag("currency_list_${currency.code}"),
-                        onClick = {
-                            when {
-                                selected -> draftCodes = draftCodes.filterNot { it == currency.code }
-                                locked -> onOpenPaywall()
-                                else -> draftCodes = (draftCodes + currency.code).distinct()
-                            }
-                        },
-                    )
-                }
-                if (visibleRows.isEmpty()) {
-	                    item {
-	                        Text(ui("No currencies found"), style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
-	                    }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-	                GhostButton(ui("Cancel"), Modifier.weight(1f), onClick = onDismiss)
-	                PrimaryButton(
-		                    ui("Apply"),
-                    Modifier.weight(1f).testTag("currency_list_apply"),
-                    onClick = { applyDraftAndDismiss() },
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-        }
-    }
-}
-
-private const val DefaultPickerVisibleLimit = 20
-
-private val PopularCurrencyCodes = listOf("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD")
-
-@Composable
-private fun assetKindLabel(currency: FxRate): String =
-    when {
-        currency.kind == CurrencyKind.Crypto && currency.code in StablecoinCodes -> ui("Stablecoin")
-        currency.kind == CurrencyKind.Crypto -> ui("Crypto")
-        else -> ui("Fiat")
-    }
-
 private fun compactCurrencyChoices(
     currencies: List<FxRate>,
     selectedCode: String,
@@ -7825,86 +6894,6 @@ private val ThemeMode.subtitle: String
         ThemeMode.Dark -> "Use the dark trading interface"
     }
 
-private val UserBackupState.title: String
-    get() = when {
-        isAvailable && isAnonymous -> "Guest backup active"
-        isAvailable -> "${providerLabel ?: "Account"} backup active"
-        else -> "Backup unavailable"
-    }
-
-private fun UserBackupState.subtitle(lastSyncedAtMillis: Long?): String {
-    val syncLabel = lastSyncedAtMillis?.let { " · ${formatLastSynced(it)}" }.orEmpty()
-    val base = when {
-        isAvailable && uid?.startsWith("ios-anon-") == true && isAnonymous -> "Local iOS guest ${uid.takeLast(8)}"
-        isAvailable && uid != null && isAnonymous -> "Firebase guest ${uid.take(8)}"
-        isAvailable && uid != null -> "Restores on any signed-in device"
-        isAvailable -> "Preferences, alerts and watchlist sync to Firebase"
-        else -> "Firebase Auth has not started on this platform"
-    }
-    return "$base$syncLabel"
-}
-
-@Composable
-private fun UserBackupState.localizedSubtitle(lastSyncedAtMillis: Long?): String {
-    val syncLabel = lastSyncedAtMillis?.let { " · ${formatLastSyncedLocalized(it)}" }.orEmpty()
-    val base = when {
-        isAvailable && uid?.startsWith("ios-anon-") == true && isAnonymous -> "${ui("Local iOS guest")} ${uid.takeLast(8)}"
-        isAvailable && uid != null && isAnonymous -> "${ui("Firebase guest")} ${uid.take(8)}"
-        isAvailable && uid != null -> ui("Restores on any signed-in device")
-        isAvailable -> ui("Preferences, alerts and watchlist sync to Firebase")
-        else -> ui("Firebase Auth has not started on this platform")
-    }
-    return "$base$syncLabel"
-}
-
-private val UserBackupState.actionLabel: String
-    get() = if (isAvailable) "active" else "offline"
-
-private fun formatLastSynced(millis: Long): String {
-    val elapsedSeconds = ((Clock.System.now().toEpochMilliseconds() - millis) / 1000).coerceAtLeast(0)
-    return when {
-        elapsedSeconds < 15 -> "synced just now"
-        elapsedSeconds < 60 -> "synced ${elapsedSeconds}s ago"
-        elapsedSeconds < 3600 -> "synced ${elapsedSeconds / 60}m ago"
-        elapsedSeconds < 86_400 -> "synced ${elapsedSeconds / 3600}h ago"
-        else -> "synced ${elapsedSeconds / 86_400}d ago"
-    }
-}
-
-private fun formatLastSynced(millis: Long?): String =
-    millis?.let(::formatLastSynced) ?: "Sync pending"
-
-@Composable
-private fun formatLastSyncedLocalized(millis: Long): String {
-    val elapsedSeconds = ((Clock.System.now().toEpochMilliseconds() - millis) / 1000).coerceAtLeast(0)
-    return when {
-        elapsedSeconds < 15 -> ui("synced just now")
-        elapsedSeconds < 60 -> "${ui("synced")} ${elapsedSeconds}s ${ui("ago")}"
-        elapsedSeconds < 3600 -> "${ui("synced")} ${elapsedSeconds / 60}m ${ui("ago")}"
-        elapsedSeconds < 86_400 -> "${ui("synced")} ${elapsedSeconds / 3600}h ${ui("ago")}"
-        else -> "${ui("synced")} ${elapsedSeconds / 86_400}d ${ui("ago")}"
-    }
-}
-
-@Composable
-private fun formatLastSyncedLocalized(millis: Long?): String =
-    millis?.let { formatLastSyncedLocalized(it) } ?: ui("Sync pending")
-
-@Composable
-private fun userFriendlyNetworkError(message: String?): String {
-    if (message.isNullOrBlank()) {
-        return ui("Please check your connection and try again.")
-    }
-    return when {
-        message.contains("network", ignoreCase = true) ||
-            message.contains("timeout", ignoreCase = true) ||
-            message.contains("interrupted", ignoreCase = true) ||
-            message.contains("unreachable", ignoreCase = true) -> ui("Please check your connection and try again.")
-        message.contains("RevenueCat", ignoreCase = true) -> ui("Purchases are temporarily unavailable. Try again later.")
-        else -> message
-    }
-}
-
 @Composable
 private fun localizedRuntimeLabel(label: String): String =
     when {
@@ -7920,7 +6909,7 @@ private fun localizedRuntimeLabel(label: String): String =
     }
 
 @Composable
-private fun localizedCurrencyName(name: String): String = ui(name)
+internal fun localizedCurrencyName(name: String): String = ui(name)
 
 @Composable
 private fun localizedRate(rate: FxRate): FxRate =
@@ -8227,19 +7216,6 @@ private fun localizedAlertSummaryLine(
         }
     }
 
-private fun formatPercentValue(value: Double): String =
-    ((value * 10.0).toInt() / 10.0).toString()
-
-private fun formatSignedPercent(value: Double): String {
-    val sign = if (value >= 0.0) "+" else "-"
-    return "$sign${formatPercentValue(kotlin.math.abs(value))}%"
-}
-
-private fun formatSignedAmount(code: String, value: Double): String {
-    val sign = if (value >= 0.0) "+" else "-"
-    return "$sign$code ${formatRate(kotlin.math.abs(value))}"
-}
-
 private fun shortAgeLabel(millis: Long): String {
     val elapsedSeconds = ((Clock.System.now().toEpochMilliseconds() - millis) / 1000).coerceAtLeast(0)
     return when {
@@ -8371,15 +7347,6 @@ private data class PortfolioHolding(
 private fun amountInBase(rate: FxRate, amount: Double): Double =
     if (rate.rate == 0.0) 0.0 else amount / rate.rate
 
-private fun parseAmountInput(value: String): Double {
-    val normalized = if (value.count { it == ',' } == 1 && '.' !in value) {
-        value.replace(',', '.')
-    } else {
-        value.replace(",", "")
-    }
-    return normalized.toDoubleOrNull() ?: 0.0
-}
-
 private fun PortfolioHolding.weightLabel(portfolioValue: Double): String =
     if (portfolioValue <= 0.0 || baseValue <= 0.0) {
         "0%"
@@ -8427,17 +7394,25 @@ private fun portfolioPnlPercentLabel(pnl: Double, costBasis: Double): String =
 private fun allocationLabel(value: Double, portfolioValue: Double): String =
     if (portfolioValue <= 0.0 || value <= 0.0) "0%" else "${((value / portfolioValue) * 100.0).toInt()}%"
 
+@Composable
+private fun portfolioActionPlan(
+    largestHolding: PortfolioHolding?,
+    largestDailyDriver: PortfolioHolding?,
+    portfolioDailyChange: Double,
+): String =
+    when {
+        largestHolding == null -> ui("Add amounts to activate portfolio guidance.")
+        largestHolding.baseValue > 0.0 && largestDailyDriver?.rate?.code == largestHolding.rate.code && portfolioDailyChange < 0.0 ->
+            "${ui("Review")} ${largestHolding.rate.code} ${ui("before adding more exposure")}"
+        largestHolding.baseValue > 0.0 ->
+            "${ui("Keep")} ${largestHolding.rate.code} ${ui("below concentration target")}"
+        else -> ui("Review concentration before adding new exposure.")
+    }
+
 private fun formatPortfolioChange(change: Double, baseCurrency: String): String {
     val sign = if (change >= 0.0) "+" else "-"
     return "$sign$baseCurrency ${formatMoneyValue(kotlin.math.abs(change))}"
 }
-
-private fun formatMoneyValue(value: Double): String =
-    when {
-        value == 0.0 -> "0.00"
-        kotlin.math.abs(value) < 0.01 -> "<0.01"
-        else -> formatRate(value)
-    }
 
 private fun buildUserBackupSnapshot(
     themeMode: ThemeMode,
@@ -8447,6 +7422,7 @@ private fun buildUserBackupSnapshot(
     travelerBudgetBase: Double,
     converterCurrencyCodes: List<String>,
     compareCurrencyCodes: List<String>,
+    providerPreferenceCodes: List<String>,
     userProfile: UserProfile,
     alertsState: AlertsState,
     watchlistState: WatchlistState,
@@ -8461,6 +7437,7 @@ private fun buildUserBackupSnapshot(
             travelerBudgetBase = travelerBudgetBase,
             converterCurrencyCodes = converterCurrencyCodes,
             compareCurrencyCodes = compareCurrencyCodes,
+            providerPreferenceCodes = providerPreferenceCodes,
             userProfile = userProfile.name,
         ),
         alerts = alertsState.alerts,
@@ -8474,6 +7451,7 @@ private fun applyUserBackupSnapshot(
     liveStore: LiveRatesStore,
     onConverterCurrencyCodes: (List<String>) -> Unit,
     onCompareCurrencyCodes: (List<String>) -> Unit,
+    onProviderPreferenceCodes: (List<String>) -> Unit,
     onTravelerCurrency: (String) -> Unit,
     onTravelerBudgetBase: (Double) -> Unit,
     onUserProfile: (UserProfile) -> Unit,
@@ -8489,11 +7467,13 @@ private fun applyUserBackupSnapshot(
     AppSettingsPrefs.setTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     AppSettingsPrefs.setConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
     AppSettingsPrefs.setCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
+    AppSettingsPrefs.setProviderPreferenceCodes(snapshot.settings.providerPreferenceCodes)
     AppSettingsPrefs.setUserProfile(profile)
     liveStore.setBaseCurrency(snapshot.settings.baseCurrency)
     onLanguage(language)
     onConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)
     onCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
+    onProviderPreferenceCodes(snapshot.settings.providerPreferenceCodes)
     onTravelerCurrency(snapshot.settings.travelerCurrency)
     onTravelerBudgetBase(snapshot.settings.travelerBudgetBase)
     onUserProfile(profile)
@@ -8505,68 +7485,6 @@ private fun applyUserBackupSnapshot(
 private fun canCreateAlert(subscriptionState: SubscriptionState, currentCount: Int): Boolean {
     val access = subscriptionState.featureAccess()
     return access.hasUnlimitedAlerts || currentCount < access.alertLimit
-}
-
-private data class DetailStats(
-    val open: Double,
-    val high: Double,
-    val low: Double,
-    val average: Double,
-    val volatilityPct: Double,
-)
-
-private val Period.label: String
-    get() = when (this) {
-        Period.OneDay -> "1D"
-        Period.OneWeek -> "1W"
-        Period.OneMonth -> "1M"
-        Period.OneYear -> "1Y"
-        Period.All -> "ALL"
-    }
-
-private fun List<Float>.seriesForPeriod(period: Period): List<Float> {
-    val source = if (isEmpty()) DetailSeries else this
-    val points = when (period) {
-        Period.OneDay -> 6
-        Period.OneWeek -> 8
-        Period.OneMonth -> 18
-        Period.OneYear -> source.size
-        Period.All -> source.size
-    }
-    return source.takeLast(points.coerceAtMost(source.size)).ifEmpty { DetailSeries }
-}
-
-private fun List<Float>.toDetailStats(): DetailStats {
-    val source = if (isEmpty()) DetailSeries else this
-    val values = source.map { it.toDouble() }
-    val average = values.average().takeIf { !it.isNaN() } ?: 0.0
-    val high = values.maxOrNull() ?: 0.0
-    val low = values.minOrNull() ?: 0.0
-    val volatility = if (average == 0.0) 0.0 else ((high - low) / average) * 100.0
-    return DetailStats(
-        open = values.firstOrNull() ?: 0.0,
-        high = high,
-        low = low,
-        average = average,
-        volatilityPct = volatility,
-    )
-}
-
-@Composable
-private fun BackNavButton(label: String?, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .clip(FxTheme.shapes.field)
-            .clickable(onClick = onClick)
-            .padding(end = 12.dp, top = 8.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("←", style = FxTheme.typography.numberL.copy(fontSize = 34.sp), color = FxTheme.colors.text)
-        if (label != null) {
-            Text(label, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.textDim)
-        }
-    }
 }
 
 @Composable
@@ -9523,50 +8441,6 @@ private fun OnboardingGlyph(glyph: String) {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun PrimaryButton(
-    text: String,
-    modifier: Modifier = Modifier.fillMaxWidth(),
-    enabled: Boolean = true,
-    isLoading: Boolean = false,
-    onClick: () -> Unit = {},
-) {
-    Box(
-        modifier
-            .clip(FxTheme.shapes.field)
-            .background(if (enabled) FxTheme.colors.accent else FxTheme.colors.surface3)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 15.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    color = FxTheme.colors.bg,
-                    strokeWidth = 2.dp,
-                )
-            }
-            Text(text, style = FxTheme.typography.bodyStrong, color = if (enabled) FxTheme.colors.bg else FxTheme.colors.textDim)
-        }
-    }
-}
-
-@Composable
-private fun GhostButton(text: String, modifier: Modifier = Modifier.fillMaxWidth(), onClick: () -> Unit = {}) {
-    Box(
-        modifier
-            .clip(FxTheme.shapes.field)
-            .background(FxTheme.colors.surface2)
-            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
-            .clickable(onClick = onClick)
-            .padding(vertical = 13.dp, horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
     }
 }
 

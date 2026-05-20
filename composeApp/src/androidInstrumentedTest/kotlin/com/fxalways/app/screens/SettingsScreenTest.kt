@@ -233,11 +233,52 @@ class SettingsScreenTest {
         }
     }
 
+    @Test
+    fun userCanChooseLocalAndLatinAmericaProviderPreferences() {
+        val harness = renderSettings(
+            subscriptionState = SubscriptionState(isPremium = true),
+            initialProviderCodes = listOf("wise", "revolut"),
+        )
+
+        compose.onNodeWithTag("settings_provider_preferences").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("settings_provider_market").assertIsDisplayed()
+        compose.onNodeWithTag("settings_provider_wise").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("settings_provider_other_mercado_pago").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("settings_provider_other_nequi").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_provider_use_primary").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(true, "mercado_pago" in harness.providerPreferenceChanges.first())
+            assertEquals(true, "nequi" in harness.providerPreferenceChanges[1])
+            assertEquals(true, harness.providerPreferenceChanges.last().contains("wise"))
+        }
+    }
+
+    @Test
+    fun freeProviderPreferencesLimitQuoteProvidersButAllowWalletMethods() {
+        val harness = renderSettings(
+            subscriptionState = SubscriptionState(isPremium = false),
+            initialProviderCodes = listOf("wise", "revolut"),
+        )
+
+        compose.onNodeWithTag("settings_provider_preferences").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("settings_provider_moneygram").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_provider_other_mercado_pago").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_provider_select_all").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(2, harness.paywallClicks)
+            assertEquals(true, harness.providerPreferenceChanges.single().contains("mercado_pago"))
+            assertEquals(false, harness.providerPreferenceChanges.single().contains("moneygram"))
+        }
+    }
+
     private fun renderSettings(
         subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
         backupState: UserBackupState = UserBackupState(uid = "anon", isAnonymous = true, isAvailable = true),
         lastSyncedAtMillis: Long? = null,
         initialUserProfile: UserProfile = UserProfile.Traveler,
+        initialProviderCodes: List<String> = listOf("wise", "revolut"),
     ): SettingsHarness {
         val harness = SettingsHarness()
         AndroidAppContext.init(compose.activity)
@@ -258,6 +299,7 @@ class SettingsScreenTest {
                     backupSyncing = false,
                     lastSyncedAtMillis = lastSyncedAtMillis,
                     subscriptionState = subscriptionState,
+                    providerPreferenceCodes = initialProviderCodes,
                     onOpenPaywall = { harness.paywallClicks += 1 },
                     onOpenUrl = { harness.openedUrls += it },
                     onRestorePurchase = { harness.restoreClicks += 1 },
@@ -276,6 +318,9 @@ class SettingsScreenTest {
                     onBaseCurrencyChange = {
                         baseCurrency = it
                         harness.baseCurrency = it
+                    },
+                    onProviderPreferenceCodesChange = {
+                        harness.providerPreferenceChanges += it
                     },
                     onUserProfileChange = {
                         userProfile = it
@@ -314,5 +359,6 @@ class SettingsScreenTest {
         val openedUrls = mutableListOf<String>()
         val devPremiumChanges = mutableListOf<Boolean>()
         val profileChanges = mutableListOf<UserProfile>()
+        val providerPreferenceChanges = mutableListOf<List<String>>()
     }
 }

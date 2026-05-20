@@ -55,6 +55,8 @@ class AlertsScreenTest {
 
         compose.runOnIdle { assertEquals(0, harness.notificationPermissionRequests) }
         compose.onNodeWithText("0/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithTag("alert_action_center").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_action_empty").assertIsDisplayed()
         compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("0.95")
         compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
 
@@ -332,6 +334,7 @@ class AlertsScreenTest {
         compose.onNodeWithTag("alert_digest_weekly").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
         compose.onNodeWithTag("alert_digest_upsell").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_digest_next_reminder").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -346,6 +349,7 @@ class AlertsScreenTest {
             assertEquals(0, harness.paywallClicks)
         }
         compose.onNodeWithText("Weekly digest").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_digest_next_reminder").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("alert_digest_upsell").assertCountEquals(0)
     }
 
@@ -415,10 +419,37 @@ class AlertsScreenTest {
         compose.onAllNodesWithTag("alert_card_gbp_move").assertCountEquals(1)
         compose.onAllNodesWithText("24H MOVE").assertCountEquals(1)
         compose.onAllNodesWithText("0.4 pts away", substring = true).assertCountEquals(1)
-        compose.onAllNodesWithText("0.4 pts to move").assertCountEquals(2)
+        compose.onAllNodesWithText("0.4 pts to move").assertCountEquals(3)
         compose.onNodeWithTag("alert_trigger_history").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("alert_history_gbp_move").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Last hit").assertIsDisplayed()
+    }
+
+    @Test
+    fun freeActionCenterLocksConvertButKeepsNextAlertAction() {
+        val harness = renderAlerts(
+            isPremium = false,
+            initialAlerts = listOf(
+                PriceAlert(
+                    id = "eur_hit_action",
+                    base = "USD",
+                    quote = "EUR",
+                    target = 0.90,
+                    direction = AlertDirection.Above,
+                    kind = AlertKind.Target,
+                    enabled = true,
+                    createdAtMillis = 1L,
+                    lastTriggeredAtMillis = 1_700_000_000_000L,
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("alert_action_center").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_action_decision").assertIsDisplayed()
+        compose.onNodeWithTag("alert_action_convert").performClick()
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+        compose.onNodeWithTag("alert_action_next").assertIsDisplayed()
+        compose.onNodeWithTag("alert_action_share").assertIsDisplayed()
     }
 
     @Test

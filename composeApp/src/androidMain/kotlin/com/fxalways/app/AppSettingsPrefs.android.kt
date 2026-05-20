@@ -10,6 +10,7 @@ actual object AppSettingsPrefs {
     private const val KEY_CONVERTER_AMOUNT_TEXT = "converter_amount_text"
     private const val KEY_CONVERTER_CURRENCY_CODES = "converter_currency_codes"
     private const val KEY_COMPARE_CURRENCY_CODES = "compare_currency_codes"
+    private const val KEY_PROVIDER_PREFERENCE_CODES = "provider_preference_codes"
     private const val KEY_USER_PROFILE = "user_profile"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
 
@@ -77,6 +78,17 @@ actual object AppSettingsPrefs {
 
     actual fun setCompareCurrencyCodes(codes: List<String>) {
         prefs().edit().putString(KEY_COMPARE_CURRENCY_CODES, codes.distinct().joinToString(",")).apply()
+    }
+
+    actual fun providerPreferenceCodes(): List<String> =
+        prefs().getString(KEY_PROVIDER_PREFERENCE_CODES, null)
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+
+    actual fun setProviderPreferenceCodes(codes: List<String>) {
+        prefs().edit().putString(KEY_PROVIDER_PREFERENCE_CODES, codes.distinct().joinToString(",")).apply()
     }
 
     actual fun userProfile(): UserProfile {

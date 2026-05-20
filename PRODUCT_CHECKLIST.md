@@ -137,6 +137,8 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Theme mode persists.
 - [x] Language selector exists.
 - [x] Base currency persists and updates app rates.
+- [x] Provider preferences exist in Settings with market-aware main providers and selectable other markets.
+- [x] Provider preferences sync through Firebase backup.
 - [x] Version name is visible.
 - [x] Restore purchase calls RevenueCat restore.
 - [x] Manage subscription deep links are present.
@@ -168,6 +170,17 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Free/Pro policy is centralized.
 - [x] Gating exists for alerts, watchlist, compare, news, traveler, fees, crypto and base currencies.
 - [x] RevenueCat Android gateway is connected.
+
+## Provider Network
+
+- [x] Provider catalog includes global transfer providers, LatAm wallets/rails, digital-dollar routes and local rails.
+- [x] Australia/Oceania users see local main providers first while LatAm providers remain selectable.
+- [x] Converter provider comparison respects the selected provider preferences.
+- [x] Firebase Functions exposes a provider catalog endpoint for server-side catalog/crons.
+- [ ] Integrate official Wise quote API behind Firebase Functions.
+- [ ] Integrate MoneyGram quote API behind Firebase Functions after credentials/partner setup.
+- [ ] Add provider credential/affiliate configuration without exposing secrets in the app.
+- [ ] Add server-side quote freshness, quote source labels and fallback policy per provider.
 - [x] RevenueCat iOS gateway is connected.
 - [x] Entitlement validation for `pro` exists.
 - [x] Restore purchase behavior exists.
@@ -211,11 +224,11 @@ Use this as the release checklist. Mark items only after Android device testing 
 3. [x] P0: turn Traveler into an offline trip pack with local card/ATM/tipping guidance.
 4. [x] P0: add watchlist groups for Travel, Family, Savings, Work and Crypto.
 5. [x] P0: expand Android widgets with cached-age status and separate widget entry intents.
-6. [x] P1: start remittance planner in Convert with family route, recurring amount, cadence and recipient estimate.
-7. [x] P1: add economic calendar light by currency and impact level.
-8. [x] P1: improve portfolio exposure with concentration, scenario impact and digest.
+6. [x] P1: harden remittance planner in Convert with family route, recurring amount, cadence, recipient estimate, next-send window, confidence and annual fee drag.
+7. [x] P1: add economic calendar light by currency, impact level, Pro filters and calendar plan.
+8. [x] P1: improve portfolio exposure with concentration, scenario impact, digest and action plan.
 9. [x] P1: add shareable rate cards with source, timestamp and disclaimer.
-10. [x] P1: add daily/weekly notification digest.
+10. [x] P1: add daily/weekly notification digest with next reminder and cadence-specific summary.
 11. [x] P2: add manual/local rate notebook for official vs informal markets.
 12. [x] P2: add city/country travel cost templates.
 13. [x] P2: add provider comparison history by route and amount.

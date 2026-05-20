@@ -117,6 +117,29 @@ data class NewsFeedDto(
     val items: List<NewsItemDto>,
 )
 
+@Serializable
+data class ProviderCatalogItemDto(
+    val id: String,
+    val label: String,
+    val category: String,
+    val quoteMode: String,
+    val markets: List<String> = emptyList(),
+    val currencies: List<String> = emptyList(),
+    val quoteCapable: Boolean = false,
+    val priority: Int = 0,
+    val subtitle: String = "",
+)
+
+@Serializable
+data class ProviderCatalogDto(
+    val provider: String,
+    val refreshedAt: String,
+    val region: String,
+    val baseCurrency: String,
+    val primary: List<ProviderCatalogItemDto> = emptyList(),
+    val other: List<ProviderCatalogItemDto> = emptyList(),
+)
+
 data class WatchPair(
     val base: String,
     val quote: String,

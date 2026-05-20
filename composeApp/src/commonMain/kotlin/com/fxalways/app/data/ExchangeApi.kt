@@ -5,6 +5,7 @@ import com.fxalways.app.domain.CryptoMarketsResponse
 import com.fxalways.app.domain.HistoricalSeries
 import com.fxalways.app.domain.LatestRates
 import com.fxalways.app.domain.NewsFeedDto
+import com.fxalways.app.domain.ProviderCatalogDto
 import com.fxalways.app.domain.SupportedCurrenciesResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -42,6 +43,11 @@ class ExchangeApi(
 
     suspend fun supportedCurrencies(): SupportedCurrenciesResponse =
         client.get("$baseUrl/supportedCurrencies").body()
+
+    suspend fun providerCatalog(base: String): ProviderCatalogDto =
+        client.get("$baseUrl/providerCatalog") {
+            parameter("base", base)
+        }.body()
 
     suspend fun history(base: String, quote: String, days: Int = 365): HistoricalSeries =
         client.get("$baseUrl/historicalRates") {

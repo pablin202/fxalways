@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
+import com.fxalways.app.data.AlertsState
 import com.fxalways.app.data.LiveRatesState
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
@@ -38,10 +39,11 @@ class ConverterScreenTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun freeUserSeesOnlyMidMarketAndCustomFeeQuotes() {
+    fun freeUserSeesMidMarketCustomAndTwoSelectedProviderQuotes() {
         val harness = renderConverter(isPremium = false)
 
         compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_trust_details").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
         compose.onNodeWithText("FEES · USD → EUR").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_fee_reality_check").performScrollTo().assertIsDisplayed()
@@ -50,19 +52,27 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_reality_loss").assertIsDisplayed()
         compose.onNodeWithText("REMITTANCE PLAN · USD → EUR").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_remittance_planner").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("remittance_family_route").assertIsDisplayed()
-        compose.onNodeWithTag("remittance_recipient_estimate").assertIsDisplayed()
-        compose.onNodeWithTag("remittance_cadence_Monthly").assertIsDisplayed()
+        compose.onNodeWithTag("converter_transfer_intent").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_provider_matrix").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("provider_matrix_row_0").assertIsDisplayed()
+        compose.onNodeWithTag("provider_matrix_upsell").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_family_route").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_recipient_estimate").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_cadence_Monthly").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_next_window").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_annual_fee_drag").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("remittance_cadence_Biweekly").assertCountEquals(0)
         compose.onNodeWithTag("remittance_upsell").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+        compose.onNodeWithTag("transfer_intent_set_alert").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(2, harness.paywallClicks) }
         compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("CUSTOM COST").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_fee_upsell").performScrollTo().assertIsDisplayed()
 
-        compose.onAllNodesWithTag("fee_quote_Wise").assertCountEquals(0)
-        compose.onAllNodesWithTag("fee_quote_Revolut").assertCountEquals(0)
+        compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fee_quote_Revolut").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("fee_quote_Card payment").assertCountEquals(0)
         compose.onAllNodesWithTag("fee_quote_ATM cash").assertCountEquals(0)
         compose.onAllNodesWithTag("fee_quote_Bank transfer").assertCountEquals(0)
@@ -75,17 +85,24 @@ class ConverterScreenTest {
 
         compose.onNodeWithText("FEES · USD → EUR").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("converter_best_provider").assertIsDisplayed()
+        compose.onNodeWithTag("converter_best_provider").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_provider_savings").assertIsDisplayed()
-        compose.onNodeWithTag("converter_mid_market_value").assertIsDisplayed()
+        compose.onNodeWithTag("converter_mid_market_value").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_best_loss").assertIsDisplayed()
-        compose.onNodeWithTag("converter_best_route").assertIsDisplayed()
+        compose.onNodeWithTag("converter_best_route").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_fee_reality_check").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_reality_provider").assertIsDisplayed()
-        compose.onNodeWithText("Low cost").assertIsDisplayed()
         compose.onNodeWithTag("converter_remittance_planner").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("remittance_cadence_Biweekly").assertIsDisplayed().performClick()
-        compose.onNodeWithTag("remittance_recurring_amount").assertIsDisplayed()
+        compose.onNodeWithTag("converter_transfer_intent").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("transfer_purpose_invoice").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("transfer_intent_use_route").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_provider_matrix").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("provider_matrix_row_5").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("provider_matrix_upsell").assertCountEquals(0)
+        compose.onNodeWithTag("remittance_cadence_Biweekly").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("remittance_recurring_amount").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_next_window").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_annual_fee_drag").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Before payday").assertIsDisplayed()
         compose.onAllNodesWithTag("remittance_upsell").assertCountEquals(0)
         compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
@@ -98,6 +115,20 @@ class ConverterScreenTest {
 
         compose.onAllNodesWithText("Pro unlocks the complete provider list; estimates update with your amount.")
             .assertCountEquals(0)
+    }
+
+    @Test
+    fun proProviderComparisonRespectsSelectedProviderPreferences() {
+        renderConverter(
+            isPremium = true,
+            selectedProviderCodes = listOf("wise", "moneygram"),
+        )
+
+        compose.onNodeWithText("PROVIDER MATRIX").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fee_quote_MoneyGram").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("fee_quote_Revolut").assertCountEquals(0)
+        compose.onAllNodesWithTag("fee_quote_Card payment").assertCountEquals(0)
     }
 
     @Test
@@ -117,6 +148,36 @@ class ConverterScreenTest {
         compose.onNodeWithText("Your custom cost").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_provider_history").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun transferIntentHandlesZeroAmountWithoutMissingDecisionCopy() {
+        renderConverter(isPremium = true)
+
+        compose.onNodeWithTag("converter_amount_input").performScrollTo().performTextReplacement("0")
+        compose.onNodeWithTag("converter_transfer_intent").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Enter an amount to compare real routes.").assertIsDisplayed()
+        compose.onNodeWithTag("transfer_intent_best_route").assertIsDisplayed()
+        compose.onNodeWithTag("converter_provider_matrix").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proTransferIntentCreatesAlertAndSavesDecisionReceipt() {
+        val harness = renderConverter(isPremium = true)
+
+        compose.onNodeWithTag("converter_transfer_intent").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("transfer_intent_set_alert").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(1, harness.transferAlertRequests)
+            assertEquals("USD/EUR", harness.lastTransferAlertPair)
+        }
+
+        compose.onNodeWithTag("transfer_intent_use_route").performScrollTo().performClick()
+        compose.onNodeWithTag("transfer_decision_sheet").assertIsDisplayed()
+        compose.onNodeWithTag("transfer_decision_copy").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Copied decision").assertIsDisplayed()
+        compose.onNodeWithTag("transfer_decision_provider").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(0, harness.providerUrls.size) }
     }
 
     @Test
@@ -314,6 +375,9 @@ class ConverterScreenTest {
         compose.onAllNodesWithTag("rate_trust_updated_loading").assertCountEquals(1)
         compose.onAllNodesWithTag("rate_trust_source").assertCountEquals(0)
         compose.onAllNodesWithTag("rate_trust_updated").assertCountEquals(0)
+        compose.onAllNodesWithTag("trust_details_loading_skeleton").assertCountEquals(1)
+        compose.onAllNodesWithTag("trust_decision_grade").assertCountEquals(0)
+        compose.onAllNodesWithTag("trust_provider_disclaimer").assertCountEquals(0)
         compose.onAllNodesWithTag("converter_loading_skeleton").assertCountEquals(1)
         compose.onAllNodesWithTag("converter_fee_loading_skeleton").assertCountEquals(1)
         compose.onAllNodesWithTag("converter_best_provider").assertCountEquals(0)
@@ -323,6 +387,15 @@ class ConverterScreenTest {
         isPremium: Boolean,
         selectedCodes: List<String> = listOf("EUR", "GBP", "JPY"),
         liveState: LiveRatesState = testLiveRatesState(),
+        alertsState: AlertsState = AlertsState(),
+        selectedProviderCodes: List<String> = listOf(
+            "wise",
+            "revolut",
+            "card_payment",
+            "atm_cash",
+            "bank_transfer",
+            "airport_exchange",
+        ),
     ): ConverterHarness {
         val harness = ConverterHarness(selectedCodes = selectedCodes)
         AndroidAppContext.init(compose.activity)
@@ -332,13 +405,20 @@ class ConverterScreenTest {
             FxTheme {
                 ConverterScreen(
                     liveState = liveState,
+                    alertsState = alertsState,
                     subscriptionState = SubscriptionState(isPremium = isPremium),
                     selectedCurrencyCodes = codes,
+                    selectedProviderCodes = selectedProviderCodes,
                     onCurrencyCodesChange = {
                         codes = it
                         harness.selectedCodes = it
                     },
                     onOpenPaywall = { harness.paywallClicks += 1 },
+                    onCreateTransferAlert = { source, target, _ ->
+                        harness.transferAlertRequests += 1
+                        harness.lastTransferAlertPair = "${source.code}/${target.code}"
+                    },
+                    onOpenProviderUrl = { harness.providerUrls += it },
                 )
             }
         }
@@ -397,5 +477,8 @@ class ConverterScreenTest {
         var selectedCodes: List<String>,
     ) {
         var paywallClicks = 0
+        var transferAlertRequests = 0
+        var lastTransferAlertPair: String? = null
+        val providerUrls = mutableListOf<String>()
     }
 }

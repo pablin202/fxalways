@@ -119,6 +119,27 @@ type NewsFeedResponse = {
   items: NewsItem[];
 };
 
+type ProviderCatalogItem = {
+  id: string;
+  label: string;
+  category: "Transfer provider" | "Wallet / payout" | "Local rail" | "Digital dollar";
+  quoteMode: "Live quote ready" | "Partner API required" | "Estimated" | "Wallet only";
+  markets: string[];
+  currencies: string[];
+  quoteCapable: boolean;
+  priority: number;
+  subtitle: string;
+};
+
+type ProviderCatalogResponse = {
+  provider: string;
+  refreshedAt: string;
+  region: string;
+  baseCurrency: string;
+  primary: ProviderCatalogItem[];
+  other: ProviderCatalogItem[];
+};
+
 type GdeltArticle = {
   url?: string;
   title?: string;
@@ -191,6 +212,20 @@ function currency(
   isPopular = false,
 ): CurrencyInfo {
   return { code, name, symbol, flag, country, region, isPopular };
+}
+
+function providerOption(
+  id: string,
+  label: string,
+  category: ProviderCatalogItem["category"],
+  quoteMode: ProviderCatalogItem["quoteMode"],
+  markets: string[],
+  currencies: string[],
+  quoteCapable: boolean,
+  priority: number,
+  subtitle: string,
+): ProviderCatalogItem {
+  return { id, label, category, quoteMode, markets, currencies, quoteCapable, priority, subtitle };
 }
 
 const currencyCatalog: CurrencyInfo[] = [
@@ -411,10 +446,46 @@ const currencyCatalog: CurrencyInfo[] = [
 
 const stablecoinSymbols = new Set(["USDT", "USDC", "DAI", "PYUSD", "USDS", "BUSD"]);
 
+const providerCatalogItems: ProviderCatalogItem[] = [
+  providerOption("wise", "Wise", "Transfer provider", "Live quote ready", ["global", "oceania", "latam", "europe", "asia"], ["AUD", "USD", "EUR", "GBP", "ARS", "BRL", "MXN", "COP", "JPY"], true, 100, "Official quote API path; first candidate for live pricing."),
+  providerOption("revolut", "Revolut", "Transfer provider", "Partner API required", ["global", "oceania", "europe", "asia"], ["AUD", "USD", "EUR", "GBP", "JPY", "SGD"], true, 92, "Strong travel and multi-currency account route."),
+  providerOption("moneygram", "MoneyGram", "Transfer provider", "Live quote ready", ["global", "latam", "asia", "africa"], ["USD", "AUD", "ARS", "BRL", "MXN", "COP", "PEN", "CLP"], true, 88, "Quote API supports cash, bank, wallet and card receive options."),
+  providerOption("western_union", "Western Union", "Transfer provider", "Partner API required", ["global", "latam", "africa", "asia"], ["USD", "AUD", "ARS", "BRL", "MXN", "COP", "PEN", "CLP"], true, 82, "Cash pickup and bank fallback for broad corridors."),
+  providerOption("remitly", "Remitly", "Transfer provider", "Partner API required", ["global", "latam", "asia", "africa"], ["USD", "AUD", "MXN", "COP", "PEN", "BRL"], true, 80, "Popular remittance option where official access requires partnership."),
+  providerOption("paypal_xoom", "PayPal / Xoom", "Transfer provider", "Partner API required", ["global", "latam", "north_america"], ["USD", "AUD", "MXN", "ARS", "BRL", "COP", "PEN"], true, 74, "Useful where PayPal identity or Xoom corridors matter."),
+  providerOption("remessa_online", "Remessa Online", "Transfer provider", "Partner API required", ["latam"], ["BRL", "USD", "EUR", "GBP"], true, 86, "Brazil-focused FX and international transfer provider."),
+  providerOption("global66", "Global66", "Transfer provider", "Estimated", ["latam"], ["CLP", "ARS", "COP", "PEN", "MXN", "USD", "EUR"], true, 78, "LatAm app for wallet, card and international transfers."),
+  providerOption("dolarapp", "DolarApp", "Digital dollar", "Estimated", ["latam"], ["ARS", "MXN", "COP", "BRL", "USD"], true, 70, "Digital-dollar account route for LatAm users."),
+  providerOption("airtm", "Airtm", "Digital dollar", "Estimated", ["latam", "emerging"], ["ARS", "VES", "COP", "PEN", "USD"], true, 62, "Useful in high-friction emerging-market corridors."),
+  providerOption("card_payment", "Card payment", "Local rail", "Estimated", ["global", "oceania", "latam", "europe", "asia"], ["AUD", "USD", "EUR", "ARS", "BRL", "MXN"], true, 58, "Emergency card route with markup visibility."),
+  providerOption("atm_cash", "ATM cash", "Local rail", "Estimated", ["global", "oceania", "latam", "europe", "asia"], ["AUD", "USD", "EUR", "ARS", "BRL", "MXN"], true, 52, "Cash-access route with fee and spread estimates."),
+  providerOption("bank_transfer", "Bank transfer", "Local rail", "Estimated", ["global", "oceania", "latam", "europe", "asia"], ["AUD", "USD", "EUR", "ARS", "BRL", "MXN"], true, 48, "Bank fallback when fintech providers are unavailable."),
+  providerOption("airport_exchange", "Airport exchange", "Local rail", "Estimated", ["global", "oceania", "latam", "europe", "asia"], ["AUD", "USD", "EUR", "ARS", "BRL", "MXN"], true, 20, "Last-resort cash route; kept visible for avoidance decisions."),
+  providerOption("paypal", "PayPal", "Wallet / payout", "Wallet only", ["global", "north_america", "latam", "oceania"], ["USD", "AUD", "MXN", "BRL", "ARS"], false, 45, "Wallet and payout method, not a direct FX quote source."),
+  providerOption("venmo", "Venmo", "Wallet / payout", "Wallet only", ["north_america"], ["USD"], false, 38, "US wallet/payout method through PayPal rails."),
+  providerOption("paypay", "PayPay", "Wallet / payout", "Wallet only", ["asia"], ["JPY"], false, 36, "Japan wallet/payment rail."),
+  providerOption("mercado_pago", "Mercado Pago", "Wallet / payout", "Wallet only", ["latam"], ["ARS", "BRL", "MXN", "CLP", "COP", "PEN", "UYU"], false, 44, "LatAm wallet and local payment rail."),
+  providerOption("pix", "Pix", "Local rail", "Wallet only", ["latam"], ["BRL"], false, 42, "Brazil instant payment rail."),
+  providerOption("picpay", "PicPay", "Wallet / payout", "Wallet only", ["latam"], ["BRL"], false, 35, "Brazil wallet/Pix acceptance option."),
+  providerOption("nequi", "Nequi", "Wallet / payout", "Wallet only", ["latam"], ["COP"], false, 34, "Colombia wallet and business payment API surface."),
+  providerOption("yape", "Yape", "Wallet / payout", "Wallet only", ["latam"], ["PEN"], false, 32, "Peru wallet and local receive method."),
+  providerOption("uala", "Uala", "Wallet / payout", "Wallet only", ["latam"], ["ARS", "MXN", "COP"], false, 31, "LatAm wallet/card route."),
+];
+
 export const latestRates = onRequest({ region, cors: true }, async (request, response) => {
   try {
     const base = normalizeCurrency(request.query.base, "USD");
     const payload = await getLatestRates(base);
+    response.status(200).json(payload);
+  } catch (error) {
+    response.status(500).json({ message: errorMessage(error) });
+  }
+});
+
+export const providerCatalog = onRequest({ region, cors: true }, async (request, response) => {
+  try {
+    const baseCurrency = normalizeCurrency(request.query.base, "USD");
+    const payload = getProviderCatalog(baseCurrency);
     response.status(200).json(payload);
   } catch (error) {
     response.status(500).json({ message: errorMessage(error) });
@@ -1193,6 +1264,71 @@ function normalizeLimit(value: unknown, fallback: number, min: number, max: numb
   const parsed = typeof raw === "string" ? Number.parseInt(raw, 10) : fallback;
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(Math.max(parsed, min), max);
+}
+
+function marketForCurrency(currencyCode: string): string {
+  switch (currencyCode.toUpperCase()) {
+    case "AUD":
+    case "NZD":
+      return "oceania";
+    case "ARS":
+    case "BRL":
+    case "MXN":
+    case "CLP":
+    case "COP":
+    case "PEN":
+    case "UYU":
+    case "VES":
+    case "BOB":
+    case "PYG":
+      return "latam";
+    case "USD":
+    case "CAD":
+      return "north_america";
+    case "EUR":
+    case "GBP":
+    case "CHF":
+    case "DKK":
+    case "NOK":
+    case "SEK":
+    case "PLN":
+      return "europe";
+    case "JPY":
+    case "CNY":
+    case "SGD":
+    case "HKD":
+    case "INR":
+    case "PHP":
+    case "THB":
+    case "IDR":
+      return "asia";
+    default:
+      return "global";
+  }
+}
+
+function getProviderCatalog(baseCurrency: string): ProviderCatalogResponse {
+  const regionKey = marketForCurrency(baseCurrency);
+  const primary = providerCatalogItems
+    .filter((provider) => provider.markets.includes("global") || provider.markets.includes(regionKey) || provider.currencies.includes(baseCurrency))
+    .sort(compareProviders);
+  const primaryIds = new Set(primary.map((provider) => provider.id));
+  const other = providerCatalogItems
+    .filter((provider) => !primaryIds.has(provider.id))
+    .sort(compareProviders);
+  return {
+    provider: "FX Always provider catalog",
+    refreshedAt: new Date().toISOString(),
+    region: regionKey,
+    baseCurrency,
+    primary,
+    other,
+  };
+}
+
+function compareProviders(left: ProviderCatalogItem, right: ProviderCatalogItem): number {
+  if (right.priority !== left.priority) return right.priority - left.priority;
+  return left.label.localeCompare(right.label);
 }
 
 function formatDate(date: Date): string {

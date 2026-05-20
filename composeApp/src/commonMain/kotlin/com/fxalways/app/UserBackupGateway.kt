@@ -14,6 +14,7 @@ data class BackupSettings(
     val travelerBudgetBase: Double = 100.0,
     val converterCurrencyCodes: List<String> = emptyList(),
     val compareCurrencyCodes: List<String> = emptyList(),
+    val providerPreferenceCodes: List<String> = emptyList(),
     val userProfile: String = UserProfile.Traveler.name,
 )
 
@@ -54,6 +55,7 @@ private fun BackupSettings.isDefaultLocalSettings(): Boolean =
         travelerBudgetBase == 100.0 &&
         converterCurrencyCodes.isEmpty() &&
         compareCurrencyCodes.isEmpty() &&
+        providerPreferenceCodes.isEmpty() &&
         userProfile == UserProfile.Traveler.name
 
 expect object UserBackupGateway {

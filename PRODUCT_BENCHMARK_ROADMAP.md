@@ -99,17 +99,20 @@ These items should move FX Always from a polished converter into a product that 
 
 ## P1
 
-- Remittance planner with recurring amount, family route, reminder cadence and recipient estimate. Started in Convert and UI-tested.
-- Economic calendar light by currency and impact level. Started in Detail and UI-tested.
-- Portfolio exposure improvements: currency concentration, scenario impact and daily digest. Started in Watchlist and UI-tested.
+- Remittance planner with recurring amount, family route, reminder cadence, recipient estimate, next-send window, route confidence and annual fee drag. Hardened in Convert and UI-tested.
+- Economic calendar light by currency and impact level, with Pro impact filters and calendar plan. Hardened in Detail and UI-tested.
+- Portfolio exposure improvements: currency concentration, scenario impact, daily digest and action plan. Hardened in Watchlist and UI-tested.
 - Shareable rate cards with source, timestamp and disclaimer. Started in Detail and UI-tested.
-- Daily/weekly notification digest. Started in Alerts and UI-tested.
+- Daily/weekly notification digest with next reminder and cadence-specific summary. Hardened in Alerts and UI-tested.
 
 ## P2
 
 - Manual/local rate notebook for markets with official vs informal rates. Started in Convert and UI-tested.
 - City/country travel cost templates. Started in Traveler and UI-tested.
 - Provider comparison history by route and amount. Started in Convert and UI-tested.
+- Provider preferences by market: Settings now separates local/main providers from other markets, lets users select LatAm wallets/rails even when their base is Australia, syncs those choices through Firebase backup, and filters Convert provider comparisons/transfer intent to the selected quote-capable providers. UI-tested.
+- Firebase provider catalog endpoint: Functions exposes `providerCatalog?base=...` with primary/other grouping, quote mode and market metadata so the static in-app catalog can move server-side without changing the UX.
+- Quote-source model: current provider prices remain clearly estimated unless a provider has official/partner quote integration. Wise and MoneyGram are first candidates for live quote work; Venmo, PayPay, Mercado Pago, Nequi, Yape, Pix and PicPay are treated as wallet/local rails until direct quote APIs or partnerships are available.
 - OCR price/receipt converter.
 - More explicit family/remittance workflows.
 

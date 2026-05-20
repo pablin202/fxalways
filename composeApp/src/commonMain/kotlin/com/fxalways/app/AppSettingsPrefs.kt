@@ -31,6 +31,8 @@ expect object AppSettingsPrefs {
     fun setConverterCurrencyCodes(codes: List<String>)
     fun compareCurrencyCodes(): List<String>
     fun setCompareCurrencyCodes(codes: List<String>)
+    fun providerPreferenceCodes(): List<String>
+    fun setProviderPreferenceCodes(codes: List<String>)
     fun userProfile(): UserProfile
     fun setUserProfile(profile: UserProfile)
     fun cachedPremium(): Boolean?

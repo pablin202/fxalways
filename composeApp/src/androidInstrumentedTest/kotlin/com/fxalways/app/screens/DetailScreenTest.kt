@@ -53,6 +53,10 @@ class DetailScreenTest {
         compose.onNodeWithTag("detail_economic_calendar").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("detail_calendar_event_0").assertIsDisplayed()
         compose.onNodeWithTag("detail_calendar_event_1").assertIsDisplayed()
+        compose.onNodeWithTag("detail_calendar_filter_all").assertIsDisplayed()
+        compose.onNodeWithTag("detail_calendar_filter_high").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+        compose.onNodeWithTag("detail_calendar_plan").assertIsDisplayed()
         compose.onAllNodesWithText("EUR jobs update", substring = true).assertCountEquals(0)
         compose.onNodeWithTag("detail_calendar_upsell").assertIsDisplayed()
         compose.onNodeWithTag("detail_story_ECBfirstEURevent").performScrollTo().assertIsDisplayed()
@@ -62,7 +66,7 @@ class DetailScreenTest {
         compose.onNodeWithTag("period_OneYear").performScrollTo().performClick()
 
         compose.runOnIdle {
-            assertEquals(1, harness.paywallClicks)
+            assertEquals(2, harness.paywallClicks)
             assertEquals(listOf(Period.OneMonth), harness.loadedPeriods)
         }
     }
@@ -77,7 +81,11 @@ class DetailScreenTest {
         compose.onNodeWithText("ExchangeApi · 4 pts · updated test").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("STATISTICS · 1Y").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("detail_economic_calendar").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("detail_calendar_filter_high").performClick()
+        compose.onAllNodesWithText("EUR jobs update", substring = true).assertCountEquals(0)
+        compose.onNodeWithTag("detail_calendar_filter_all").performClick()
         compose.onNodeWithText("EUR jobs update", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("detail_calendar_plan").assertIsDisplayed()
         compose.onAllNodesWithText("Pro unlocks the full calendar and impact filters.").assertCountEquals(0)
         compose.onNodeWithTag("detail_story_ECBthirdEURevent").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("detail_story_ECBthirdEURevent").performScrollTo().performClick()

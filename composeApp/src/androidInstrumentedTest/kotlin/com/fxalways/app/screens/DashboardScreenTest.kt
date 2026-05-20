@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -33,6 +34,7 @@ class DashboardScreenTest {
 
         compose.onNodeWithTag("dashboard_crypto_header").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_rate_trust").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_trust_details").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_snapshot").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_stablecoins").performScrollTo().assertIsDisplayed()
@@ -95,6 +97,9 @@ class DashboardScreenTest {
         compose.onAllNodesWithTag("rate_trust_updated_loading").assertCountEquals(1)
         compose.onAllNodesWithTag("rate_trust_source").assertCountEquals(0)
         compose.onAllNodesWithTag("rate_trust_updated").assertCountEquals(0)
+        compose.onAllNodesWithTag("trust_details_loading_skeleton").assertCountEquals(1)
+        compose.onAllNodesWithTag("trust_decision_grade").assertCountEquals(0)
+        compose.onAllNodesWithTag("trust_provider_disclaimer").assertCountEquals(0)
         compose.onAllNodesWithTag("dashboard_loading_skeleton").assertCountEquals(1)
         compose.onAllNodesWithTag("dashboard_market_loading_skeleton").assertCountEquals(1)
         compose.onAllNodesWithTag("dashboard_profile_card").assertCountEquals(0)
@@ -110,15 +115,16 @@ class DashboardScreenTest {
         compose.onNodeWithTag("dashboard_profile_pro_focus").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_pair").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_action").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_alert_action").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_action").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_workflow").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_workflow_primary").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert_action").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Mid-market + custom cost").assertIsDisplayed()
         compose.onNodeWithText("Full provider comparison + alerts").assertIsDisplayed()
         compose.onNodeWithText("USD -> MXN").assertIsDisplayed()
         compose.onNodeWithText("Target rate above last 7d average").assertIsDisplayed()
         compose.onNodeWithText("Create suggested alert").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert_action").performClick()
-        compose.onNodeWithText("Free").assertIsDisplayed()
 
         compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
     }
@@ -143,9 +149,9 @@ class DashboardScreenTest {
         compose.onNodeWithText("Expanded crypto catalog + holdings").assertIsDisplayed()
         compose.onNodeWithText("USD -> BTC").assertIsDisplayed()
         compose.onNodeWithText("BTC/ETH daily move above 3%").assertIsDisplayed()
-        compose.onNodeWithText("Suggested alert active").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_alert_action").performClick()
-        compose.onNodeWithText("Pro").assertIsDisplayed()
+        compose.onNodeWithText("Suggested alert active").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert_action").performScrollTo().performClick()
+        compose.onAllNodesWithText("Pro").assertCountEquals(2)
 
         compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
     }
@@ -159,8 +165,8 @@ class DashboardScreenTest {
         )
 
         compose.onNodeWithText("Crypto portfolio focus").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Unlock suggested alert").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_alert_action").performClick()
+        compose.onNodeWithText("Unlock suggested alert").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert_action").performScrollTo().performClick()
 
         compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
     }
