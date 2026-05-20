@@ -83,6 +83,22 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun googleLinkShowsPendingFeedbackAfterTap() {
+        val harness = renderSettings(
+            backupState = UserBackupState(uid = "anon", isAnonymous = true, isAvailable = true),
+        )
+
+        compose.onNodeWithTag("settings_link_account").performScrollTo().performClick()
+
+        compose.onNodeWithTag("settings_link_account_loading").assertIsDisplayed()
+        compose.onNodeWithText("connecting").assertIsDisplayed()
+        compose.onNodeWithText("Connecting your account securely. Please wait.").assertIsDisplayed()
+        compose.runOnIdle {
+            assertEquals(1, harness.linkClicks)
+        }
+    }
+
+    @Test
     fun legalLinksUseCurrentLanguage() {
         val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = true))
 

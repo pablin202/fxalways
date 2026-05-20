@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -5523,6 +5524,12 @@ fun SettingsScreen(
         compactCurrencyChoices(fullBaseCurrencies, baseCurrency, baseCurrencyLimit)
     }
     var showBaseCurrencyPicker by remember { mutableStateOf(false) }
+    var linkIdentityPending by remember { mutableStateOf(false) }
+    LaunchedEffect(backupSyncing, backupState.isAnonymous) {
+        if (!backupSyncing || !backupState.isAnonymous) {
+            linkIdentityPending = false
+        }
+    }
     if (showBaseCurrencyPicker) {
         CurrencyPickerSheet(
 	            title = ui("Choose base currency"),
@@ -5558,6 +5565,7 @@ fun SettingsScreen(
                     selected = false,
                     actionLabel = if (backupSyncing) copy.syncing else copy.sync,
                     modifier = Modifier.testTag("settings_sync_now"),
+                    enabled = !backupSyncing,
                     onClick = onSyncNow,
                 )
                 if (backupState.isAnonymous) {
@@ -5571,11 +5579,16 @@ fun SettingsScreen(
                     }
                     SettingChoiceRow(
                         title = "${copy.signInWith} $providerLabel",
-                        subtitle = "${copy.signInSubtitle} $deviceLabel",
+                        subtitle = if (linkIdentityPending) copy.signInProgressSubtitle else "${copy.signInSubtitle} $deviceLabel",
                         selected = false,
-                        actionLabel = copy.connect,
+                        actionLabel = if (linkIdentityPending) copy.connecting else copy.connect,
                         modifier = Modifier.testTag("settings_link_account"),
-                        onClick = onLinkGoogle,
+                        enabled = !backupSyncing && !linkIdentityPending,
+                        isLoading = linkIdentityPending,
+                        onClick = {
+                            linkIdentityPending = true
+                            onLinkGoogle()
+                        },
                     )
                 } else {
                     SettingChoiceRow(
@@ -5836,6 +5849,8 @@ private fun SettingChoiceRow(
     selected: Boolean,
 	    actionLabel: String = if (selected) ui("active") else ui("select"),
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
     onClick: () -> Unit,
 ) {
     Row(
@@ -5844,7 +5859,7 @@ private fun SettingChoiceRow(
             .clip(FxTheme.shapes.field)
             .background(if (selected) FxTheme.colors.accentSoft else Color.Transparent)
             .border(if (selected) 1.dp else 0.dp, if (selected) FxTheme.colors.accentLine else Color.Transparent, FxTheme.shapes.field)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 11.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -5853,7 +5868,14 @@ private fun SettingChoiceRow(
             Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
             Text(subtitle, style = FxTheme.typography.caption, color = FxTheme.colors.textFaint)
         }
-        Pill(actionLabel, variant = if (selected) PillVariant.Accent else PillVariant.Ghost)
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp).testTag("settings_link_account_loading"),
+                color = FxTheme.colors.accent,
+                strokeWidth = 2.dp,
+            )
+        }
+        Pill(actionLabel, variant = if (selected || isLoading) PillVariant.Accent else PillVariant.Ghost)
     }
 }
 
@@ -6969,7 +6991,9 @@ private data class SettingsCopy(
     val sync: String,
     val signInWith: String,
     val signInSubtitle: String,
+    val signInProgressSubtitle: String,
     val connect: String,
+    val connecting: String,
     val signOut: String,
     val signOutSubtitle: String,
     val signOutAction: String,
@@ -7016,7 +7040,9 @@ private fun settingsCopy(language: String): SettingsCopy =
             sync = "sincronizar",
             signInWith = "Iniciar sesión con",
             signInSubtitle = "Mantén el mismo backup y restáuralo en un nuevo",
+            signInProgressSubtitle = "Conectando la cuenta de forma segura. Espera un momento.",
             connect = "conectar",
+            connecting = "conectando",
             signOut = "Cerrar sesión",
             signOutSubtitle = "Mantén los datos locales y continúa con backup invitado",
             signOutAction = "salir",
@@ -7060,7 +7086,9 @@ private fun settingsCopy(language: String): SettingsCopy =
             sync = "sincronizar",
             signInWith = "Entrar com",
             signInSubtitle = "Mantenha o mesmo backup e restaure em um novo",
+            signInProgressSubtitle = "Conectando a conta com segurança. Aguarde um momento.",
             connect = "conectar",
+            connecting = "conectando",
             signOut = "Sair",
             signOutSubtitle = "Mantém dados locais e continua com backup convidado",
             signOutAction = "sair",
@@ -7106,7 +7134,9 @@ private fun settingsCopy(language: String): SettingsCopy =
                 sync = t("sync"),
                 signInWith = t("Sign in with"),
                 signInSubtitle = t("Keep the same backup and restore it on a new"),
+                signInProgressSubtitle = t("Connecting your account securely. Please wait."),
                 connect = t("connect"),
+                connecting = t("connecting"),
                 signOut = t("Sign out"),
                 signOutSubtitle = t("Keep local data and continue with a new guest backup"),
                 signOutAction = t("sign out"),
