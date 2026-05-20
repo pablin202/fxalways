@@ -123,6 +123,11 @@ These items should move FX Always from a polished converter into a product that 
 - Internal testing manual QA checklist with Free, Pro, offline/cache and paywall/legal coverage. Started in Settings and UI-tested.
 - Copyable internal test plan for tester distribution. Started in Settings and UI-tested.
 
+## P5
+
+- Store listing kit with title, short description, keywords and disclaimer. Started in Settings and UI-tested.
+- Copyable store listing draft for release prep. Started in Settings and UI-tested.
+
 ## Immediate Implementation Order
 
 1. Strengthen Convert with an explicit fee/spread reality check card.

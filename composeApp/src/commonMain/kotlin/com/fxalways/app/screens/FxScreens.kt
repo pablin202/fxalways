@@ -721,6 +721,16 @@ private val uiTranslations = mapOf(
         "Validate expanded calendars, histories and portfolios." to "Validar calendarios, historiales y portfolios ampliados.",
         "Validate cached rates and traveler offline pack." to "Validar rates cacheados y pack offline de viaje.",
         "Validate restore, manage subscription, terms and privacy." to "Validar restaurar, gestionar suscripción, términos y privacidad.",
+        "STORE LISTING KIT" to "KIT DE LISTING",
+        "Listing draft" to "Draft de listing",
+        "Short description" to "Descripción corta",
+        "Keywords" to "Keywords",
+        "Store disclaimer" to "Disclaimer de store",
+        "Copy store listing" to "Copiar listing",
+        "Copied store listing" to "Listing copiado",
+        "Live currency converter, alerts, travel tools and portfolio tracking." to "Conversor live, alertas, herramientas de viaje y portfolio.",
+        "currency converter, exchange rates, travel money, rate alerts" to "conversor moneda, exchange rates, dinero viaje, alertas rate",
+        "Rates are indicative and may differ from provider, card or cash exchange rates." to "Los rates son indicativos y pueden diferir de proveedor, tarjeta o efectivo.",
         "FX/ Pro is active" to "FX/ Pro está activo",
         "Available" to "Disponible",
         "Not configured" to "No configurado",
@@ -6584,21 +6594,29 @@ fun SettingsScreen(
             )
         }
 
-        SectionLabel(ui("RELEASE READINESS"))
-        ReleaseReadinessCard(
-            appLanguage = appLanguage,
-            baseCurrency = baseCurrency,
-            backupState = backupState,
-            lastSyncedAtMillis = lastSyncedAtMillis,
-            subscriptionState = subscriptionState,
-        )
+        if (PlatformConfig.isDebug) {
+            SectionLabel(ui("RELEASE READINESS"))
+            ReleaseReadinessCard(
+                appLanguage = appLanguage,
+                baseCurrency = baseCurrency,
+                backupState = backupState,
+                lastSyncedAtMillis = lastSyncedAtMillis,
+                subscriptionState = subscriptionState,
+            )
 
-        SectionLabel(ui("INTERNAL TEST PLAN"))
-        InternalTestPlanCard(
-            appLanguage = appLanguage,
-            baseCurrency = baseCurrency,
-            subscriptionState = subscriptionState,
-        )
+            SectionLabel(ui("INTERNAL TEST PLAN"))
+            InternalTestPlanCard(
+                appLanguage = appLanguage,
+                baseCurrency = baseCurrency,
+                subscriptionState = subscriptionState,
+            )
+
+            SectionLabel(ui("STORE LISTING KIT"))
+            StoreListingKitCard(
+                appLanguage = appLanguage,
+                subscriptionState = subscriptionState,
+            )
+        }
 
         SectionLabel(ui("Profile"))
         BentoCard(padding = 8.dp) {
@@ -6733,6 +6751,64 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun StoreListingKitCard(
+    appLanguage: String,
+    subscriptionState: SubscriptionState,
+) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(appLanguage, subscriptionState.isPremium) { mutableStateOf(false) }
+    val planLabel = if (subscriptionState.isPremium) "Pro" else "Free"
+    val listingTitle = "FX Always"
+    val shortDescription = ui("Live currency converter, alerts, travel tools and portfolio tracking.")
+    val keywords = ui("currency converter, exchange rates, travel money, rate alerts")
+    val disclaimer = ui("Rates are indicative and may differ from provider, card or cash exchange rates.")
+    val listingText = remember(appLanguage, planLabel, shortDescription, keywords, disclaimer) {
+        buildString {
+            append("FX Always store listing kit\n")
+            append("Language: $appLanguage\n")
+            append("Plan context: $planLabel\n")
+            append("Title: $listingTitle\n")
+            append("Short description: $shortDescription\n")
+            append("Keywords: $keywords\n")
+            append("Disclaimer: $disclaimer")
+        }
+    }
+    BentoCard(Modifier.testTag("settings_store_listing_kit"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            KeyValueRow(
+                ui("Listing draft"),
+                listingTitle,
+                "$appLanguage · $planLabel",
+                modifier = Modifier.testTag("store_listing_title"),
+            )
+            KeyValueRow(
+                ui("Short description"),
+                shortDescription,
+                modifier = Modifier.testTag("store_listing_short_description"),
+            )
+            KeyValueRow(
+                ui("Keywords"),
+                keywords,
+                modifier = Modifier.testTag("store_listing_keywords"),
+            )
+            KeyValueRow(
+                ui("Store disclaimer"),
+                disclaimer,
+                modifier = Modifier.testTag("store_listing_disclaimer"),
+            )
+            GhostButton(
+                text = if (copied) ui("Copied store listing") else ui("Copy store listing"),
+                modifier = Modifier.fillMaxWidth().testTag("store_listing_copy"),
+                onClick = {
+                    clipboard.setText(AnnotatedString(listingText))
+                    copied = true
+                },
+            )
+        }
     }
 }
 

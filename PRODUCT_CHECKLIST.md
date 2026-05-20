@@ -221,4 +221,6 @@ Use this as the release checklist. Mark items only after Android device testing 
 15. [x] P3: add support snapshot copy for tester reports.
 16. [x] P4: add internal testing manual QA checklist.
 17. [x] P4: add copyable internal test plan for tester distribution.
-18. Release: close legal content, store listing, release signing and full instrumentation run.
+18. [x] P5: add store listing kit with release copy and disclaimer.
+19. [x] P5: add copyable store listing draft for release prep.
+20. Release: close legal content, store listing, release signing and full instrumentation run.

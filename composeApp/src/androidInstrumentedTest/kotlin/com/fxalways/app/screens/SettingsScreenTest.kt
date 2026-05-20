@@ -156,6 +156,20 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun storeListingKitShowsCopyReadyReleaseMetadata() {
+        renderSettings(subscriptionState = SubscriptionState(isPremium = true))
+
+        compose.onNodeWithTag("settings_store_listing_kit").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("store_listing_title").assertIsDisplayed()
+        compose.onNodeWithTag("store_listing_short_description").assertIsDisplayed()
+        compose.onNodeWithTag("store_listing_keywords").assertIsDisplayed()
+        compose.onNodeWithTag("store_listing_disclaimer").assertIsDisplayed()
+        compose.onNodeWithText("Live currency converter, alerts, travel tools and portfolio tracking.").assertIsDisplayed()
+        compose.onNodeWithTag("store_listing_copy").performScrollTo().performClick()
+        compose.onNodeWithText("Copied store listing").assertIsDisplayed()
+    }
+
+    @Test
     fun freeBaseCurrencyMoreOpensPaywallInsteadOfFullPicker() {
         val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = false))
 

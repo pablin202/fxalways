@@ -18,29 +18,39 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
+            android:includeFontPadding="false"
             android:maxLines="1"
             android:text="Traveler"
             android:textColor="#F7FAFF"
-            android:textSize="14sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/traveler_widget_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/fx_widget_status_pill"
+            android:includeFontPadding="false"
             android:maxLines="1"
             android:text="LIVE"
             android:textColor="#5EEAD4"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
+
+    <View
+        android:layout_width="56dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/fx_widget_accent_line" />
 
     <TextView
         android:id="@+id/traveler_widget_destination"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="9dp"
         android:ellipsize="end"
+        android:includeFontPadding="false"
         android:maxLines="1"
         android:text="TOKYO · JPY"
         android:textColor="#9BA8BA"
@@ -50,12 +60,13 @@
         android:id="@+id/traveler_widget_budget"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="1dp"
+        android:layout_marginTop="3dp"
         android:ellipsize="end"
+        android:includeFontPadding="false"
         android:maxLines="1"
         android:text="¥15,600"
         android:textColor="#F7FAFF"
-        android:textSize="28sp"
+        android:textSize="30sp"
         android:textStyle="bold" />
 
     <LinearLayout
@@ -71,12 +82,14 @@
             android:layout_weight="1"
             android:background="@drawable/fx_widget_tile_background"
             android:orientation="vertical"
-            android:padding="8dp">
+            android:paddingHorizontal="9dp"
+            android:paddingVertical="8dp">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
+                android:includeFontPadding="false"
                 android:maxLines="1"
                 android:text="Daily"
                 android:textColor="#9BA8BA"
@@ -86,11 +99,13 @@
                 android:id="@+id/traveler_widget_daily"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:ellipsize="end"
+                android:includeFontPadding="false"
                 android:maxLines="1"
                 android:text="¥5,200"
                 android:textColor="#5EEAD4"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
@@ -101,12 +116,14 @@
             android:layout_weight="1"
             android:background="@drawable/fx_widget_tile_background"
             android:orientation="vertical"
-            android:padding="8dp">
+            android:paddingHorizontal="9dp"
+            android:paddingVertical="8dp">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
+                android:includeFontPadding="false"
                 android:maxLines="1"
                 android:text="Cash"
                 android:textColor="#9BA8BA"
@@ -116,11 +133,13 @@
                 android:id="@+id/traveler_widget_cash"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:ellipsize="end"
+                android:includeFontPadding="false"
                 android:maxLines="1"
                 android:text="¥3,900"
                 android:textColor="#F7FAFF"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
@@ -141,6 +160,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
+            android:includeFontPadding="false"
             android:maxLines="1"
             android:text="Rate"
             android:textColor="#9BA8BA"
@@ -151,6 +171,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:ellipsize="end"
+            android:includeFontPadding="false"
             android:maxLines="1"
             android:text="1 USD = 156.00"
             android:textColor="#F7FAFF"
