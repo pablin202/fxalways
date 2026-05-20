@@ -3,12 +3,14 @@ package com.fxalways.app.screens
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.data.AlertDirection
@@ -109,6 +111,17 @@ class DetailScreenTest {
     }
 
     @Test
+    fun emptyRelatedNewsAndEventsUseFullWidthCards() {
+        renderDetail(
+            isPremium = true,
+            newsState = NewsUiState(isLoading = false, stories = emptyList()),
+        )
+
+        compose.onNodeWithTag("detail_news_empty").performScrollTo().assertIsDisplayed().assertWidthIsAtLeast(300.dp)
+        compose.onNodeWithTag("detail_events_empty").performScrollTo().assertIsDisplayed().assertWidthIsAtLeast(300.dp)
+    }
+
+    @Test
     fun alertCtaUsesExistingPairCountAndCreatesAlertForSelectedRate() {
         val harness = renderDetail(
             isPremium = false,
@@ -136,6 +149,7 @@ class DetailScreenTest {
         isPremium: Boolean,
         alertsState: AlertsState = AlertsState(),
         detailState: DetailUiState = loadedDetailState(),
+        newsState: NewsUiState = NewsUiState(isLoading = false, stories = relatedStories()),
     ): DetailHarness {
         val harness = DetailHarness()
         AndroidAppContext.init(compose.activity)
@@ -146,7 +160,7 @@ class DetailScreenTest {
                     alertsState = alertsState,
                     subscriptionState = SubscriptionState(isPremium = isPremium),
                     detailState = detailState,
-                    newsState = NewsUiState(isLoading = false, stories = relatedStories()),
+                    newsState = newsState,
                     rate = testRate(),
                     onOpenPaywall = { harness.paywallClicks += 1 },
                     onLoadHistory = { _, _, period, _ -> harness.loadedPeriods += period },

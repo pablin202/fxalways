@@ -59,9 +59,7 @@ class ConverterScreenTest {
         compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("CUSTOM COST").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Pro unlocks the complete provider list; estimates update with your amount.")
-            .performScrollTo()
-            .assertIsDisplayed()
+        compose.onNodeWithTag("converter_fee_upsell").performScrollTo().assertIsDisplayed()
 
         compose.onAllNodesWithTag("fee_quote_Wise").assertCountEquals(0)
         compose.onAllNodesWithTag("fee_quote_Revolut").assertCountEquals(0)
@@ -166,9 +164,19 @@ class ConverterScreenTest {
         compose.onNodeWithTag("price_scanner_live_cost").assertIsDisplayed()
         compose.onNodeWithTag("price_scanner_local_cost").assertIsDisplayed()
         compose.onNodeWithTag("price_scanner_hidden_cost").assertIsDisplayed()
+        compose.onAllNodesWithTag("price_scanner_scan_button").assertCountEquals(0)
         compose.onNodeWithTag("price_scanner_upsell").performScrollTo().performClick()
 
         compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+    }
+
+    @Test
+    fun proUserCanOpenOcrScannerEntryPoint() {
+        renderConverter(isPremium = true)
+
+        compose.onNodeWithTag("converter_price_scanner").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("price_scanner_scan_button").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("price_scanner_upsell").assertCountEquals(0)
     }
 
     @Test

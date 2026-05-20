@@ -72,6 +72,10 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.camera.camera2)
+            implementation(libs.androidx.camera.lifecycle)
+            implementation(libs.androidx.camera.view)
+            implementation(libs.androidx.concurrent.futures)
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.work.runtime.ktx)
             implementation(libs.kotlinx.coroutines.play.services)
@@ -80,6 +84,8 @@ kotlin {
             implementation(libs.firebase.auth)
             implementation(libs.firebase.firestore)
             implementation(libs.google.play.services.auth)
+            implementation(libs.guava)
+            implementation(libs.mlkit.text.recognition)
         }
         androidInstrumentedTest.dependencies {
             implementation(kotlin("test"))

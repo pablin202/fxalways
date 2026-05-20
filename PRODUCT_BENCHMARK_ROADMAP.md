@@ -131,7 +131,7 @@ These items should move FX Always from a polished converter into a product that 
 ## P6
 
 - Market competitiveness pass for Android against XE, Wise, Revolut, Currency Converter Plus, MyCurrency and Currency.Wiki.
-- Price scanner foundation in Convert: users can type or paste a shelf/cash-desk price, compare it against live mid-market and local market rates, and see potential hidden cost. UI-tested.
+- OCR price scanner in Convert on Android: Pro users can scan a shelf/cash-desk price with the camera, ML Kit extracts the amount, and the existing live-vs-local hidden cost check updates automatically. Free keeps manual entry plus upsell. UI-tested for Free/Pro entry points.
 - Widget quick setup in Settings: users can pin the rates widget pair and traveler widget destination, then refresh Android widgets immediately. UI-tested.
 - Widget rendering hardening for Samsung/RemoteViews: solid backgrounds, explicit padding and safe widget view classes.
 

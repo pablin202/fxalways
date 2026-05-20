@@ -280,10 +280,20 @@ private val uiTranslations = mapOf(
         "PRICE SCANNER" to "SCANNER DE PRECIOS",
         "Camera-ready price check" to "Chequeo de precio listo para cámara",
         "Scanned price" to "Precio escaneado",
+        "Scan price" to "Escanear precio",
+        "Live price scanner" to "Scanner de precio en vivo",
+        "Point at one price. We'll detect the amount before filling it." to "Apunta a un precio. Detectaremos el monto antes de cargarlo.",
+        "Use detected price" to "Usar precio detectado",
+        "Current scanner currency" to "Moneda actual del scanner",
+        "Switching scanner to detected currency" to "Cambiando scanner a la moneda detectada",
+        "Close" to "Cerrar",
+        "Reading price" to "Leyendo precio",
+        "Detected" to "Detectado",
+        "No price found. Center one price and try again." to "No se encontró precio. Centra un precio y prueba otra vez.",
         "At live rate" to "A rate live",
         "With local rate" to "Con rate local",
         "Potential hidden cost" to "Costo oculto potencial",
-        "Type or paste a shelf price now; camera OCR can feed this same check next." to "Escribe o pega un precio ahora; OCR de cámara puede alimentar este mismo chequeo después.",
+        "Type, paste or scan a shelf price; OCR fills this same check automatically." to "Escribe, pega o escanea un precio; OCR completa este chequeo automáticamente.",
         "Compare a shop, cash desk or card terminal price against the live mid-market rate." to "Compara un precio de tienda, caja o terminal contra el rate mid-market live.",
         "WIDGET SETUP" to "SETUP DE WIDGETS",
         "Widget quick setup" to "Setup rápido de widgets",
@@ -2660,6 +2670,13 @@ fun ConverterScreen(
             localMarketRate = localMarketRate,
             isPremium = subscriptionState.isPremium,
             onScannedPriceChange = { scannedPriceText = sanitizeAmountInput(it) },
+            onScannedPriceDetected = { amount, detectedCurrency ->
+                scannedPriceText = sanitizeAmountInput(amount)
+                val normalizedCurrency = detectedCurrency?.uppercase()
+                if (normalizedCurrency != null && normalizedCurrency != targetRate.code && rates.any { it.code == normalizedCurrency && it.code != sourceRate.code }) {
+                    targetCode = normalizedCurrency
+                }
+            },
             onOpenPaywall = onOpenPaywall,
         )
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
@@ -2763,6 +2780,7 @@ fun ConverterScreen(
             ProUpsellCard(
                 title = ui("See the real transfer cost"),
                 subtitle = ui("Pro unlocks the complete provider list; estimates update with your amount."),
+                modifier = Modifier.testTag("converter_fee_upsell"),
                 onClick = onOpenPaywall,
             )
         }
@@ -2820,6 +2838,7 @@ private fun PriceScannerCard(
     localMarketRate: Double,
     isPremium: Boolean,
     onScannedPriceChange: (String) -> Unit,
+    onScannedPriceDetected: (amount: String, currencyCode: String?) -> Unit,
     onOpenPaywall: () -> Unit,
 ) {
     val scannedPrice = parseAmountInput(scannedPriceText)
@@ -2844,6 +2863,23 @@ private fun PriceScannerCard(
                 modifier = Modifier.fillMaxWidth().testTag("price_scanner_input"),
                 onValueChange = onScannedPriceChange,
             )
+            if (isPremium) {
+                PriceOcrScannerAction(
+                    scanLabel = ui("Scan price"),
+                    readingLabel = ui("Reading price"),
+                    detectedLabel = ui("Detected"),
+                    unavailableLabel = ui("No price found. Center one price and try again."),
+                    liveTitleLabel = ui("Live price scanner"),
+                    liveHintLabel = ui("Point at one price. We'll detect the amount before filling it."),
+                    useDetectedLabel = ui("Use detected price"),
+                    closeLabel = ui("Close"),
+                    currentCurrencyLabel = ui("Current scanner currency"),
+                    switchingCurrencyLabel = ui("Switching scanner to detected currency"),
+                    targetCurrency = targetRate.code,
+                    modifier = Modifier.fillMaxWidth(),
+                    onPriceDetected = onScannedPriceDetected,
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricTile(
                     ui("At live rate"),
@@ -2861,7 +2897,7 @@ private fun PriceScannerCard(
             KeyValueRow(
                 ui("Potential hidden cost"),
                 formatSignedAmount(sourceRate.code, hiddenCost),
-                ui("Type or paste a shelf price now; camera OCR can feed this same check next."),
+                ui("Type, paste or scan a shelf price; OCR fills this same check automatically."),
                 modifier = Modifier.testTag("price_scanner_hidden_cost"),
             )
             if (!isPremium) {
@@ -3683,6 +3719,7 @@ fun DetailScreen(
                 } else {
                     "${ui("No live headlines are currently tied to")} ${selected.code}."
                 },
+                modifier = Modifier.testTag("detail_news_empty"),
             )
         } else {
             relatedStories.take(if (effectivePremium) relatedStories.size else 2).forEach { story ->
@@ -3694,6 +3731,7 @@ fun DetailScreen(
             EmptyDetailSection(
                 title = ui("No annotated events"),
                 subtitle = "${ui("Events will appear here when stories include")} ${selected.code}.",
+                modifier = Modifier.testTag("detail_events_empty"),
             )
         } else {
             BentoCard(padding = 0.dp) {
@@ -3897,8 +3935,8 @@ private fun DetailEventRow(story: NewsStory, modifier: Modifier = Modifier, onOp
 }
 
 @Composable
-private fun EmptyDetailSection(title: String, subtitle: String) {
-    BentoCard(padding = 12.dp) {
+private fun EmptyDetailSection(title: String, subtitle: String, modifier: Modifier = Modifier) {
+    BentoCard(modifier.fillMaxWidth(), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
             Text(subtitle, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
@@ -9024,7 +9062,9 @@ private fun OnboardingProfilePicker(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(FxTheme.colors.bg)
             .testTag("onboarding_profile_picker")
+            .padding(top = 8.dp)
             .padding(bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

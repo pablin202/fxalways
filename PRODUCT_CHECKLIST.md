@@ -23,10 +23,11 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Prepare internal testing checklist and store screenshot claim set.
 - [ ] Produce final store listing text, screenshots and metadata for Android.
 - [ ] Validate all critical release strings in the 13 supported languages.
-- [ ] Run full Android instrumentation suite after the final commit.
+- [x] Run full Android instrumentation suite on S25 after the final UI polish pass.
 - [x] Run Android release build check.
-- [ ] Configure production Android keystore and verify signed Play upload AAB.
-- [ ] Decide whether Android-only launch is acceptable before iOS production setup is complete.
+- [x] Configure production Android keystore and generate signed Play upload AAB locally.
+- [ ] Upload signed AAB to Play internal testing and verify Play accepts it.
+- [x] Android-only internal testing is acceptable while iOS production setup remains deferred.
 
 ## Android Launch Readiness
 
@@ -47,7 +48,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [ ] Enable Sign in with Apple in Apple Developer and Firebase Auth.
 - [ ] Replace RevenueCat Test Store key with App Store public SDK key.
 - [ ] Add iOS local notification implementation.
-- [ ] Add iOS Widget Extension or explicitly defer iOS widgets.
+- [x] Explicitly defer iOS widgets until after Android internal testing.
 - [ ] Install and smoke-test on connected iPhone before iOS release.
 
 ## Rates And Crypto
@@ -100,7 +101,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Debug test notification action exists per alert.
 - [x] Alerts keep their original base pair when app base currency changes.
 - [x] Duplicate identical alerts reactivate the existing alert.
-- [ ] Add triggered-alert history.
+- [x] Add triggered-alert history.
 - [ ] Add server-side alert evaluation for more reliable background delivery.
 - [ ] Verify upgrade path when user hits the Free alert limit.
 - [ ] Edge: offline restore failure copy is clear and does not change entitlement state.
@@ -201,6 +202,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Traveler tests cover budget behavior.
 - [x] Watchlist/portfolio tests cover holdings and import/export behavior.
 - [x] Add a final "launch smoke" test class that walks Home -> Convert -> Compare -> Alerts -> More.
+- [x] Launch smoke test verifies no `COMING NEXT` placeholder remains in the main flow.
 
 ## Recommended Next Work
 
@@ -223,7 +225,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 17. [x] P4: add copyable internal test plan for tester distribution.
 18. [x] P5: add store listing kit with release copy and disclaimer.
 19. [x] P5: add copyable store listing draft for release prep.
-20. [x] P6: add price scanner foundation with local-vs-live hidden cost check.
+20. [x] P6: add Android OCR price scanner with local-vs-live hidden cost check.
 21. [x] P6: add widget quick setup for rates pair and traveler destination.
 22. [x] P6: harden Android widget layout rendering for Samsung/RemoteViews.
 23. Release: close legal content, store listing, release signing and full instrumentation run.
