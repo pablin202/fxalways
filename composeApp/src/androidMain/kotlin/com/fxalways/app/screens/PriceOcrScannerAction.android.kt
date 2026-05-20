@@ -46,6 +46,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.fxalways.designsystem.components.BentoCard
 import com.fxalways.designsystem.theme.FxTheme
+import com.fxalways.observability.Observability
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.Text as MlText
@@ -78,6 +79,7 @@ actual fun PriceOcrScannerAction(
     var feedback by remember { mutableStateOf<String?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        Observability.event("price_ocr_permission_result", mapOf("granted" to granted.toString()))
         if (granted) scannerOpen = true else feedback = unavailableLabel
     }
 
@@ -87,9 +89,11 @@ actual fun PriceOcrScannerAction(
             modifier = Modifier.fillMaxWidth().testTag("price_scanner_scan_button"),
             onClick = {
                 feedback = null
+                Observability.event("price_ocr_opened", mapOf("target" to targetCurrency))
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                     scannerOpen = true
                 } else {
+                    Observability.event("price_ocr_permission_requested")
                     permissionLauncher.launch(Manifest.permission.CAMERA)
                 }
             },
@@ -117,6 +121,14 @@ actual fun PriceOcrScannerAction(
             onDismiss = { scannerOpen = false },
             onUsePrice = { detection ->
                 scannerOpen = false
+                Observability.event(
+                    "price_ocr_accepted",
+                    mapOf(
+                        "target" to targetCurrency,
+                        "currency" to (detection.currencyCode ?: targetCurrency),
+                        "amount" to detection.amountText,
+                    ),
+                )
                 feedback = detection.feedback(detectedLabel, targetCurrency)
                 onPriceDetected(detection.amountText, detection.currencyCode)
             },

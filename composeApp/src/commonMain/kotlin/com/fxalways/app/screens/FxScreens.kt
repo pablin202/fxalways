@@ -201,6 +201,32 @@ private val uiTranslations = mapOf(
         "OCR beta" to "OCR beta",
         "Scan price" to "Scan price",
         "OCR price scanner" to "OCR price scanner",
+        "PRICE CHECK HISTORY" to "PRICE CHECK HISTORY",
+        "Last scanned checks" to "Last scanned checks",
+        "Copy price check" to "Copy price check",
+        "Copied price check" to "Copied price check",
+        "Scan traveler price" to "Scan traveler price",
+        "Trip price check" to "Trip price check",
+        "Use OCR in traveler mode to check local prices against your trip budget." to "Use OCR in traveler mode to check local prices against your trip budget.",
+        "PROFILE ACTION" to "PROFILE ACTION",
+        "Next best action" to "Next best action",
+        "Scan a local price" to "Scan a local price",
+        "Open your travel price scanner and compare against the live mid-market rate." to "Open your travel price scanner and compare against the live mid-market rate.",
+        "Create a movement alert" to "Create a movement alert",
+        "Turn your profile signal into an alert before the rate moves away." to "Turn your profile signal into an alert before the rate moves away.",
+        "Review transfer cost" to "Review transfer cost",
+        "Check provider loss and hidden markup before sending money." to "Check provider loss and hidden markup before sending money.",
+        "Check invoice currency" to "Check invoice currency",
+        "Keep your working pair, fees and timing visible." to "Keep your working pair, fees and timing visible.",
+        "Review allocation drift" to "Review allocation drift",
+        "Track savings currencies and long-range movement from one place." to "Track savings currencies and long-range movement from one place.",
+        "ALERT TEMPLATES" to "ALERT TEMPLATES",
+        "Good travel rate" to "Good travel rate",
+        "Alert when the destination rate improves for a trip." to "Alert when the destination rate improves for a trip.",
+        "Daily breakout" to "Daily breakout",
+        "Alert when a pair moves sharply in one day." to "Alert when a pair moves sharply in one day.",
+        "Better remittance window" to "Better remittance window",
+        "Alert before a repeat transfer window improves." to "Alert before a repeat transfer window improves.",
         "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices.",
         "Manual entry" to "Manual entry",
         "Live camera OCR + currency detection" to "Live camera OCR + currency detection",
@@ -289,6 +315,32 @@ private val uiTranslations = mapOf(
         "Scan price" to "Escanear precio",
         "OCR beta" to "OCR beta",
         "OCR price scanner" to "Scanner OCR de precios",
+        "PRICE CHECK HISTORY" to "HISTORIAL DE PRECIOS",
+        "Last scanned checks" to "Últimos chequeos escaneados",
+        "Copy price check" to "Copiar chequeo de precio",
+        "Copied price check" to "Chequeo copiado",
+        "Scan traveler price" to "Escanear precio de viaje",
+        "Trip price check" to "Chequeo de precio de viaje",
+        "Use OCR in traveler mode to check local prices against your trip budget." to "Usa OCR en modo viajero para comparar precios locales contra tu presupuesto.",
+        "PROFILE ACTION" to "ACCIÓN DE PERFIL",
+        "Next best action" to "Siguiente mejor acción",
+        "Scan a local price" to "Escanear un precio local",
+        "Open your travel price scanner and compare against the live mid-market rate." to "Abre el scanner de viaje y compara contra el mid-market en vivo.",
+        "Create a movement alert" to "Crear alerta de movimiento",
+        "Turn your profile signal into an alert before the rate moves away." to "Convierte la señal de tu perfil en alerta antes de que el rate se mueva.",
+        "Review transfer cost" to "Revisar costo de transferencia",
+        "Check provider loss and hidden markup before sending money." to "Revisa pérdida por proveedor y markup oculto antes de enviar dinero.",
+        "Check invoice currency" to "Revisar moneda de factura",
+        "Keep your working pair, fees and timing visible." to "Mantén visible tu par de trabajo, fees y timing.",
+        "Review allocation drift" to "Revisar desvío de allocation",
+        "Track savings currencies and long-range movement from one place." to "Sigue monedas de ahorro y movimiento largo desde un solo lugar.",
+        "ALERT TEMPLATES" to "TEMPLATES DE ALERTAS",
+        "Good travel rate" to "Buen rate de viaje",
+        "Alert when the destination rate improves for a trip." to "Alerta cuando mejora el rate destino para un viaje.",
+        "Daily breakout" to "Ruptura diaria",
+        "Alert when a pair moves sharply in one day." to "Alerta cuando un par se mueve fuerte en un día.",
+        "Better remittance window" to "Mejor ventana de remesa",
+        "Alert before a repeat transfer window improves." to "Alerta antes de que mejore una ventana de envío frecuente.",
         "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "El scanner de cámara completa el chequeo de costo oculto desde precios de góndola, recibo o caja.",
         "Manual entry" to "Entrada manual",
         "Live camera OCR + currency detection" to "OCR de cámara en vivo + detección de moneda",
@@ -1414,6 +1466,15 @@ fun FxAppShell() {
                                             }
                                         }
                                     },
+                                    onOpenConverter = { selectTab(FxTab.Convert) },
+                                    onOpenTraveler = {
+                                        selectTab(FxTab.More)
+                                        openMoreRoute(MoreRoute.Traveler)
+                                    },
+                                    onOpenWatchlist = {
+                                        selectTab(FxTab.More)
+                                        openMoreRoute(MoreRoute.Watchlist)
+                                    },
                                 )
                             }
                         }
@@ -1900,6 +1961,41 @@ private data class ProfileAlertSuggestion(
     val kind: AlertKind,
 )
 
+private data class ProfileAction(
+    val title: String,
+    val subtitle: String,
+    val actionLabel: String,
+)
+
+private fun UserProfile.nextActionCopy(): ProfileAction =
+    when (this) {
+        UserProfile.Traveler -> ProfileAction(
+            title = "Scan a local price",
+            subtitle = "Open your travel price scanner and compare against the live mid-market rate.",
+            actionLabel = "Scan price",
+        )
+        UserProfile.CryptoHolder -> ProfileAction(
+            title = "Create a movement alert",
+            subtitle = "Turn your profile signal into an alert before the rate moves away.",
+            actionLabel = "Create suggested alert",
+        )
+        UserProfile.Remittances -> ProfileAction(
+            title = "Review transfer cost",
+            subtitle = "Check provider loss and hidden markup before sending money.",
+            actionLabel = "Review transfer cost",
+        )
+        UserProfile.Freelancer -> ProfileAction(
+            title = "Check invoice currency",
+            subtitle = "Keep your working pair, fees and timing visible.",
+            actionLabel = "Convert",
+        )
+        UserProfile.Savings -> ProfileAction(
+            title = "Review allocation drift",
+            subtitle = "Track savings currencies and long-range movement from one place.",
+            actionLabel = "Watchlist",
+        )
+    }
+
 private fun suggestedProfileAlert(
     profile: UserProfile,
     liveState: LiveRatesState,
@@ -1981,6 +2077,38 @@ private fun ProfileInsightCard(
     }
 }
 
+@Composable
+private fun ProfileActionCard(
+    profile: UserProfile,
+    onCreateSuggestedAlert: () -> Unit,
+    onOpenConverter: () -> Unit,
+    onOpenTraveler: () -> Unit,
+    onOpenWatchlist: () -> Unit,
+) {
+    val action = profile.nextActionCopy()
+    BentoCard(Modifier.testTag("dashboard_profile_action"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Eyebrow(ui("PROFILE ACTION"), color = FxTheme.colors.accent)
+            Text(ui(action.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Text(ui(action.subtitle), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+            GhostButton(
+                text = ui(action.actionLabel),
+                modifier = Modifier.fillMaxWidth().testTag("dashboard_profile_action_button"),
+                onClick = {
+                    Observability.event("profile_action_clicked", mapOf("profile" to profile.name, "action" to action.title))
+                    when (profile) {
+                        UserProfile.Traveler -> onOpenTraveler()
+                        UserProfile.CryptoHolder -> onCreateSuggestedAlert()
+                        UserProfile.Remittances,
+                        UserProfile.Freelancer -> onOpenConverter()
+                        UserProfile.Savings -> onOpenWatchlist()
+                    }
+                },
+            )
+        }
+    }
+}
+
 private val QuickAlertState.profileAlertActionLabel: String
     get() = when (this) {
         QuickAlertState.Create -> "Create suggested alert"
@@ -2046,6 +2174,9 @@ fun DashboardScreen(
     onEditFavorites: () -> Unit,
     onSeeAllCrypto: () -> Unit,
     onCreateSuggestedAlert: () -> Unit = {},
+    onOpenConverter: () -> Unit = {},
+    onOpenTraveler: () -> Unit = {},
+    onOpenWatchlist: () -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
     val preset = userProfile.preset()
@@ -2099,6 +2230,13 @@ fun DashboardScreen(
                 suggestedAlertState = suggestedProfileAlertState,
                 modifier = Modifier.testTag("dashboard_profile_card"),
                 onCreateSuggestedAlert = onCreateSuggestedAlert,
+            )
+            ProfileActionCard(
+                profile = userProfile,
+                onCreateSuggestedAlert = onCreateSuggestedAlert,
+                onOpenConverter = onOpenConverter,
+                onOpenTraveler = onOpenTraveler,
+                onOpenWatchlist = onOpenWatchlist,
             )
             HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2501,6 +2639,7 @@ fun ConverterScreen(
     var customMarkupPercentText by remember { mutableStateOf("2.50") }
     var remittanceCadence by remember { mutableStateOf("Monthly") }
     var scannedPriceText by remember { mutableStateOf("25") }
+    var priceScannerHistory by remember { mutableStateOf(emptyList<PriceScannerHistoryEntry>()) }
     val sourceRate = rates.firstOrNull { it.code == sourceCode }
         ?: rates.firstOrNull { it.code == liveState.baseCurrency }
         ?: rates.first()
@@ -2693,10 +2832,25 @@ fun ConverterScreen(
             onScannedPriceDetected = { amount, detectedCurrency ->
                 scannedPriceText = sanitizeAmountInput(amount)
                 val normalizedCurrency = detectedCurrency?.uppercase()
+                val detectedTargetRate = rates.firstOrNull { it.code == normalizedCurrency && it.code != sourceRate.code } ?: targetRate
                 if (normalizedCurrency != null && normalizedCurrency != targetRate.code && rates.any { it.code == normalizedCurrency && it.code != sourceRate.code }) {
                     targetCode = normalizedCurrency
                 }
+                Observability.event(
+                    "price_scanner_result_used",
+                    mapOf("source" to sourceRate.code, "target" to (normalizedCurrency ?: targetRate.code)),
+                )
+                priceScannerHistory = (listOf(
+                    PriceScannerHistoryEntry(
+                        amountText = sanitizeAmountInput(amount),
+                        targetCode = detectedTargetRate.code,
+                        sourceCode = sourceRate.code,
+                        liveSourceCost = liveSourceCostFor(parseAmountInput(amount), detectedTargetRate),
+                        hiddenCost = hiddenCostFor(parseAmountInput(amount), detectedTargetRate, localMarketRate),
+                    ),
+                ) + priceScannerHistory).take(4)
             },
+            history = priceScannerHistory,
             onOpenPaywall = onOpenPaywall,
         )
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
@@ -2859,12 +3013,24 @@ private fun PriceScannerCard(
     isPremium: Boolean,
     onScannedPriceChange: (String) -> Unit,
     onScannedPriceDetected: (amount: String, currencyCode: String?) -> Unit,
+    history: List<PriceScannerHistoryEntry> = emptyList(),
     onOpenPaywall: () -> Unit,
 ) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(scannedPriceText, sourceRate.code, targetRate.code, localMarketRate) { mutableStateOf(false) }
     val scannedPrice = parseAmountInput(scannedPriceText)
-    val liveSourceCost = if (targetRate.rate > 0.0) scannedPrice / targetRate.rate else 0.0
+    val liveSourceCost = liveSourceCostFor(scannedPrice, targetRate)
     val localSourceCost = if (localMarketRate > 0.0) scannedPrice / localMarketRate else liveSourceCost
     val hiddenCost = localSourceCost - liveSourceCost
+    val shareText = remember(scannedPriceText, sourceRate.code, targetRate.code, liveSourceCost, localSourceCost, hiddenCost) {
+        buildString {
+            append("FX Always price check\n")
+            append("Price: ${targetRate.code} $scannedPriceText\n")
+            append("At live rate: ${sourceRate.code} ${formatRate(liveSourceCost)}\n")
+            append("With local rate: ${sourceRate.code} ${formatRate(localSourceCost)}\n")
+            append("Potential hidden cost: ${formatSignedAmount(sourceRate.code, hiddenCost)}")
+        }
+    }
     BentoCard(Modifier.testTag("converter_price_scanner"), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -2920,11 +3086,38 @@ private fun PriceScannerCard(
                 ui("Type, paste or scan a shelf price; OCR fills this same check automatically."),
                 modifier = Modifier.testTag("price_scanner_hidden_cost"),
             )
+            if (isPremium) {
+                GhostButton(
+                    text = if (copied) ui("Copied price check") else ui("Copy price check"),
+                    modifier = Modifier.fillMaxWidth().testTag("price_scanner_share"),
+                    onClick = {
+                        clipboard.setText(AnnotatedString(shareText))
+                        copied = true
+                        Observability.event("price_check_copied", mapOf("source" to sourceRate.code, "target" to targetRate.code))
+                    },
+                )
+            }
+            if (history.isNotEmpty()) {
+                SectionLabel(ui("PRICE CHECK HISTORY"), right = ui("Last scanned checks"))
+                Column(Modifier.testTag("price_scanner_history"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    history.forEachIndexed { index, item ->
+                        KeyValueRow(
+                            "${item.targetCode} ${item.amountText}",
+                            "${item.sourceCode} ${formatRate(item.liveSourceCost)}",
+                            "${ui("Potential hidden cost")} ${formatSignedAmount(item.sourceCode, item.hiddenCost)}",
+                            modifier = Modifier.testTag("price_scanner_history_$index"),
+                        )
+                    }
+                }
+            }
             if (!isPremium) {
                 GhostButton(
                     text = ui("Pro unlocks the complete provider list; estimates update with your amount."),
                     modifier = Modifier.fillMaxWidth().testTag("price_scanner_upsell"),
-                    onClick = onOpenPaywall,
+                    onClick = {
+                        Observability.event("paywall_opened", mapOf("source" to "price_scanner"))
+                        onOpenPaywall()
+                    },
                 )
             }
         }
@@ -3584,6 +3777,23 @@ private fun sanitizeAmountInput(value: String): String {
     return "$before$decimal$after"
 }
 
+private data class PriceScannerHistoryEntry(
+    val amountText: String,
+    val targetCode: String,
+    val sourceCode: String,
+    val liveSourceCost: Double,
+    val hiddenCost: Double,
+)
+
+private fun liveSourceCostFor(scannedPrice: Double, targetRate: FxRate): Double =
+    if (targetRate.rate > 0.0) scannedPrice / targetRate.rate else 0.0
+
+private fun hiddenCostFor(scannedPrice: Double, targetRate: FxRate, localMarketRate: Double): Double {
+    val liveSourceCost = liveSourceCostFor(scannedPrice, targetRate)
+    val localSourceCost = if (localMarketRate > 0.0) scannedPrice / localMarketRate else liveSourceCost
+    return localSourceCost - liveSourceCost
+}
+
 @Composable
 fun DetailScreen(
     liveState: LiveRatesState = LiveRatesState(),
@@ -4174,7 +4384,19 @@ fun TravelerScreen(
     val cheatAmounts = listOf(1, 5, 10, 20, 50, 100, 250, 500).take(access.travelerCheatSheetLimit.cap(8))
     val baseDefinition = liveState.allFiat.firstOrNull { it.code == liveState.baseCurrency }
         ?: SettingsBaseCurrencies.firstOrNull { it.code == liveState.baseCurrency }
+    val baseRate = remember(liveState.baseCurrency, baseDefinition) {
+        FxRate(
+            code = liveState.baseCurrency,
+            name = baseDefinition?.name ?: liveState.baseCurrency,
+            glyph = baseDefinition?.glyph ?: "◆",
+            rate = 1.0,
+            change24h = 0.0,
+            sparkline = listOf(1f, 1f, 1f),
+        )
+    }
     var budgetText by remember { mutableStateOf(if (budgetBase > 0.0) formatMoneyValue(budgetBase) else "") }
+    var travelerScannedPriceText by remember(selectedRate.code) { mutableStateOf(destination.priceGuide.firstOrNull()?.localAmount?.let(::formatMoneyValue) ?: "25") }
+    var travelerPriceHistory by remember(selectedRate.code) { mutableStateOf(emptyList<PriceScannerHistoryEntry>()) }
     var showDestinationPicker by remember { mutableStateOf(false) }
     if (showDestinationPicker) {
         CurrencyPickerSheet(
@@ -4329,6 +4551,35 @@ fun TravelerScreen(
             isPremium = subscriptionState.isPremium,
             onOpenPaywall = onOpenPaywall,
         )
+
+        SectionLabel(ui("Scan traveler price"), right = if (subscriptionState.isPremium) ui("OCR beta") else ui("Preview"))
+        Box(Modifier.testTag("traveler_price_scanner")) {
+            PriceScannerCard(
+                sourceRate = baseRate,
+                targetRate = selectedRate,
+                scannedPriceText = travelerScannedPriceText,
+                localMarketRate = selectedRate.rate,
+                isPremium = subscriptionState.isPremium,
+                onScannedPriceChange = { travelerScannedPriceText = sanitizeAmountInput(it) },
+                onScannedPriceDetected = { amount, detectedCurrency ->
+                    travelerScannedPriceText = sanitizeAmountInput(amount)
+                    detectedCurrency?.uppercase()?.takeIf { it == selectedRate.code }?.let {
+                        Observability.event("traveler_price_scanned", mapOf("currency" to it))
+                    }
+                    travelerPriceHistory = (listOf(
+                        PriceScannerHistoryEntry(
+                            amountText = sanitizeAmountInput(amount),
+                            targetCode = selectedRate.code,
+                            sourceCode = liveState.baseCurrency,
+                            liveSourceCost = liveSourceCostFor(parseAmountInput(amount), selectedRate),
+                            hiddenCost = 0.0,
+                        ),
+                    ) + travelerPriceHistory).take(3)
+                },
+                history = travelerPriceHistory,
+                onOpenPaywall = onOpenPaywall,
+            )
+        }
 
         SectionLabel(ui("OFFLINE PACK"), right = if (liveState.isLive) ui("Live") else ui("CACHED"))
         BentoCard(Modifier.testTag("traveler_offline_pack"), padding = 12.dp) {
@@ -4895,6 +5146,30 @@ fun AlertsScreen(
                             onLocked = onOpenPaywall,
                         )
                     }
+                }
+            }
+        }
+
+        SectionLabel(ui("ALERT TEMPLATES"))
+        BentoCard(Modifier.testTag("alert_templates"), padding = 8.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                alertTemplates.forEachIndexed { index, template ->
+                    SettingChoiceRow(
+                        title = ui(template.title),
+                        subtitle = ui(template.subtitle),
+                        selected = selectedKind == template.kind && selectedDirection == template.direction,
+                        actionLabel = ui("Apply"),
+                        modifier = Modifier.testTag("alert_template_$index"),
+                        onClick = {
+                            selectedKind = template.kind
+                            selectedDirection = template.direction
+                            targetText = template.targetText(selectedRate)
+                            Observability.event(
+                                "alert_template_selected",
+                                mapOf("template" to template.id, "currency" to selectedRate.code),
+                            )
+                        },
+                    )
                 }
             }
         }
@@ -7754,6 +8029,42 @@ private fun smartAlertSuggestion(rate: FxRate): SmartAlertSuggestion? {
 private data class AlertPreset(
     val label: String,
     val percent: Double,
+)
+
+private data class AlertTemplate(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val kind: AlertKind,
+    val direction: AlertDirection,
+    val targetText: (FxRate) -> String,
+)
+
+private val alertTemplates = listOf(
+    AlertTemplate(
+        id = "travel_good_rate",
+        title = "Good travel rate",
+        subtitle = "Alert when the destination rate improves for a trip.",
+        kind = AlertKind.Target,
+        direction = AlertDirection.Above,
+        targetText = { rate -> formatRate(rate.rate * 1.01) },
+    ),
+    AlertTemplate(
+        id = "daily_breakout",
+        title = "Daily breakout",
+        subtitle = "Alert when a pair moves sharply in one day.",
+        kind = AlertKind.DailyChange,
+        direction = AlertDirection.Above,
+        targetText = { "2.0" },
+    ),
+    AlertTemplate(
+        id = "remittance_window",
+        title = "Better remittance window",
+        subtitle = "Alert before a repeat transfer window improves.",
+        kind = AlertKind.Target,
+        direction = AlertDirection.Below,
+        targetText = { rate -> formatRate(rate.rate * 0.99) },
+    ),
 )
 
 private val alertPresets = listOf(

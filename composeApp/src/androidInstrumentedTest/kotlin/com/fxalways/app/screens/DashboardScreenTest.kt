@@ -110,6 +110,7 @@ class DashboardScreenTest {
         compose.onNodeWithTag("dashboard_profile_pro_focus").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_pair").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_action").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert_action").assertIsDisplayed()
         compose.onNodeWithText("Mid-market + custom cost").assertIsDisplayed()
         compose.onNodeWithText("Full provider comparison + alerts").assertIsDisplayed()
@@ -120,6 +121,13 @@ class DashboardScreenTest {
         compose.onNodeWithText("Free").assertIsDisplayed()
 
         compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
+    }
+
+    @Test
+    fun travelerProfileActionRoutesToTravelerWorkflow() {
+        val travelerHarness = renderDashboard(isPremium = true, userProfile = UserProfile.Traveler)
+        compose.onNodeWithTag("dashboard_profile_action_button").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, travelerHarness.travelerClicks) }
     }
 
     @Test
@@ -180,6 +188,9 @@ class DashboardScreenTest {
                     onEditFavorites = { harness.editFavoritesClicks += 1 },
                     onSeeAllCrypto = { harness.seeAllCryptoClicks += 1 },
                     onCreateSuggestedAlert = { harness.suggestedAlertClicks += 1 },
+                    onOpenConverter = { harness.converterClicks += 1 },
+                    onOpenTraveler = { harness.travelerClicks += 1 },
+                    onOpenWatchlist = { harness.watchlistClicks += 1 },
                 )
             }
         }
@@ -224,6 +235,9 @@ class DashboardScreenTest {
         var editFavoritesClicks = 0
         var seeAllCryptoClicks = 0
         var suggestedAlertClicks = 0
+        var converterClicks = 0
+        var travelerClicks = 0
+        var watchlistClicks = 0
         val openedDetailCodes = mutableListOf<String>()
     }
 }

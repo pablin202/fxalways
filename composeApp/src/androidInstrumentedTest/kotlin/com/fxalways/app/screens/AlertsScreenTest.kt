@@ -39,6 +39,17 @@ class AlertsScreenTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
+    fun alertTemplatesPreFillManualAlert() {
+        renderAlerts(isPremium = true)
+
+        compose.onNodeWithText("ALERT TEMPLATES").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_template_0").performScrollTo().performClick()
+        compose.onNodeWithTag("alert_kind_Target").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_direction_Above").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_create_button").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun freeUserCreatesOneAlertThenNewAlertsOpenPaywall() {
         val harness = renderAlerts(isPremium = false)
 

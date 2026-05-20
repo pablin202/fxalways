@@ -176,6 +176,7 @@ class ConverterScreenTest {
 
         compose.onNodeWithTag("converter_price_scanner").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("price_scanner_scan_button").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("price_scanner_share").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("price_scanner_upsell").assertCountEquals(0)
     }
 
