@@ -113,6 +113,11 @@ These items should move FX Always from a polished converter into a product that 
 - OCR price/receipt converter.
 - More explicit family/remittance workflows.
 
+## P3
+
+- Release readiness panel for internal testers with build, backup and legal status. Started in Settings and UI-tested.
+- Support snapshot copy for tester reports. Started in Settings and UI-tested.
+
 ## Immediate Implementation Order
 
 1. Strengthen Convert with an explicit fee/spread reality check card.

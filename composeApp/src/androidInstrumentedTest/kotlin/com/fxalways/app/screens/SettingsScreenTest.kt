@@ -118,6 +118,29 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun releaseReadinessShowsTesterContextAndCopiesSupportSnapshot() {
+        renderSettings(
+            subscriptionState = SubscriptionState(isPremium = true, activePlanLabel = "Yearly"),
+            backupState = UserBackupState(
+                uid = "user",
+                isAnonymous = false,
+                isAvailable = true,
+                providerLabel = "Google",
+                email = "pablo@example.com",
+            ),
+            lastSyncedAtMillis = 1_700_000_000_000L,
+        )
+
+        compose.onNodeWithTag("settings_release_readiness").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("release_ready_build").assertIsDisplayed()
+        compose.onNodeWithTag("release_ready_backup").assertIsDisplayed()
+        compose.onNodeWithTag("release_ready_legal").assertIsDisplayed()
+        compose.onNodeWithText("Tester context includes plan, base, language and backup state.").assertIsDisplayed()
+        compose.onNodeWithTag("release_support_snapshot_copy").performScrollTo().performClick()
+        compose.onNodeWithText("Copied support snapshot").assertIsDisplayed()
+    }
+
+    @Test
     fun freeBaseCurrencyMoreOpensPaywallInsteadOfFullPicker() {
         val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = false))
 

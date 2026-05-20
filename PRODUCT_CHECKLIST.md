@@ -217,4 +217,6 @@ Use this as the release checklist. Mark items only after Android device testing 
 11. [x] P2: add manual/local rate notebook for official vs informal markets.
 12. [x] P2: add city/country travel cost templates.
 13. [x] P2: add provider comparison history by route and amount.
-14. Release: close legal content, store listing, release signing and full instrumentation run.
+14. [x] P3: add release readiness panel for internal testers.
+15. [x] P3: add support snapshot copy for tester reports.
+16. Release: close legal content, store listing, release signing and full instrumentation run.

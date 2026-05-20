@@ -696,6 +696,18 @@ private val uiTranslations = mapOf(
         "Purchases unavailable" to "Compras no disponibles",
         "Start FX/ Pro" to "Empezar FX/ Pro",
         "Restore purchase  ·  Terms  ·  Privacy" to "Restaurar compra  ·  Términos  ·  Privacidad",
+        "RELEASE READINESS" to "LISTO PARA RELEASE",
+        "Build" to "Build",
+        "Backup" to "Backup",
+        "Legal" to "Legal",
+        "Support snapshot" to "Snapshot de soporte",
+        "Copy support snapshot" to "Copiar snapshot de soporte",
+        "Copied support snapshot" to "Snapshot de soporte copiado",
+        "Ready for tester reports" to "Listo para reportes de testers",
+        "Tester context includes plan, base, language and backup state." to "El contexto de tester incluye plan, base, idioma y estado de backup.",
+        "Policies linked" to "Políticas vinculadas",
+        "guest" to "invitado",
+        "signed in" to "con sesión",
         "FX/ Pro is active" to "FX/ Pro está activo",
         "Available" to "Disponible",
         "Not configured" to "No configurado",
@@ -6559,6 +6571,15 @@ fun SettingsScreen(
             )
         }
 
+        SectionLabel(ui("RELEASE READINESS"))
+        ReleaseReadinessCard(
+            appLanguage = appLanguage,
+            baseCurrency = baseCurrency,
+            backupState = backupState,
+            lastSyncedAtMillis = lastSyncedAtMillis,
+            subscriptionState = subscriptionState,
+        )
+
         SectionLabel(ui("Profile"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -6692,6 +6713,73 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun ReleaseReadinessCard(
+    appLanguage: String,
+    baseCurrency: String,
+    backupState: UserBackupState,
+    lastSyncedAtMillis: Long?,
+    subscriptionState: SubscriptionState,
+) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(appLanguage, baseCurrency, backupState.uid, subscriptionState.isPremium) { mutableStateOf(false) }
+    val backupLabel = when {
+        backupState.isAvailable && backupState.isAnonymous -> ui("guest")
+        backupState.isAvailable -> ui("signed in")
+        else -> ui("offline")
+    }
+    val planLabel = if (subscriptionState.isPremium) "Pro" else "Free"
+    val syncLabel = if (lastSyncedAtMillis != null) localizedShortAgeLabel(lastSyncedAtMillis) else ui("Never")
+    val supportSnapshot = remember(appLanguage, baseCurrency, backupLabel, planLabel, syncLabel) {
+        buildString {
+            append("FX Always support snapshot\n")
+            append("Version: ${PlatformConfig.versionName}\n")
+            append("Plan: $planLabel\n")
+            append("Base: $baseCurrency\n")
+            append("Language: $appLanguage\n")
+            append("Backup: $backupLabel\n")
+            append("Last sync: $syncLabel")
+        }
+    }
+    BentoCard(Modifier.testTag("settings_release_readiness"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(
+                    ui("Build"),
+                    PlatformConfig.versionName,
+                    ui("Ready for tester reports"),
+                    Modifier.weight(1f).testTag("release_ready_build"),
+                )
+                MetricTile(
+                    ui("Backup"),
+                    backupLabel,
+                    syncLabel,
+                    Modifier.weight(1f).testTag("release_ready_backup"),
+                )
+            }
+            KeyValueRow(
+                ui("Legal"),
+                ui("Policies linked"),
+                "Terms · Privacy",
+                modifier = Modifier.testTag("release_ready_legal"),
+            )
+            Text(
+                ui("Tester context includes plan, base, language and backup state."),
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textDim,
+            )
+            GhostButton(
+                text = if (copied) ui("Copied support snapshot") else ui("Copy support snapshot"),
+                modifier = Modifier.fillMaxWidth().testTag("release_support_snapshot_copy"),
+                onClick = {
+                    clipboard.setText(AnnotatedString(supportSnapshot))
+                    copied = true
+                },
+            )
+        }
     }
 }
 
