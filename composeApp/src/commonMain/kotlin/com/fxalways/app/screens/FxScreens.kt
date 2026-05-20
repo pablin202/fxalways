@@ -260,6 +260,17 @@ private val uiTranslations = mapOf(
         "Expensive" to "Caro",
         "Avoid" to "Evitar",
         "This estimate helps you spot hidden fees before you convert." to "Este estimado ayuda a detectar fees ocultos antes de convertir.",
+        "REMITTANCE PLAN" to "PLAN DE REMESA",
+        "Family route" to "Ruta familiar",
+        "Recipient estimate" to "Estimado destinatario",
+        "Recurring amount" to "Monto recurrente",
+        "Reminder cadence" to "Cadencia de recordatorio",
+        "Monthly" to "Mensual",
+        "Biweekly" to "Quincenal",
+        "One-time" to "Una vez",
+        "Before payday" to "Antes del cobro",
+        "Pro unlocks reminder planning and extra cadences." to "Pro desbloquea recordatorios y cadencias extra.",
+        "based on current best route" to "según la mejor ruta actual",
         "Best received" to "Mejor recepción",
         "Worst loss" to "Mayor pérdida",
         "vs mid-market" to "vs mercado medio",
@@ -294,6 +305,22 @@ private val uiTranslations = mapOf(
         "History unavailable · using cached preview" to "Histórico no disponible · usando vista en caché",
         "Unlock long-range history" to "Desbloquear histórico largo",
         "Pro adds 1Y and all-time detail, full event context and deeper market overlays." to "Pro agrega 1A y todo el histórico, contexto de eventos y overlays de mercado.",
+        "SHARE RATE CARD" to "COMPARTIR RATE CARD",
+        "Copy rate card" to "Copiar rate card",
+        "Copied rate card" to "Rate card copiada",
+        "Indicative only. Check provider fees before sending money." to "Solo indicativo. Revisa fees del proveedor antes de enviar dinero.",
+        "ECONOMIC CALENDAR" to "CALENDARIO ECONÓMICO",
+        "Impact" to "Impacto",
+        "Central bank" to "Banco central",
+        "Inflation" to "Inflación",
+        "Jobs" to "Empleo",
+        "Growth" to "Crecimiento",
+        "Network" to "Red",
+        "Liquidity" to "Liquidez",
+        "Protocol" to "Protocolo",
+        "Medium" to "Medio",
+        "Next 7 days" to "Próximos 7 días",
+        "Pro unlocks the full calendar and impact filters." to "Pro desbloquea el calendario completo y filtros de impacto.",
         "STATISTICS" to "ESTADÍSTICAS",
         "Open" to "Apertura",
         "High" to "Máximo",
@@ -400,6 +427,14 @@ private val uiTranslations = mapOf(
         "PRICE TARGETS" to "OBJETIVOS DE PRECIO",
         "Watch breakouts without watching charts." to "Sigue rupturas sin mirar gráficos.",
         "Android checks every 15 min when online. iOS saves alerts now; push delivery is next." to "Android revisa cada 15 min online. iOS guarda alertas ahora; push viene después.",
+        "NOTIFICATION DIGEST" to "DIGEST DE NOTIFICACIONES",
+        "Daily" to "Diario",
+        "Weekly" to "Semanal",
+        "Weekly digest" to "Resumen semanal",
+        "Digest includes" to "El digest incluye",
+        "Active alerts and recent hits" to "Alertas activas y disparos recientes",
+        "Tap to enable digest reminders." to "Toca para activar recordatorios de digest.",
+        "Pro unlocks weekly digest." to "Pro desbloquea el digest semanal.",
         "CUSTOM ALERT" to "ALERTA PERSONALIZADA",
         "Target rate" to "Tipo objetivo",
         "Daily move %" to "Movimiento diario %",
@@ -427,6 +462,12 @@ private val uiTranslations = mapOf(
         "tracked here" to "seguidas aqui",
         "Add" to "Agregar",
         "No matching rates yet" to "Sin rates compatibles todavia",
+        "Concentration" to "Concentración",
+        "Scenario -5%" to "Escenario -5%",
+        "Daily digest" to "Resumen diario",
+        "largest holding weight" to "peso de la posición mayor",
+        "estimated portfolio shock" to "shock estimado del portfolio",
+        "largest daily driver" to "mayor driver diario",
         "ADD OR REMOVE" to "AGREGAR O QUITAR",
         "Track unlimited currencies" to "Seguir monedas ilimitadas",
         "amount" to "monto",
@@ -2364,6 +2405,7 @@ fun ConverterScreen(
     var customFixedFeeText by remember { mutableStateOf("0") }
     var customFeePercentText by remember { mutableStateOf("1.00") }
     var customMarkupPercentText by remember { mutableStateOf("2.50") }
+    var remittanceCadence by remember { mutableStateOf("Monthly") }
     val sourceRate = rates.firstOrNull { it.code == sourceCode }
         ?: rates.firstOrNull { it.code == liveState.baseCurrency }
         ?: rates.first()
@@ -2538,6 +2580,17 @@ fun ConverterScreen(
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
         FeeRealityCheckCard(
             quote = bestRealWorldQuote ?: bestQuote,
+        )
+        SectionLabel("${ui("REMITTANCE PLAN")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
+        RemittancePlannerCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            quote = bestRealWorldQuote ?: bestQuote,
+            cadence = remittanceCadence,
+            isPremium = subscriptionState.isPremium,
+            onCadenceChange = { remittanceCadence = it },
+            onOpenPaywall = onOpenPaywall,
         )
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -2867,6 +2920,78 @@ private fun EstimatedFeeQuote.realityVerdict(): FeeRealityVerdict =
         lossPercentValue < 4.00 -> FeeRealityVerdict("Expensive", PillVariant.Accent)
         else -> FeeRealityVerdict("Avoid", PillVariant.Down)
     }
+
+@Composable
+private fun RemittancePlannerCard(
+    sourceRate: FxRate,
+    targetRate: FxRate,
+    amountValue: Double,
+    quote: EstimatedFeeQuote?,
+    cadence: String,
+    isPremium: Boolean,
+    onCadenceChange: (String) -> Unit,
+    onOpenPaywall: () -> Unit,
+) {
+    val cadenceMultiplier = when (cadence) {
+        "Biweekly" -> 26
+        "One-time" -> 1
+        else -> 12
+    }
+    val cadenceOptions = if (isPremium) {
+        listOf("One-time", "Monthly", "Biweekly")
+    } else {
+        listOf("One-time", "Monthly")
+    }
+    BentoCard(Modifier.testTag("converter_remittance_planner"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(
+                    ui("Family route"),
+                    "${sourceRate.code} → ${targetRate.code}",
+                    quote?.provider?.let { ui(it) } ?: ui("based on current best route"),
+                    Modifier.weight(1f).testTag("remittance_family_route"),
+                )
+                MetricTile(
+                    ui("Recipient estimate"),
+                    quote?.amount ?: formatConvertedAmount(targetRate, convertedAmount(amountValue, sourceRate, targetRate)),
+                    ui("based on current best route"),
+                    Modifier.weight(1f).testTag("remittance_recipient_estimate"),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                cadenceOptions.forEach { option ->
+                    Pill(
+                        ui(option),
+                        variant = if (cadence == option) PillVariant.Accent else PillVariant.Ghost,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("remittance_cadence_$option")
+                            .clickable { onCadenceChange(option) },
+                    )
+                }
+            }
+            KeyValueRow(
+                ui("Recurring amount"),
+                "${sourceRate.code} ${formatMoneyValue(amountValue * cadenceMultiplier)} / year",
+                "${ui(cadence)} · ${quote?.loss ?: "${targetRate.code} 0.00"} ${ui("vs mid-market")}",
+                modifier = Modifier.testTag("remittance_recurring_amount"),
+            )
+            KeyValueRow(
+                ui("Reminder cadence"),
+                if (isPremium) ui("Before payday") else ui("Monthly"),
+                if (isPremium) "${ui("Family route")} · ${sourceRate.code}/${targetRate.code}" else ui("Pro unlocks reminder planning and extra cadences."),
+                modifier = Modifier.testTag("remittance_reminder_cadence"),
+            )
+            if (!isPremium) {
+                GhostButton(
+                    text = ui("Pro unlocks reminder planning and extra cadences."),
+                    modifier = Modifier.fillMaxWidth().testTag("remittance_upsell"),
+                    onClick = onOpenPaywall,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun FeeInputField(
@@ -3220,6 +3345,12 @@ fun DetailScreen(
             updatedOverride = if (detailState.updatedLabel.isNotBlank()) detailState.updatedLabel else null,
             modifier = Modifier.testTag("detail_rate_trust"),
         )
+        ShareRateCard(
+            baseCurrency = liveState.baseCurrency,
+            rate = selected,
+            provider = if (detailState.provider.isNotBlank()) detailState.provider else liveState.rateProviderLabel(),
+            updatedLabel = if (detailState.updatedLabel.isNotBlank()) detailState.updatedLabel else liveState.updatedLabel,
+        )
         BentoCard(Modifier.testTag("detail_history_card")) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -3272,6 +3403,12 @@ fun DetailScreen(
                 KeyValueRow(ui("Average"), formatRate(stats.average))
             }
         }
+        SectionLabel(ui("ECONOMIC CALENDAR"), right = ui("Next 7 days"))
+        EconomicCalendarCard(
+            rate = selected,
+            isPremium = effectivePremium,
+            onOpenPaywall = onOpenPaywall,
+        )
         SectionLabel(ui("RELATED NEWS"), right = if (newsState.isLoading) ui("Loading") else if (effectivePremium) ui("Live") else ui("Preview"))
         if (relatedStories.isEmpty()) {
             EmptyDetailSection(
@@ -3310,6 +3447,123 @@ fun DetailScreen(
         )
     }
 }
+
+@Composable
+private fun ShareRateCard(
+    baseCurrency: String,
+    rate: FxRate,
+    provider: String,
+    updatedLabel: String,
+) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(baseCurrency, rate.code, rate.rate, provider, updatedLabel) { mutableStateOf(false) }
+    val updatedForDisplay = compactRuntimeLabel(updatedLabel)
+    val shareText = remember(baseCurrency, rate, provider, updatedForDisplay) {
+        buildString {
+            append("FX Always rate card\n")
+            append("$baseCurrency / ${rate.code}: ${formatRate(rate.rate)}\n")
+            append("24h: ${formatChange(rate.change24h)}\n")
+            append("Source: ${compactProviderLabel(provider)}\n")
+            append("Updated: $updatedForDisplay\n")
+            append("Disclaimer: Indicative only. Check provider fees before sending money.")
+        }
+    }
+    BentoCard(Modifier.testTag("detail_share_rate_card"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Eyebrow(ui("SHARE RATE CARD"), color = FxTheme.colors.accent)
+                    Text("$baseCurrency / ${rate.code} · ${formatRate(rate.rate)}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    Text(
+                        "${ui("Source")} ${compactProviderLabel(provider)} · ${ui("Updated")} ${compactRuntimeLabel(updatedLabel)}",
+                        style = FxTheme.typography.captionMono,
+                        color = FxTheme.colors.textFaint,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.testTag("detail_share_rate_source"),
+                    )
+                }
+                Pill(formatChange(rate.change24h), variant = if (rate.change24h >= 0.0) PillVariant.Up else PillVariant.Down)
+            }
+            Text(
+                ui("Indicative only. Check provider fees before sending money."),
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textDim,
+                modifier = Modifier.testTag("detail_share_disclaimer"),
+            )
+            GhostButton(
+                text = if (copied) ui("Copied rate card") else ui("Copy rate card"),
+                modifier = Modifier.fillMaxWidth().testTag("detail_share_copy"),
+                onClick = {
+                    clipboard.setText(AnnotatedString(shareText))
+                    copied = true
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun EconomicCalendarCard(
+    rate: FxRate,
+    isPremium: Boolean,
+    onOpenPaywall: () -> Unit,
+) {
+    val events = remember(rate.code, rate.kind) { economicCalendarEvents(rate) }
+    BentoCard(Modifier.testTag("detail_economic_calendar"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            events.take(if (isPremium) events.size else 2).forEachIndexed { index, event ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag("detail_calendar_event_$index")
+                        .clip(FxTheme.shapes.field)
+                        .background(FxTheme.colors.surface2)
+                        .padding(10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(ui(event.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${event.day} · ${ui(event.topic)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                    }
+                    Pill("${ui("Impact")} ${ui(event.impact)}", variant = event.impactVariant)
+                }
+            }
+            if (!isPremium && events.size > 2) {
+                GhostButton(
+                    text = ui("Pro unlocks the full calendar and impact filters."),
+                    modifier = Modifier.fillMaxWidth().testTag("detail_calendar_upsell"),
+                    onClick = onOpenPaywall,
+                )
+            }
+        }
+    }
+}
+
+private data class EconomicCalendarEvent(
+    val day: String,
+    val title: String,
+    val topic: String,
+    val impact: String,
+    val impactVariant: PillVariant,
+)
+
+private fun economicCalendarEvents(rate: FxRate): List<EconomicCalendarEvent> =
+    if (rate.kind == CurrencyKind.Crypto) {
+        listOf(
+            EconomicCalendarEvent("Mon", "${rate.code} liquidity watch", "Liquidity", "Medium", PillVariant.Accent),
+            EconomicCalendarEvent("Wed", "Network activity pulse", "Network", "Medium", PillVariant.Accent),
+            EconomicCalendarEvent("Fri", "Protocol market update", "Protocol", "Low", PillVariant.Ghost),
+        )
+    } else {
+        listOf(
+            EconomicCalendarEvent("Tue", "${rate.code} central bank speaker", "Central bank", "High", PillVariant.Down),
+            EconomicCalendarEvent("Wed", "${rate.code} inflation print", "Inflation", "High", PillVariant.Down),
+            EconomicCalendarEvent("Thu", "${rate.code} jobs update", "Jobs", "Medium", PillVariant.Accent),
+            EconomicCalendarEvent("Fri", "${rate.code} growth tracker", "Growth", "Low", PillVariant.Ghost),
+        )
+    }
 
 @Composable
 private fun DetailChartLoadingPlaceholder(modifier: Modifier = Modifier) {
@@ -4098,6 +4352,9 @@ fun AlertsScreen(
     val currentRatesByCode = remember(liveState.baseCurrency, alertRates) {
         alertRates.associateBy { it.code }
     }
+    val digestDriver = remember(alertRates) {
+        alertRates.maxByOrNull { kotlin.math.abs(it.change24h) }
+    }
     val triggeredAlerts = remember(alertsState.alerts) {
         alertsState.alerts
             .filter { it.lastTriggeredAtMillis != null }
@@ -4115,6 +4372,7 @@ fun AlertsScreen(
     var showAlertCurrencyPicker by remember { mutableStateOf(false) }
     var selectedKind by remember { mutableStateOf(AlertKind.Target) }
     var selectedDirection by remember { mutableStateOf(AlertDirection.Above) }
+    var digestCadence by remember { mutableStateOf("Daily") }
     var targetText by remember(selectedRate.code, selectedDirection, selectedKind) {
         mutableStateOf(defaultAlertInput(selectedRate, selectedDirection, selectedKind))
     }
@@ -4189,6 +4447,24 @@ fun AlertsScreen(
                 modifier = Modifier.testTag("alerts_builder_loading_skeleton"),
             )
         } else {
+        SectionLabel(ui("NOTIFICATION DIGEST"), right = if (subscriptionState.isPremium) "FX/ PRO" else ui("Preview"))
+        AlertDigestCard(
+            activeCount = alertsState.activeCount,
+            triggeredCount = triggeredAlerts.size,
+            driver = digestDriver,
+            cadence = digestCadence,
+            isPremium = subscriptionState.isPremium,
+            onCadenceSelected = { cadence ->
+                if (cadence == "Weekly" && !subscriptionState.isPremium) {
+                    onOpenPaywall()
+                } else {
+                    digestCadence = cadence
+                    onRequestNotificationPermission()
+                }
+            },
+            onOpenPaywall = onOpenPaywall,
+        )
+
         SectionLabel(ui("SMART ALERTS"), right = if (subscriptionState.isPremium) "FX/ PRO" else ui("Preview"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -4479,6 +4755,7 @@ fun WatchlistScreen(
     val fiatValue = valuedHoldings.filter { it.rate.kind == CurrencyKind.Fiat }.sumOf { it.baseValue }
     val cryptoValue = valuedHoldings.filter { it.rate.kind == CurrencyKind.Crypto }.sumOf { it.baseValue }
     val largestHolding = valuedHoldings.maxByOrNull { it.baseValue }
+    val largestDailyDriver = valuedHoldings.maxByOrNull { kotlin.math.abs(it.dailyChangeInBase) }
     val portfolioSeries = remember(valuedHoldings) { valuedHoldings.portfolioValueSeries() }
     val nonZeroHoldings = holdings.count { it.amount > 0.0 }
     ScreenScaffold {
@@ -4579,6 +4856,24 @@ fun WatchlistScreen(
                         largestHolding?.rate?.code ?: "—",
                         largestHolding?.weightLabel(portfolioValue),
                         modifier = Modifier.testTag("watchlist_largest_position"),
+                    )
+                    KeyValueRow(
+                        ui("Concentration"),
+                        largestHolding?.weightLabel(portfolioValue) ?: "0%",
+                        largestHolding?.let { "${it.rate.code} · ${ui("largest holding weight")}" },
+                        modifier = Modifier.testTag("watchlist_concentration"),
+                    )
+                    KeyValueRow(
+                        ui("Scenario -5%"),
+                        formatSignedMoney(portfolioValue * -0.05, liveState.baseCurrency),
+                        ui("estimated portfolio shock"),
+                        modifier = Modifier.testTag("watchlist_scenario_down_5"),
+                    )
+                    KeyValueRow(
+                        ui("Daily digest"),
+                        largestDailyDriver?.dailyChangeLabel(liveState.baseCurrency) ?: "${liveState.baseCurrency} 0.00",
+                        largestDailyDriver?.let { "${it.rate.code} · ${ui("largest daily driver")}" },
+                        modifier = Modifier.testTag("watchlist_daily_digest"),
                     )
                     if (portfolioSeries.size >= 2) {
                         KeyValueRow(
@@ -5409,6 +5704,53 @@ private fun AlertCard(
 	                Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textFaint, modifier = Modifier
                         .testTag("alert_delete_${alert.id}")
                         .clickable { onDelete(alert.id) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlertDigestCard(
+    activeCount: Int,
+    triggeredCount: Int,
+    driver: FxRate?,
+    cadence: String,
+    isPremium: Boolean,
+    onCadenceSelected: (String) -> Unit,
+    onOpenPaywall: () -> Unit,
+) {
+    BentoCard(Modifier.testTag("alert_digest"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Daily", "Weekly").forEach { option ->
+                    val locked = option == "Weekly" && !isPremium
+                    Pill(
+                        text = if (locked) "${ui(option)} · Pro" else ui(option),
+                        variant = if (cadence == option && !locked) PillVariant.Accent else PillVariant.Ghost,
+                        modifier = Modifier
+                            .testTag("alert_digest_${option.lowercase()}")
+                            .clickable { onCadenceSelected(option) },
+                    )
+                }
+            }
+            KeyValueRow(
+                ui("Digest includes"),
+                ui("Active alerts and recent hits"),
+                "${activeCount} ${ui("active")} · $triggeredCount ${ui("Last hit").lowercase()}",
+                modifier = Modifier.testTag("alert_digest_includes"),
+            )
+            KeyValueRow(
+                if (cadence == "Weekly") ui("Weekly digest") else ui("Daily digest"),
+                driver?.let { "${it.code} ${formatSignedPercent(it.change24h)}" } ?: "--",
+                ui("Tap to enable digest reminders."),
+                modifier = Modifier.testTag("alert_digest_driver"),
+            )
+            if (!isPremium) {
+                GhostButton(
+                    text = ui("Pro unlocks weekly digest."),
+                    modifier = Modifier.fillMaxWidth().testTag("alert_digest_upsell"),
+                    onClick = onOpenPaywall,
+                )
             }
         }
     }

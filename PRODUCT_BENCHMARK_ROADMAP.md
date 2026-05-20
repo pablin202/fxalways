@@ -99,11 +99,11 @@ These items should move FX Always from a polished converter into a product that 
 
 ## P1
 
-- Remittance planner with recurring amount, family route, reminder cadence and recipient estimate.
-- Economic calendar light by currency and impact level.
-- Portfolio exposure improvements: currency concentration, scenario impact and daily digest.
-- Shareable rate cards with source, timestamp and disclaimer.
-- Daily/weekly notification digest.
+- Remittance planner with recurring amount, family route, reminder cadence and recipient estimate. Started in Convert and UI-tested.
+- Economic calendar light by currency and impact level. Started in Detail and UI-tested.
+- Portfolio exposure improvements: currency concentration, scenario impact and daily digest. Started in Watchlist and UI-tested.
+- Shareable rate cards with source, timestamp and disclaimer. Started in Detail and UI-tested.
+- Daily/weekly notification digest. Started in Alerts and UI-tested.
 
 ## P2
 

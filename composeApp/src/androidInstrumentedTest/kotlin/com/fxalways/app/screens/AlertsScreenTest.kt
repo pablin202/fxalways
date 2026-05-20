@@ -311,6 +311,34 @@ class AlertsScreenTest {
     }
 
     @Test
+    fun freeDigestShowsDailyAndLocksWeekly() {
+        val harness = renderAlerts(isPremium = false)
+
+        compose.onNodeWithTag("alert_digest").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_digest_daily").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, harness.notificationPermissionRequests) }
+
+        compose.onNodeWithTag("alert_digest_weekly").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+        compose.onNodeWithTag("alert_digest_upsell").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun proDigestSupportsWeeklyCadence() {
+        val harness = renderAlerts(isPremium = true)
+
+        compose.onNodeWithTag("alert_digest").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_digest_weekly").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(1, harness.notificationPermissionRequests)
+            assertEquals(0, harness.paywallClicks)
+        }
+        compose.onNodeWithText("Weekly digest").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("alert_digest_upsell").assertCountEquals(0)
+    }
+
+    @Test
     fun freeSmartAlertReactivatesMatchingPausedAlertAtLimit() {
         val harness = renderAlerts(
             isPremium = false,

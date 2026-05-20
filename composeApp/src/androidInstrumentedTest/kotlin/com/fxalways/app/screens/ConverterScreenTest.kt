@@ -39,7 +39,7 @@ class ConverterScreenTest {
 
     @Test
     fun freeUserSeesOnlyMidMarketAndCustomFeeQuotes() {
-        renderConverter(isPremium = false)
+        val harness = renderConverter(isPremium = false)
 
         compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
@@ -48,6 +48,14 @@ class ConverterScreenTest {
         compose.onNodeWithText("Best real-world route").assertIsDisplayed()
         compose.onNodeWithTag("converter_reality_recipient").assertIsDisplayed()
         compose.onNodeWithTag("converter_reality_loss").assertIsDisplayed()
+        compose.onNodeWithText("REMITTANCE PLAN · USD → EUR").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_remittance_planner").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_family_route").assertIsDisplayed()
+        compose.onNodeWithTag("remittance_recipient_estimate").assertIsDisplayed()
+        compose.onNodeWithTag("remittance_cadence_Monthly").assertIsDisplayed()
+        compose.onAllNodesWithTag("remittance_cadence_Biweekly").assertCountEquals(0)
+        compose.onNodeWithTag("remittance_upsell").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
         compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("CUSTOM COST").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
@@ -77,6 +85,11 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_fee_reality_check").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_reality_provider").assertIsDisplayed()
         compose.onNodeWithText("Low cost").assertIsDisplayed()
+        compose.onNodeWithTag("converter_remittance_planner").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("remittance_cadence_Biweekly").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("remittance_recurring_amount").assertIsDisplayed()
+        compose.onNodeWithText("Before payday").assertIsDisplayed()
+        compose.onAllNodesWithTag("remittance_upsell").assertCountEquals(0)
         compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Revolut").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Card payment").performScrollTo().assertIsDisplayed()

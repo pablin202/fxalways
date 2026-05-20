@@ -209,4 +209,9 @@ Use this as the release checklist. Mark items only after Android device testing 
 3. [x] P0: turn Traveler into an offline trip pack with local card/ATM/tipping guidance.
 4. [x] P0: add watchlist groups for Travel, Family, Savings, Work and Crypto.
 5. [x] P0: expand Android widgets with cached-age status and separate widget entry intents.
-6. Release: close legal content, store listing, release signing and full instrumentation run.
+6. [x] P1: start remittance planner in Convert with family route, recurring amount, cadence and recipient estimate.
+7. [x] P1: add economic calendar light by currency and impact level.
+8. [x] P1: improve portfolio exposure with concentration, scenario impact and digest.
+9. [x] P1: add shareable rate cards with source, timestamp and disclaimer.
+10. [x] P1: add daily/weekly notification digest.
+11. Release: close legal content, store listing, release signing and full instrumentation run.

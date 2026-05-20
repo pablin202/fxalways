@@ -120,6 +120,9 @@ class WatchlistScreenTest {
         compose.onNodeWithTag("watchlist_cost_basis").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_allocation").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_largest_position").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_concentration").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_scenario_down_5").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_daily_digest").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_chart_range").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_portfolio_chart").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("watchlist_cost_BTC").performScrollTo().assertIsDisplayed()
@@ -152,7 +155,7 @@ class WatchlistScreenTest {
             assertEquals(2, harness.transactions.size)
             assertTrue(kotlin.math.abs(harness.transactions.last().realizedPnlBase - 3_333.333) < 0.01)
         }
-        compose.onNodeWithTag("watchlist_realized_pnl").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("watchlist_realized_pnl").assertCountEquals(1)
         compose.onNodeWithText("Sell BTC", substring = true).performScrollTo().assertIsDisplayed()
     }
 
