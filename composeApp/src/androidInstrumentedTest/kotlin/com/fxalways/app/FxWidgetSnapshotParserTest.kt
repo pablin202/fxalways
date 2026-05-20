@@ -58,7 +58,7 @@ class FxWidgetSnapshotParserTest {
         )
 
         assertNotNull(snapshot)
-        assertEquals("CACHE", snapshot.status)
+        assertEquals("CACHE 4m", snapshot.status)
         assertEquals("AUD / JPY", snapshot.primaryPair)
         assertEquals("101.25", snapshot.primaryValue)
         assertEquals("BTC", snapshot.tileOneLabel)

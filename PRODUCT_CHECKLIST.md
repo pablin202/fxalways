@@ -15,6 +15,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Production builds hide the local dev premium override.
 - [x] Legal links open `https://fxalways.com/legal?doc=privacy&lang={lang}` and `https://fxalways.com/legal?doc=terms&lang={lang}`.
 - [x] README reflects the competitive feature set and recommended next product block.
+- [x] Product benchmark and cross-market roadmap are documented in `PRODUCT_BENCHMARK_ROADMAP.md`.
 
 ## Release Blockers
 
@@ -203,8 +204,9 @@ Use this as the release checklist. Mark items only after Android device testing 
 
 ## Recommended Next Work
 
-1. Close release blockers: legal content, store listing, release build/signing and full test run.
-2. Add triggered-alert history.
-3. Add provider-history insight to the fee comparator.
-4. Persist suggested provider/frequent amount for remittance and freelancer profiles.
-5. Decide iOS release scope: compile-only, TestFlight, or full App Store setup.
+1. [x] P0: strengthen Convert with an explicit fee/spread reality check card.
+2. [x] P0: expand smart alert suggestions and add triggered-alert history.
+3. [x] P0: turn Traveler into an offline trip pack with local card/ATM/tipping guidance.
+4. [x] P0: add watchlist groups for Travel, Family, Savings, Work and Crypto.
+5. [x] P0: expand Android widgets with cached-age status and separate widget entry intents.
+6. Release: close legal content, store listing, release signing and full instrumentation run.

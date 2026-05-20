@@ -43,18 +43,23 @@ class FxAlwaysWidgetProvider : AppWidgetProvider() {
                 setTextViewText(R.id.widget_footer_label, snapshot.footerLabel)
                 setTextViewText(R.id.widget_footer_value, snapshot.footerValue)
                 setTextColor(R.id.widget_footer_value, snapshot.footerColor)
-                setOnClickPendingIntent(R.id.widget_root, launchPendingIntent(context))
+                setOnClickPendingIntent(R.id.widget_root, launchPendingIntent(context, "rates", 0))
+                setOnClickPendingIntent(R.id.widget_primary_pair, launchPendingIntent(context, "convert", 1))
+                setOnClickPendingIntent(R.id.widget_primary_value, launchPendingIntent(context, "convert", 2))
+                setOnClickPendingIntent(R.id.widget_tile_one, launchPendingIntent(context, "watchlist", 3))
+                setOnClickPendingIntent(R.id.widget_tile_two, launchPendingIntent(context, "watchlist", 4))
+                setOnClickPendingIntent(R.id.widget_footer_tile, launchPendingIntent(context, "rates", 5))
             }
         }
 
-        private fun launchPendingIntent(context: Context): PendingIntent {
+        private fun launchPendingIntent(context: Context, source: String, requestCode: Int): PendingIntent {
             val intent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra(MainActivity.EXTRA_WIDGET_SOURCE, "rates")
+                putExtra(MainActivity.EXTRA_WIDGET_SOURCE, source)
             }
             return PendingIntent.getActivity(
                 context,
-                0,
+                requestCode,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
@@ -127,7 +132,7 @@ object FxWidgetSnapshotParser {
                 .filter { it.code != base }
                 .maxByOrNull { abs(it.change24h) }
             FxWidgetSnapshot(
-                status = if (updated.contains("cached", ignoreCase = true)) "CACHE" else "LIVE",
+                status = if (updated.contains("cached", ignoreCase = true)) "CACHE ${updated.cacheAgeLabel()}" else "LIVE",
                 primaryPair = "$base / ${primary.code}",
                 primaryValue = formatWidgetRate(primary.rate),
                 tileOneLabel = btc?.let { "BTC ${formatWidgetRate(it.rate)}" } ?: "BTC",
@@ -187,6 +192,12 @@ private fun String.updatedShortLabel(): String =
         ?.trim()
         ?.takeIf { it.isNotBlank() }
         ?: "Updated"
+
+private fun String.cacheAgeLabel(): String =
+    updatedShortLabel()
+        .removePrefix("cached")
+        .trim()
+        .ifBlank { "saved" }
 
 private val WidgetUp = Color.rgb(94, 234, 212)
 private val WidgetDown = Color.rgb(248, 113, 113)

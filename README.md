@@ -58,6 +58,8 @@ Pro aumenta profundidad y retencion:
 
 ## Roadmap competitivo
 
+Benchmark detallado y roadmap por mercado: [PRODUCT_BENCHMARK_ROADMAP.md](PRODUCT_BENCHMARK_ROADMAP.md).
+
 Para competir contra conversores FX, money transfer apps y trackers crypto modernos, FX Always debe priorizar features que aumenten retencion diaria y valor Pro:
 
 1. Portfolio Pro completo con P&L y allocation. Implementado en primera version.
@@ -96,7 +98,7 @@ Para competir contra conversores FX, money transfer apps y trackers crypto moder
    - Perfil: viajero, crypto holder, remesas, freelancer, ahorro.
    - Home, pares iniciales, watchlist, destino traveler, monto sugerido, paywall y alertas sugeridas segun objetivo.
 
-El proximo bloque de producto recomendado es cerrar el historial del comparador y convertir las alertas sugeridas por perfil en creacion one-tap.
+El bloque P0 quedo implementado y probado: fee/spread reality check, smart alerts con historial, travel offline pack, watchlist groups y expansion de widgets Android con estado de cache.
 
 ## Ejecutar Android
 

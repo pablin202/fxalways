@@ -44,6 +44,10 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
         compose.onNodeWithText("FEES · USD → EUR").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_fee_reality_check").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Best real-world route").assertIsDisplayed()
+        compose.onNodeWithTag("converter_reality_recipient").assertIsDisplayed()
+        compose.onNodeWithTag("converter_reality_loss").assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Mid-market").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("CUSTOM COST").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
@@ -70,6 +74,9 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_mid_market_value").assertIsDisplayed()
         compose.onNodeWithTag("converter_best_loss").assertIsDisplayed()
         compose.onNodeWithTag("converter_best_route").assertIsDisplayed()
+        compose.onNodeWithTag("converter_fee_reality_check").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_reality_provider").assertIsDisplayed()
+        compose.onNodeWithText("Low cost").assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Revolut").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Card payment").performScrollTo().assertIsDisplayed()
@@ -140,8 +147,8 @@ class ConverterScreenTest {
         compose.onNodeWithText("⇄  Reverse").performScrollTo().performClick()
 
         compose.onNodeWithText("SMART TIMING · EUR → USD").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("converter_smart_timing").assertIsDisplayed()
-        compose.onNodeWithTag("converter_timing_score").assertIsDisplayed()
+        compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_score").performScrollTo().assertIsDisplayed()
     }
 
     @Test

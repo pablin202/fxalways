@@ -29,6 +29,7 @@ import com.fxalways.designsystem.theme.FxTheme
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlinx.datetime.Clock
 import org.junit.Rule
 import org.junit.runner.RunWith
 
@@ -157,6 +158,9 @@ class AlertsScreenTest {
             assertEquals(listOf("eur_target"), harness.testedAlertIds)
             assertEquals(1, harness.notificationPermissionRequests)
         }
+        compose.onNodeWithTag("alert_trigger_history").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_history_eur_target").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Alert triggered", substring = true).assertIsDisplayed()
 
         compose.onNodeWithTag("alert_delete_eur_target").performScrollTo().performClick()
         compose.onAllNodesWithTag("alert_card_eur_target").assertCountEquals(0)
@@ -372,7 +376,19 @@ class AlertsScreenTest {
         compose.onAllNodesWithTag("alert_card_gbp_move").assertCountEquals(1)
         compose.onAllNodesWithText("24H MOVE").assertCountEquals(1)
         compose.onAllNodesWithText("0.4 pts away", substring = true).assertCountEquals(1)
-        compose.onAllNodesWithText("0.4 pts to move").assertCountEquals(1)
+        compose.onAllNodesWithText("0.4 pts to move").assertCountEquals(2)
+        compose.onNodeWithTag("alert_trigger_history").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("alert_history_gbp_move").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Last hit").assertIsDisplayed()
+    }
+
+    @Test
+    fun emptyAlertHistoryExplainsFutureHits() {
+        renderAlerts(isPremium = true)
+
+        compose.onNodeWithTag("alert_trigger_history").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("No alert hits yet").assertIsDisplayed()
+        compose.onNodeWithText("Triggered alerts will appear here after Android checks rates.").assertIsDisplayed()
     }
 
     private fun renderAlerts(
@@ -449,6 +465,15 @@ class AlertsScreenTest {
                     },
                     onDeleteAlert = { id ->
                         alerts = alerts.filterNot { it.id == id }
+                    },
+                    onMarkAlertTriggered = { id ->
+                        alerts = alerts.map {
+                            if (it.id == id) {
+                                it.copy(lastTriggeredAtMillis = Clock.System.now().toEpochMilliseconds())
+                            } else {
+                                it
+                            }
+                        }
                     },
                     onTestAlert = { alert ->
                         harness.testedAlertIds += alert.id

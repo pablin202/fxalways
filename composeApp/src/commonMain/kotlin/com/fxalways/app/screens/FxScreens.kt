@@ -250,6 +250,16 @@ private val uiTranslations = mapOf(
         "YOU SEND" to "ENVIAS",
         "Converted to" to "Convertido a",
         "FEES" to "FEES",
+        "REALITY CHECK" to "REALITY CHECK",
+        "Best real-world route" to "Mejor ruta real",
+        "Recipient should get" to "Destinatario debería recibir",
+        "Estimated loss" to "Pérdida estimada",
+        "against mid-market" to "contra mercado medio",
+        "No markup" to "Sin margen",
+        "Low cost" to "Bajo costo",
+        "Expensive" to "Caro",
+        "Avoid" to "Evitar",
+        "This estimate helps you spot hidden fees before you convert." to "Este estimado ayuda a detectar fees ocultos antes de convertir.",
         "Best received" to "Mejor recepción",
         "Worst loss" to "Mayor pérdida",
         "vs mid-market" to "vs mercado medio",
@@ -298,6 +308,11 @@ private val uiTranslations = mapOf(
         "No annotated events" to "Sin eventos anotados",
         "Add another alert" to "Agregar otra alerta",
         "Alert me above" to "Alertarme arriba de",
+        "TRIGGER HISTORY" to "HISTORIAL DE DISPAROS",
+        "No alert hits yet" to "Sin alertas disparadas todavía",
+        "Triggered alerts will appear here after Android checks rates." to "Las alertas disparadas aparecerán aquí después de que Android revise los rates.",
+        "Last hit" to "Último disparo",
+        "Alert triggered" to "Alerta disparada",
         "Edit comparison" to "Editar comparación",
         "Pro unlocks more comparison currencies" to "Pro desbloquea más monedas para comparar",
         "Movers" to "Movimientos",
@@ -351,6 +366,15 @@ private val uiTranslations = mapOf(
         "Local meals" to "Comidas locales",
         "guide estimate" to "estimado guía",
         "Formula" to "Fórmula",
+        "OFFLINE PACK" to "PACK OFFLINE",
+        "Saved snapshot" to "Snapshot guardado",
+        "Ready from cached rates" to "Listo con rates cacheados",
+        "Rate snapshot" to "Snapshot de rate",
+        "ATM cash target" to "Objetivo de efectivo ATM",
+        "DCC rule" to "Regla DCC",
+        "Decline conversion; pay in local currency." to "Rechaza la conversión; paga en moneda local.",
+        "Receipt check" to "Chequeo de recibo",
+        "Compare terminal rate against this mid-market snapshot." to "Compara el rate del terminal contra este snapshot mid-market.",
         "CHEAT SHEET" to "GUÍA RÁPIDA",
         "Unlock full traveler mode" to "Desbloquear modo viajero completo",
         "Pro adds complete cheat sheets, offline context and more local money tips." to "Pro agrega guías completas, contexto offline y más consejos locales.",
@@ -395,6 +419,14 @@ private val uiTranslations = mapOf(
         "Choose currencies below to start tracking." to "Elige monedas abajo para empezar.",
         "HOW IT WORKS" to "CÓMO FUNCIONA",
         "Watchlist follows rates. Portfolio value appears after you enter how much you hold." to "La watchlist sigue los rates. El valor aparece al ingresar cuánto tienes.",
+        "WATCHLIST GROUPS" to "GRUPOS DE WATCHLIST",
+        "Travel" to "Viajes",
+        "Family" to "Familia",
+        "Savings" to "Ahorro",
+        "Work" to "Trabajo",
+        "tracked here" to "seguidas aqui",
+        "Add" to "Agregar",
+        "No matching rates yet" to "Sin rates compatibles todavia",
         "ADD OR REMOVE" to "AGREGAR O QUITAR",
         "Track unlimited currencies" to "Seguir monedas ilimitadas",
         "amount" to "monto",
@@ -1334,6 +1366,7 @@ fun FxAppShell() {
                                 onResumeAlert = alertsStore::resumeAlert,
                                 onToggleAlert = alertsStore::toggleAlert,
                                 onDeleteAlert = alertsStore::deleteAlert,
+                                onMarkAlertTriggered = alertsStore::markTriggered,
                                 onTestAlert = AlertTestNotifier::show,
                             )
                             MoreRoute.Watchlist -> WatchlistScreen(
@@ -2350,6 +2383,9 @@ fun ConverterScreen(
         allFeeQuotes.filter { it.provider in FreeFeeProviders }
     }
     val bestQuote = feeQuotes.minByOrNull { it.lossTargetValue }
+    val bestRealWorldQuote = feeQuotes
+        .filterNot { it.provider == "Mid-market" }
+        .minByOrNull { it.lossTargetValue }
     val worstQuote = feeQuotes.maxByOrNull { it.lossTargetValue }
     val customQuote = feeQuotes.firstOrNull { it.provider == "Custom" }
     val potentialSavings = bestQuote?.let { best ->
@@ -2500,6 +2536,9 @@ fun ConverterScreen(
             onOpenPaywall = onOpenPaywall,
         )
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
+        FeeRealityCheckCard(
+            quote = bestRealWorldQuote ?: bestQuote,
+        )
         BentoCard(padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2776,6 +2815,60 @@ private fun FeeComparisonRow(quote: EstimatedFeeQuote, rank: Int) {
 }
 
 @Composable
+private fun FeeRealityCheckCard(quote: EstimatedFeeQuote?) {
+    if (quote == null) {
+        return
+    }
+    val verdict = quote.realityVerdict()
+    BentoCard(Modifier.testTag("converter_fee_reality_check"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Eyebrow(ui("REALITY CHECK"), color = FxTheme.colors.accent)
+                    Text(ui("Best real-world route"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    Text(
+                        "${ui(quote.provider)} · ${ui("This estimate helps you spot hidden fees before you convert.")}",
+                        style = FxTheme.typography.caption,
+                        color = FxTheme.colors.textDim,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.testTag("converter_reality_provider"),
+                    )
+                }
+                Pill(ui(verdict.label), variant = verdict.variant)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(
+                    ui("Recipient should get"),
+                    quote.amount,
+                    ui(quote.provider),
+                    Modifier.weight(1f).testTag("converter_reality_recipient"),
+                )
+                MetricTile(
+                    ui("Estimated loss"),
+                    quote.loss,
+                    "${quote.lossPercent} ${ui("against mid-market")}",
+                    Modifier.weight(1f).testTag("converter_reality_loss"),
+                )
+            }
+        }
+    }
+}
+
+private data class FeeRealityVerdict(
+    val label: String,
+    val variant: PillVariant,
+)
+
+private fun EstimatedFeeQuote.realityVerdict(): FeeRealityVerdict =
+    when {
+        lossPercentValue <= 0.01 -> FeeRealityVerdict("No markup", PillVariant.Up)
+        lossPercentValue < 1.50 -> FeeRealityVerdict("Low cost", PillVariant.Up)
+        lossPercentValue < 4.00 -> FeeRealityVerdict("Expensive", PillVariant.Accent)
+        else -> FeeRealityVerdict("Avoid", PillVariant.Down)
+    }
+
+@Composable
 private fun FeeInputField(
     label: String,
     value: String,
@@ -2834,6 +2927,7 @@ private data class EstimatedFeeQuote(
     val lossPercent: String,
     val effectiveRate: String,
     val lossTargetValue: Double,
+    val lossPercentValue: Double,
     val isHighFee: Boolean = false,
 )
 
@@ -3002,6 +3096,7 @@ private fun estimatedFeeQuotes(
             lossPercent = "${formatRate(lossPct)}%",
             effectiveRate = "${formatRate(effectiveRate)} ${targetRate.code}",
             lossTargetValue = lossTarget,
+            lossPercentValue = lossPct,
             isHighFee = highFee,
         )
     }.sortedWith(compareBy<EstimatedFeeQuote> { it.lossTargetValue }.thenBy { it.provider != "Custom" })
@@ -3650,6 +3745,26 @@ fun TravelerScreen(
             }
         }
 
+        SectionLabel(ui("OFFLINE PACK"), right = if (liveState.isLive) ui("Live") else ui("CACHED"))
+        BentoCard(Modifier.testTag("traveler_offline_pack"), padding = 12.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                KeyValueRow(
+                    if (liveState.isLive) ui("Saved snapshot") else ui("Ready from cached rates"),
+                    compactRuntimeLabel(liveState.updatedLabel),
+                )
+                KeyValueRow(
+                    ui("Rate snapshot"),
+                    "1 ${liveState.baseCurrency} = ${formatRate(selectedRate.rate)} ${selectedRate.code}",
+                )
+                KeyValueRow(
+                    ui("ATM cash target"),
+                    "${destination.symbol}${formatMoneyValue(cashBufferLocal)} · ${(destination.cashBufferPct * 100).toInt()}%",
+                )
+                KeyValueRow(ui("DCC rule"), ui("Decline conversion; pay in local currency."))
+                KeyValueRow(ui("Receipt check"), ui("Compare terminal rate against this mid-market snapshot."))
+            }
+        }
+
         SectionLabel(ui("CHEAT SHEET"))
         BentoCard(Modifier.testTag("traveler_cheat_sheet"), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -3963,6 +4078,7 @@ fun AlertsScreen(
     onResumeAlert: (String) -> Unit = {},
     onToggleAlert: (String) -> Unit = {},
     onDeleteAlert: (String) -> Unit = {},
+    onMarkAlertTriggered: (String) -> Unit = {},
     onTestAlert: (PriceAlert) -> Unit = {},
 ) {
     val access = subscriptionState.featureAccess()
@@ -3981,6 +4097,12 @@ fun AlertsScreen(
     }
     val currentRatesByCode = remember(liveState.baseCurrency, alertRates) {
         alertRates.associateBy { it.code }
+    }
+    val triggeredAlerts = remember(alertsState.alerts) {
+        alertsState.alerts
+            .filter { it.lastTriggeredAtMillis != null }
+            .sortedByDescending { it.lastTriggeredAtMillis }
+            .take(4)
     }
     val smartSuggestions = remember(liveState.baseCurrency, alertRates, subscriptionState.isPremium) {
         smartAlertSuggestions(alertRates, subscriptionState.isPremium)
@@ -4303,11 +4425,18 @@ fun AlertsScreen(
                         onTest = {
                             onRequestNotificationPermission()
                             onTestAlert(it)
+                            onMarkAlertTriggered(it.id)
                         },
                     )
                 }
             }
         }
+        SectionLabel(ui("TRIGGER HISTORY"))
+        AlertTriggerHistoryCard(
+            alerts = triggeredAlerts,
+            currentRatesByCode = currentRatesByCode,
+            baseCurrency = liveState.baseCurrency,
+        )
         }
     }
 }
@@ -4405,6 +4534,12 @@ fun WatchlistScreen(
                 }
             }
         }
+
+        SectionLabel(ui("WATCHLIST GROUPS"))
+        WatchlistGroupsCard(
+            codes = watchlistState.watchlist.codes,
+            allRates = allRates,
+        )
 
         if (subscriptionState.isPremium && nonZeroHoldings > 0) {
             SectionLabel(ui("PORTFOLIO INSIGHTS"))
@@ -4538,7 +4673,44 @@ fun WatchlistScreen(
     }
 }
 
-	@Composable
+@Composable
+private fun WatchlistGroupsCard(
+    codes: List<String>,
+    allRates: List<FxRate>,
+) {
+    val availableCodes = allRates.map { it.code }.toSet()
+    BentoCard(Modifier.testTag("watchlist_groups"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            watchlistGroupPresets.forEach { group ->
+                val supported = group.codes.filter { it in availableCodes }
+                val tracked = supported.filter { it in codes }
+                KeyValueRow(
+                    ui(group.label),
+                    if (tracked.isNotEmpty()) tracked.joinToString(" · ") else "${ui("Add")} ${supported.take(3).joinToString(" · ")}".takeIf { supported.isNotEmpty() }
+                        ?: ui("No matching rates yet"),
+                    if (tracked.isNotEmpty()) "${tracked.size} ${ui("tracked here")}" else null,
+                    modifier = Modifier.testTag("watchlist_group_${group.id}"),
+                )
+            }
+        }
+    }
+}
+
+private data class WatchlistGroupPreset(
+    val id: String,
+    val label: String,
+    val codes: List<String>,
+)
+
+private val watchlistGroupPresets = listOf(
+    WatchlistGroupPreset("travel", "Travel", listOf("EUR", "GBP", "JPY", "CHF", "MXN", "AUD", "CAD", "SGD")),
+    WatchlistGroupPreset("family", "Family", listOf("MXN", "BRL", "EUR", "GBP", "PHP", "INR", "USD")),
+    WatchlistGroupPreset("savings", "Savings", listOf("USD", "EUR", "CHF", "GBP", "JPY")),
+    WatchlistGroupPreset("work", "Work", listOf("USD", "EUR", "GBP", "CAD", "AUD", "JPY", "SGD")),
+    WatchlistGroupPreset("crypto", "Crypto", listOf("BTC", "ETH", "USDT", "USDC", "SOL")),
+)
+
+@Composable
 private fun PortfolioTransactionsCard(
     baseCurrency: String,
     holdings: List<PortfolioHolding>,
@@ -5238,6 +5410,86 @@ private fun AlertCard(
                         .testTag("alert_delete_${alert.id}")
                         .clickable { onDelete(alert.id) })
             }
+        }
+    }
+}
+
+@Composable
+private fun AlertTriggerHistoryCard(
+    alerts: List<PriceAlert>,
+    currentRatesByCode: Map<String, FxRate>,
+    baseCurrency: String,
+) {
+    BentoCard(Modifier.testTag("alert_trigger_history"), padding = 8.dp) {
+        if (alerts.isEmpty()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(ui("No alert hits yet"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text(
+                    ui("Triggered alerts will appear here after Android checks rates."),
+                    style = FxTheme.typography.caption,
+                    color = FxTheme.colors.textDim,
+                )
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                alerts.forEach { alert ->
+                    AlertHistoryRow(
+                        alert = alert,
+                        currentRate = currentRatesByCode[alert.quote]?.rate.takeIf { alert.base == baseCurrency },
+                        currentChangePct = currentRatesByCode[alert.quote]?.change24h.takeIf { alert.base == baseCurrency },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlertHistoryRow(
+    alert: PriceAlert,
+    currentRate: Double?,
+    currentChangePct: Double?,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .testTag("alert_history_${alert.id}")
+            .clip(FxTheme.shapes.field)
+            .background(FxTheme.colors.surface2)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FlagDot(if (alert.kind == AlertKind.Target) "◎" else "%", CurrencyKind.Fiat, 28.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text("${alert.base} / ${alert.quote}", style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Text(
+                "${ui("Alert triggered")} · ${ui(alert.direction.label(alert.kind))} ${alert.targetLabel()}",
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.accent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                localizedAlertDistanceLabel(alert, currentRate, currentChangePct),
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(ui("Last hit"), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            Text(
+                alert.lastTriggeredAtMillis?.let { localizedShortAgeLabel(it) } ?: ui("Never"),
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.text,
+            )
         }
     }
 }

@@ -39,6 +39,8 @@ class TravelerScreenTest {
         compose.onNodeWithText("TOKYO · JPY").assertIsDisplayed()
         compose.onNodeWithTag("traveler_hero").assertIsDisplayed()
         compose.onNodeWithTag("traveler_destination_JPY").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("traveler_offline_pack").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("DCC rule").assertIsDisplayed()
         compose.onNodeWithTag("traveler_cheat_sheet").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_cheat_1").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_cheat_20").performScrollTo().assertIsDisplayed()
@@ -96,6 +98,8 @@ class TravelerScreenTest {
 
         compose.onNodeWithTag("traveler_cheat_500").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_spend_plan").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("traveler_offline_pack").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Decline conversion; pay in local currency.").assertIsDisplayed()
         compose.onNodeWithText("Local meals").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_local_etiquette").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_payment_rails").performScrollTo().assertIsDisplayed()
@@ -116,6 +120,8 @@ class TravelerScreenTest {
         renderTraveler(isPremium = true, selectedCurrency = "CHF", budgetBase = 150.0, liveState = testLiveRatesState(isLive = false))
 
         compose.onNodeWithText("Offline snapshot", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("traveler_offline_pack").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Ready from cached rates").assertIsDisplayed()
         compose.onNodeWithTag("traveler_spend_plan").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_cheat_sheet").performScrollTo().assertIsDisplayed()
     }

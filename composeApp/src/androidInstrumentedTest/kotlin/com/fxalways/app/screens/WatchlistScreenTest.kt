@@ -42,6 +42,8 @@ class WatchlistScreenTest {
         val harness = renderWatchlist(isPremium = false, initialWatchlist = Watchlist(codes = listOf("EUR", "GBP", "JPY")))
 
         compose.onNodeWithText("3/4 currencies · USD base").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_groups").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_group_travel").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_currency_CHF").performScrollTo().performClick()
         compose.onNodeWithTag("watchlist_holding_CHF").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Track unlimited currencies").performScrollTo().assertIsDisplayed()
@@ -67,6 +69,7 @@ class WatchlistScreenTest {
         renderWatchlist(isPremium = true, initialWatchlist = Watchlist(codes = listOf("EUR", "GBP", "JPY", "CHF")))
 
         compose.onNodeWithText("Unlimited currencies · USD base").assertIsDisplayed()
+        compose.onNodeWithTag("watchlist_group_crypto").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("watchlist_currency_MXN").performScrollTo().performClick()
 
         compose.onNodeWithTag("watchlist_holding_MXN").performScrollTo().assertIsDisplayed()
