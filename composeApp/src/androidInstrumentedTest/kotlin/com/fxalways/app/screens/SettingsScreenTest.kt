@@ -141,6 +141,21 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun internalTestPlanShowsManualChecklistAndCopiesPlan() {
+        renderSettings(subscriptionState = SubscriptionState(isPremium = false))
+
+        compose.onNodeWithTag("settings_internal_test_plan").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("internal_test_plan_summary").assertIsDisplayed()
+        compose.onNodeWithTag("internal_test_plan_row_0").assertIsDisplayed()
+        compose.onNodeWithTag("internal_test_plan_row_1").assertIsDisplayed()
+        compose.onNodeWithTag("internal_test_plan_row_2").assertIsDisplayed()
+        compose.onNodeWithTag("internal_test_plan_row_3").assertIsDisplayed()
+        compose.onNodeWithText("Validate limits, previews and upsells.").assertIsDisplayed()
+        compose.onNodeWithTag("internal_test_plan_copy").performScrollTo().performClick()
+        compose.onNodeWithText("Copied test plan").assertIsDisplayed()
+    }
+
+    @Test
     fun freeBaseCurrencyMoreOpensPaywallInsteadOfFullPicker() {
         val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = false))
 

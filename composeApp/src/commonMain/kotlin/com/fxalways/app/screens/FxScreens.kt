@@ -708,6 +708,19 @@ private val uiTranslations = mapOf(
         "Policies linked" to "Políticas vinculadas",
         "guest" to "invitado",
         "signed in" to "con sesión",
+        "INTERNAL TEST PLAN" to "PLAN DE TESTING INTERNO",
+        "Manual QA checklist" to "Checklist QA manual",
+        "Free limits" to "Límites Free",
+        "Pro unlocks" to "Desbloqueos Pro",
+        "Offline/cache" to "Offline/cache",
+        "Paywall/legal" to "Paywall/legal",
+        "Copy test plan" to "Copiar plan de test",
+        "Copied test plan" to "Plan de test copiado",
+        "Cover before each internal build." to "Cubrir antes de cada build interna.",
+        "Validate limits, previews and upsells." to "Validar límites, previews y upsells.",
+        "Validate expanded calendars, histories and portfolios." to "Validar calendarios, historiales y portfolios ampliados.",
+        "Validate cached rates and traveler offline pack." to "Validar rates cacheados y pack offline de viaje.",
+        "Validate restore, manage subscription, terms and privacy." to "Validar restaurar, gestionar suscripción, términos y privacidad.",
         "FX/ Pro is active" to "FX/ Pro está activo",
         "Available" to "Disponible",
         "Not configured" to "No configurado",
@@ -6580,6 +6593,13 @@ fun SettingsScreen(
             subscriptionState = subscriptionState,
         )
 
+        SectionLabel(ui("INTERNAL TEST PLAN"))
+        InternalTestPlanCard(
+            appLanguage = appLanguage,
+            baseCurrency = baseCurrency,
+            subscriptionState = subscriptionState,
+        )
+
         SectionLabel(ui("Profile"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -6713,6 +6733,59 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun InternalTestPlanCard(
+    appLanguage: String,
+    baseCurrency: String,
+    subscriptionState: SubscriptionState,
+) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(appLanguage, baseCurrency, subscriptionState.isPremium) { mutableStateOf(false) }
+    val planLabel = if (subscriptionState.isPremium) "Pro" else "Free"
+    val checklist = listOf(
+        "Free limits" to "Validate limits, previews and upsells.",
+        "Pro unlocks" to "Validate expanded calendars, histories and portfolios.",
+        "Offline/cache" to "Validate cached rates and traveler offline pack.",
+        "Paywall/legal" to "Validate restore, manage subscription, terms and privacy.",
+    )
+    val testPlanText = remember(appLanguage, baseCurrency, planLabel) {
+        buildString {
+            append("FX Always internal test plan\n")
+            append("Plan: $planLabel\n")
+            append("Base: $baseCurrency\n")
+            append("Language: $appLanguage\n")
+            checklist.forEach { (title, detail) ->
+                append("- $title: $detail\n")
+            }
+        }.trim()
+    }
+    BentoCard(Modifier.testTag("settings_internal_test_plan"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            KeyValueRow(
+                ui("Manual QA checklist"),
+                "$planLabel · $baseCurrency · ${appLanguage.uppercase()}",
+                ui("Cover before each internal build."),
+                modifier = Modifier.testTag("internal_test_plan_summary"),
+            )
+            checklist.forEachIndexed { index, item ->
+                KeyValueRow(
+                    ui(item.first),
+                    ui(item.second),
+                    modifier = Modifier.testTag("internal_test_plan_row_$index"),
+                )
+            }
+            GhostButton(
+                text = if (copied) ui("Copied test plan") else ui("Copy test plan"),
+                modifier = Modifier.fillMaxWidth().testTag("internal_test_plan_copy"),
+                onClick = {
+                    clipboard.setText(AnnotatedString(testPlanText))
+                    copied = true
+                },
+            )
+        }
     }
 }
 
