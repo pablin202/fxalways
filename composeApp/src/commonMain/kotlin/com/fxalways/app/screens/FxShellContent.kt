@@ -24,9 +24,6 @@ import com.fxalways.app.data.WatchlistStore
 import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.subscription.SubscriptionGateway
 import com.fxalways.app.subscription.SubscriptionState
-import com.fxalways.app.screens.alerts.canCreateAlert
-import com.fxalways.app.screens.alerts.findQuickAlert
-import com.fxalways.app.screens.detail.DetailScreen
 import com.fxalways.app.screens.news.NewsDetailScreen
 import com.fxalways.app.screens.paywall.FxPaywallRoute
 import com.fxalways.designsystem.components.FxBottomBar
@@ -191,45 +188,4 @@ internal fun FxShellContent(
             )
         }
     }
-}
-
-@Composable
-private fun FxDetailRoute(
-    rate: FxRate,
-    liveState: LiveRatesState,
-    alertsState: AlertsState,
-    subscriptionState: SubscriptionState,
-    subscriptionReady: Boolean,
-    detailState: DetailUiState,
-    newsState: NewsUiState,
-    alertsStore: AlertsStore,
-    detailStore: DetailStore,
-    onBack: () -> Unit,
-    onOpenPaywall: (String) -> Unit,
-    onOpenStory: (NewsStory, String) -> Unit,
-) {
-    DetailScreen(
-        liveState = liveState,
-        alertsState = alertsState,
-        subscriptionState = subscriptionState,
-        subscriptionReady = subscriptionReady,
-        detailState = detailState,
-        newsState = newsState,
-        rate = rate,
-        onBack = onBack,
-        onOpenPaywall = { onOpenPaywall("currency_detail") },
-        onLoadHistory = detailStore::load,
-        onOpenUrl = ExternalUrlOpener::open,
-        onOpenStory = { onOpenStory(it, "currency_detail") },
-        onCreateAlert = { alertRate ->
-            if (
-                canCreateAlert(subscriptionState, alertsState.alerts.size) ||
-                alertsState.alerts.findQuickAlert(liveState.baseCurrency, alertRate) != null
-            ) {
-                alertsStore.addQuickAlert(liveState.baseCurrency, alertRate)
-            } else {
-                onOpenPaywall("currency_detail_alert_limit")
-            }
-        },
-    )
 }
