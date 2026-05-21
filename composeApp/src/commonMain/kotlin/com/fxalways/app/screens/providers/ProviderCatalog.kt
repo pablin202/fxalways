@@ -1,4 +1,4 @@
-package com.fxalways.app.screens
+package com.fxalways.app.screens.providers
 
 internal const val FreeQuoteProviderLimit = 2
 internal val FreeFeeProviderIds = setOf("mid_market", "custom")

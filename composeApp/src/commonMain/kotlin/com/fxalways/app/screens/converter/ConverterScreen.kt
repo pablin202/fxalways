@@ -1,0 +1,353 @@
+package com.fxalways.app.screens.converter
+
+import com.fxalways.app.screens.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.fxalways.app.AppSettingsPrefs
+import com.fxalways.app.data.mock.ConverterRates
+import com.fxalways.app.data.AlertsState
+import com.fxalways.app.data.AlertDirection
+import com.fxalways.app.data.AlertKind
+import com.fxalways.app.data.LiveRatesState
+import com.fxalways.app.subscription.SubscriptionState
+import com.fxalways.app.subscription.featureAccess
+import com.fxalways.app.screens.alerts.findMatchingAlert
+import com.fxalways.app.screens.providers.FreeFeeProviderIds
+import com.fxalways.app.screens.providers.FreeQuoteProviderLimit
+import com.fxalways.app.screens.providers.normalizeProviderPreferenceCodes
+import com.fxalways.app.screens.providers.quoteCapableProviderCodes
+import com.fxalways.app.screens.detail.LoadingSkeletonCard
+import com.fxalways.app.screens.detail.RateTrustCard
+import com.fxalways.app.screens.detail.RateTrustDetailsCard
+import com.fxalways.app.screens.detail.compactRuntimeLabel
+import com.fxalways.app.screens.detail.isInitialRateLoading
+import com.fxalways.app.screens.shared.ProUpsellCard
+import com.fxalways.designsystem.components.Eyebrow
+import com.fxalways.designsystem.components.FxRate
+import com.fxalways.designsystem.components.LiveDot
+import com.fxalways.designsystem.components.ScreenHeader
+import com.fxalways.designsystem.components.SectionLabel
+import com.fxalways.designsystem.components.formatRate
+import com.fxalways.designsystem.theme.FxTheme
+import com.fxalways.observability.Observability
+
+@Composable
+fun ConverterScreen(
+    liveState: LiveRatesState,
+    alertsState: AlertsState = AlertsState(),
+    subscriptionState: SubscriptionState,
+    selectedCurrencyCodes: List<String> = emptyList(),
+    selectedProviderCodes: List<String> = emptyList(),
+    onCurrencyCodesChange: (List<String>) -> Unit = {},
+    onOpenPaywall: () -> Unit,
+    onCreateTransferAlert: (FxRate, FxRate, Double) -> Unit = { _, _, _ -> },
+    onOpenProviderUrl: (String) -> Unit = {},
+) {
+    val access = subscriptionState.featureAccess()
+    val focusManager = LocalFocusManager.current
+    var showCurrencyPicker by remember { mutableStateOf(false) }
+    val availableRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat, liveState.crypto, subscriptionState.isPremium) {
+        liveState.converterAvailableRates(subscriptionState.isPremium)
+    }
+    val targetCodes = remember(liveState.baseCurrency, selectedCurrencyCodes, availableRates, access.converterCurrencyLimit) {
+        converterTargetCodes(
+            selectedCurrencyCodes = selectedCurrencyCodes,
+            availableRates = availableRates,
+            baseCurrency = liveState.baseCurrency,
+            limit = access.converterCurrencyLimit,
+        )
+    }
+    val rates = remember(liveState.baseCurrency, liveState.converter, availableRates, targetCodes) {
+        val byCode = (availableRates + liveState.converter.ifEmpty { ConverterRates }).distinctBy { it.code }.associateBy { it.code }
+        (listOfNotNull(byCode[liveState.baseCurrency]) + targetCodes.mapNotNull { byCode[it] })
+            .distinctBy { it.code }
+    }
+    val initialTarget = remember(liveState.baseCurrency, rates) {
+        rates.firstOrNull { it.code != liveState.baseCurrency }?.code ?: liveState.baseCurrency
+    }
+    var sourceCode by remember(liveState.baseCurrency) { mutableStateOf(liveState.baseCurrency) }
+    var targetCode by remember(liveState.baseCurrency, initialTarget) { mutableStateOf(initialTarget) }
+    var amountText by remember { mutableStateOf(sanitizeAmountInput(AppSettingsPrefs.converterAmountText())) }
+    var amountFocused by remember { mutableStateOf(false) }
+    var customFixedFeeText by remember { mutableStateOf("0") }
+    var customFeePercentText by remember { mutableStateOf("1.00") }
+    var customMarkupPercentText by remember { mutableStateOf("2.50") }
+    var remittanceCadence by remember { mutableStateOf("Monthly") }
+    var transferPurpose by remember { mutableStateOf("Family") }
+    var transferDecisionHistory by remember { mutableStateOf(emptyList<TransferDecision>()) }
+    var scannedPriceText by remember { mutableStateOf("25") }
+    var priceScannerHistory by remember { mutableStateOf(emptyList<PriceScannerHistoryEntry>()) }
+    val sourceRate = rates.firstOrNull { it.code == sourceCode }
+        ?: rates.firstOrNull { it.code == liveState.baseCurrency }
+        ?: rates.first()
+    val targetRate = rates.firstOrNull { it.code == targetCode && it.code != sourceRate.code }
+        ?: rates.firstOrNull { it.code != sourceRate.code }
+        ?: sourceRate
+    var localMarketRateText by remember(sourceRate.code, targetRate.code) { mutableStateOf(formatRate(targetRate.rate * 1.08)) }
+    val amountValue = parseAmountInput(amountText)
+    val localMarketRate = parseAmountInput(localMarketRateText).takeIf { it > 0.0 } ?: targetRate.rate
+    val customFee = CustomFeeInput(
+        fixedFee = parseAmountInput(customFixedFeeText),
+        feePercent = parseAmountInput(customFeePercentText),
+        markupPercent = parseAmountInput(customMarkupPercentText),
+    )
+    val providerCodes = remember(selectedProviderCodes, sourceRate.code, targetRate.code) {
+        normalizeProviderPreferenceCodes(selectedProviderCodes, sourceRate.code, targetRate.code)
+    }
+    val allFeeQuotes = estimatedFeeQuotes(sourceRate, targetRate, amountValue, customFee, providerCodes)
+    val feeQuotes = if (access.canUseFullFeeComparison) {
+        allFeeQuotes.take(EstimatedFeeQuoteCount)
+    } else {
+        val freeProviderIds = FreeFeeProviderIds + providerCodes.quoteCapableProviderCodes().take(FreeQuoteProviderLimit)
+        allFeeQuotes.filter { it.providerId in freeProviderIds }
+    }
+    val bestQuote = feeQuotes.minByOrNull { it.lossTargetValue }
+    val bestRealWorldQuote = feeQuotes
+        .filterNot { it.provider == "Mid-market" }
+        .minByOrNull { it.lossTargetValue }
+    val worstQuote = feeQuotes.maxByOrNull { it.lossTargetValue }
+    val customQuote = feeQuotes.firstOrNull { it.provider == "Custom" }
+    val potentialSavings = bestQuote?.let { best ->
+        worstQuote?.let { worst -> (worst.lossTargetValue - best.lossTargetValue).coerceAtLeast(0.0) }
+    } ?: 0.0
+    val timingInsight = remember(sourceRate, targetRate) { smartTimingInsight(sourceRate, targetRate) }
+    if (showCurrencyPicker) {
+        CurrencyListPickerSheet(
+            title = ui("Edit converter list"),
+            lockedSubtitle = ui("Pro unlocks more converter currencies"),
+            currencies = availableRates.filterNot { it.code == liveState.baseCurrency },
+            selectedCodes = targetCodes,
+            limit = access.converterCurrencyLimit,
+            isPremium = subscriptionState.isPremium,
+            onDismiss = { showCurrencyPicker = false },
+            onOpenPaywall = {
+                showCurrencyPicker = false
+                onOpenPaywall()
+            },
+            onApply = { codes ->
+                showCurrencyPicker = false
+                onCurrencyCodesChange(codes)
+                if (targetCode !in codes && codes.isNotEmpty()) {
+                    targetCode = codes.first()
+                }
+            },
+        )
+    }
+    ScreenScaffold {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LiveDot()
+            Eyebrow(ui("MID"), color = FxTheme.colors.accent)
+            Text(
+                compactRuntimeLabel(liveState.updatedLabel),
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.textFaint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        ScreenHeader(ui("Convert"), subtitle = ui("Multi-currency · live to 4 decimals"))
+        RateTrustCard(
+            liveState = liveState,
+            modifier = Modifier.testTag("converter_rate_trust"),
+        )
+        RateTrustDetailsCard(
+            liveState = liveState,
+            modifier = Modifier.testTag("converter_trust_details"),
+        )
+        if (liveState.isInitialRateLoading()) {
+            LoadingSkeletonCard(
+                title = ui("Preparing converter rates"),
+                rows = 4,
+                modifier = Modifier.testTag("converter_loading_skeleton"),
+            )
+            LoadingSkeletonCard(
+                title = ui("Preparing fee estimates"),
+                rows = 5,
+                modifier = Modifier.testTag("converter_fee_loading_skeleton"),
+            )
+        } else {
+        ConverterAmountCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountText = amountText,
+            amountValue = amountValue,
+            amountFocused = amountFocused,
+            onAmountChange = { raw ->
+                amountText = sanitizeAmountInput(raw)
+                AppSettingsPrefs.setConverterAmountText(amountText)
+            },
+            onAmountFocusChange = { amountFocused = it },
+            onDone = { focusManager.clearFocus() },
+        )
+        ConverterRateListCard(
+            rates = rates,
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            onTargetSelected = { rate ->
+                targetCode = rate.code
+                Observability.event(
+                    "converter_target_selected",
+                    mapOf("source" to sourceRate.code, "target" to rate.code),
+                )
+                focusManager.clearFocus()
+            },
+        )
+        ConverterActionsRow(
+            onReverse = {
+                val previousSource = sourceRate
+                val previousTarget = targetRate
+                sourceCode = previousTarget.code
+                targetCode = previousSource.code
+                amountText = formatInputAmount(convertedAmount(amountValue, previousSource, previousTarget))
+                AppSettingsPrefs.setConverterAmountText(amountText)
+                Observability.event(
+                    "converter_reversed",
+                    mapOf("source" to previousSource.code, "target" to previousTarget.code),
+                )
+                focusManager.clearFocus()
+            },
+            onEditList = { showCurrencyPicker = true },
+        )
+        SectionLabel("${ui("SMART TIMING")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
+        SmartTimingCard(
+            insight = timingInsight,
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+        )
+        SectionLabel("${ui("LOCAL RATE NOTEBOOK")} · ${sourceRate.code} → ${targetRate.code}")
+        LocalRateNotebookCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            localMarketRateText = localMarketRateText,
+            localMarketRate = localMarketRate,
+            onLocalMarketRateChange = { localMarketRateText = sanitizeAmountInput(it) },
+        )
+        SectionLabel("${ui("PRICE SCANNER")} · ${targetRate.code} → ${sourceRate.code}", right = if (subscriptionState.isPremium) ui("OCR beta") else ui("Preview"))
+        PriceScannerCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            scannedPriceText = scannedPriceText,
+            localMarketRate = localMarketRate,
+            isPremium = subscriptionState.isPremium,
+            onScannedPriceChange = { scannedPriceText = sanitizeAmountInput(it) },
+            onScannedPriceDetected = { amount, detectedCurrency ->
+                scannedPriceText = sanitizeAmountInput(amount)
+                val normalizedCurrency = detectedCurrency?.uppercase()
+                val detectedTargetRate = rates.firstOrNull { it.code == normalizedCurrency && it.code != sourceRate.code } ?: targetRate
+                if (normalizedCurrency != null && normalizedCurrency != targetRate.code && rates.any { it.code == normalizedCurrency && it.code != sourceRate.code }) {
+                    targetCode = normalizedCurrency
+                }
+                Observability.event(
+                    "price_scanner_result_used",
+                    mapOf("source" to sourceRate.code, "target" to (normalizedCurrency ?: targetRate.code)),
+                )
+                priceScannerHistory = (listOf(
+                    PriceScannerHistoryEntry(
+                        amountText = sanitizeAmountInput(amount),
+                        targetCode = detectedTargetRate.code,
+                        sourceCode = sourceRate.code,
+                        liveSourceCost = liveSourceCostFor(parseAmountInput(amount), detectedTargetRate),
+                        hiddenCost = hiddenCostFor(parseAmountInput(amount), detectedTargetRate, localMarketRate),
+                    ),
+                ) + priceScannerHistory).take(4)
+            },
+            history = priceScannerHistory,
+            onOpenPaywall = onOpenPaywall,
+        )
+        SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
+        FeeRealityCheckCard(
+            quote = bestRealWorldQuote ?: bestQuote,
+        )
+        SectionLabel("${ui("REMITTANCE PLAN")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
+        RemittancePlannerCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            quote = bestRealWorldQuote ?: bestQuote,
+            cadence = remittanceCadence,
+            isPremium = subscriptionState.isPremium,
+            onCadenceChange = { remittanceCadence = it },
+            onOpenPaywall = onOpenPaywall,
+        )
+        SectionLabel("${ui("TRANSFER INTENT")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
+        TransferIntentCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            quote = bestRealWorldQuote ?: bestQuote,
+            purpose = transferPurpose,
+            history = transferDecisionHistory,
+            matchingAlert = alertsState.alerts.findMatchingAlert(
+                baseCurrency = sourceRate.code,
+                quote = targetRate.code,
+                target = transferAlertTarget(sourceRate, targetRate),
+                direction = AlertDirection.Above,
+                kind = AlertKind.Target,
+            ),
+            isPremium = subscriptionState.isPremium,
+            onPurposeChange = { transferPurpose = it },
+            onDecisionSaved = { decision ->
+                transferDecisionHistory = (listOf(decision) + transferDecisionHistory).take(5)
+            },
+            onCreateAlert = { onCreateTransferAlert(sourceRate, targetRate, transferAlertTarget(sourceRate, targetRate)) },
+            onOpenProviderUrl = onOpenProviderUrl,
+            onOpenPaywall = onOpenPaywall,
+        )
+        SectionLabel(ui("PROVIDER MATRIX"), right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
+        ProviderMatrixCard(
+            quotes = feeQuotes.filterNot { it.provider == "Mid-market" },
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+        )
+        ProviderSummaryCard(
+            targetRate = targetRate,
+            bestQuote = bestQuote,
+            customQuote = customQuote,
+            midMarketValue = convertedAmount(amountValue, sourceRate, targetRate),
+            potentialSavings = potentialSavings,
+        )
+        ProviderComparisonHistoryCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            customFee = customFee,
+            selectedProviderCodes = providerCodes,
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = onOpenPaywall,
+        )
+        CustomCostCard(
+            sourceCode = sourceRate.code,
+            fixedFeeText = customFixedFeeText,
+            feePercentText = customFeePercentText,
+            markupPercentText = customMarkupPercentText,
+            onFixedFeeChange = { customFixedFeeText = sanitizeAmountInput(it) },
+            onFeePercentChange = { customFeePercentText = sanitizeAmountInput(it) },
+            onMarkupPercentChange = { customMarkupPercentText = sanitizeAmountInput(it) },
+        )
+        FeeQuotesListCard(feeQuotes)
+        if (!access.canUseFullFeeComparison) {
+            ProUpsellCard(
+                title = ui("See the real transfer cost"),
+                subtitle = ui("Pro unlocks the complete provider list; estimates update with your amount."),
+                modifier = Modifier.testTag("converter_fee_upsell"),
+                onClick = onOpenPaywall,
+            )
+        }
+        }
+    }
+}
+
+private const val EstimatedFeeQuoteCount = 8

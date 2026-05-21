@@ -1,5 +1,6 @@
-package com.fxalways.app.screens
+package com.fxalways.app.screens.settings
 
+import com.fxalways.app.screens.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -123,18 +124,3 @@ private fun formatLastSyncedLocalized(millis: Long): String {
 @Composable
 private fun formatLastSyncedLocalized(millis: Long?): String =
     millis?.let { formatLastSyncedLocalized(it) } ?: ui("Sync pending")
-
-@Composable
-internal fun userFriendlyNetworkError(message: String?): String {
-    if (message.isNullOrBlank()) {
-        return ui("Please check your connection and try again.")
-    }
-    return when {
-        message.contains("network", ignoreCase = true) ||
-            message.contains("timeout", ignoreCase = true) ||
-            message.contains("interrupted", ignoreCase = true) ||
-            message.contains("unreachable", ignoreCase = true) -> ui("Please check your connection and try again.")
-        message.contains("RevenueCat", ignoreCase = true) -> ui("Purchases are temporarily unavailable. Try again later.")
-        else -> message
-    }
-}

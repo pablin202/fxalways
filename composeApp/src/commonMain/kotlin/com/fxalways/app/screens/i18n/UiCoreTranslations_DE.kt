@@ -1,0 +1,25 @@
+package com.fxalways.app.screens.i18n
+
+internal val uiTranslationsDE = mapOf(
+        "Rates" to "Kurse", "Convert" to "Umrechnen", "Compare" to "Vergleichen", "News" to "News", "More" to "Mehr",
+        "Settings" to "Einstellungen", "Alerts" to "Alarme", "Watchlist" to "Watchlist", "Traveler" to "Reise",
+        "LIVE" to "LIVE", "CACHED" to "CACHE", "Edit" to "Bearbeiten", "See all" to "Alle sehen", "Preview" to "Vorschau",
+        "OCR beta" to "OCR-Beta", "Scan price" to "Preis scannen", "OCR price scanner" to "OCR-Preisscanner",
+        "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "Der Kamerascanner füllt den versteckten Kostencheck aus Regal-, Beleg- oder Kassenpreisen.",
+        "Manual entry" to "Manuelle Eingabe", "Live camera OCR + currency detection" to "Live-Kamera-OCR + Währungserkennung",
+        "Loading" to "Laden", "Estimated" to "Geschätzt", "Active" to "Aktiv", "Ready" to "Bereit", "Unlimited" to "Unbegrenzt",
+        "favorites" to "Favoriten", "FAVORITES" to "FAVORITEN", "FEES" to "GEBÜHREN", "Reverse" to "Umkehren", "HISTORY" to "HISTORIE",
+        "STATISTICS" to "STATISTIK", "Open" to "Start", "High" to "Hoch", "Low" to "Tief", "Range" to "Spanne", "Average" to "Durchschnitt",
+        "STRONGEST" to "STÄRKSTE", "WEAKEST" to "SCHWÄCHSTE", "No data" to "Keine Daten", "DESTINATION" to "ZIEL",
+        "TRIP BUDGET" to "REISEBUDGET", "CHEAT SHEET" to "KURZINFO", "TIPPING" to "TRINKGELD", "TAX" to "STEUER",
+        "TOOLS" to "TOOLS", "CUSTOM ALERT" to "EIGENER ALARM", "Target rate" to "Zielkurs", "ACTIVE ALERTS" to "AKTIVE ALARME",
+        "Tracked currencies" to "Verfolgte Währungen", "ADD OR REMOVE" to "HINZUFÜGEN ODER ENTFERNEN", "amount" to "Betrag",
+        "done" to "fertig", "tracked" to "verfolgt", "add" to "hinzufügen", "paused" to "pausiert", "CURRENT" to "AKTUELL",
+        "Never" to "Nie", "pause" to "pausieren", "resume" to "fortsetzen", "MARKET STREAM" to "MARKT", "SENTIMENT" to "STIMMUNG",
+        "BULLISH" to "BULLISCH", "NEUTRAL" to "NEUTRAL", "BEARISH" to "BÄRISCH", "Updated" to "Aktualisiert",
+        "REGION" to "REGION", "CURRENCY" to "WÄHRUNG", "TOPIC" to "THEMA", "SOURCE" to "QUELLE",
+        "Search currency" to "Währung suchen", "No currencies found" to "Keine Währungen gefunden", "Cancel" to "Abbrechen", "Apply" to "Anwenden",
+        "System" to "System", "Light" to "Hell", "Dark" to "Dunkel", "Version" to "Version", "Above" to "Über", "Below" to "Unter",
+        "Continue" to "Weiter", "Processing..." to "Verarbeitung...", "Available" to "Verfügbar", "No connection" to "Keine Verbindung",
+        "Skip" to "Überspringen", "Get started" to "Loslegen", "Next  →" to "Weiter  →",
+    )

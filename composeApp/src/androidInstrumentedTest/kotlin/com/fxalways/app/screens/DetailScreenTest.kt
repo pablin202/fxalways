@@ -21,6 +21,7 @@ import com.fxalways.app.data.NewsUiState
 import com.fxalways.app.data.PriceAlert
 import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.domain.HistoricalPoint
+import com.fxalways.app.screens.detail.DetailScreen
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate

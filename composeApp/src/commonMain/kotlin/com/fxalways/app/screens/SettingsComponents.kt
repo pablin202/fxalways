@@ -58,3 +58,18 @@ internal fun SettingChoiceRow(
         Pill(actionLabel, variant = if (selected || isLoading) PillVariant.Accent else PillVariant.Ghost)
     }
 }
+
+@Composable
+internal fun userFriendlyNetworkError(message: String?): String {
+    if (message.isNullOrBlank()) {
+        return ui("Please check your connection and try again.")
+    }
+    return when {
+        message.contains("network", ignoreCase = true) ||
+            message.contains("timeout", ignoreCase = true) ||
+            message.contains("interrupted", ignoreCase = true) ||
+            message.contains("unreachable", ignoreCase = true) -> ui("Please check your connection and try again.")
+        message.contains("RevenueCat", ignoreCase = true) -> ui("Purchases are temporarily unavailable. Try again later.")
+        else -> message
+    }
+}

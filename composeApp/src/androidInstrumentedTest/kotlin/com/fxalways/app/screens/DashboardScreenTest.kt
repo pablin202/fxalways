@@ -14,6 +14,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.UserProfile
 import com.fxalways.app.data.LiveRatesState
+import com.fxalways.app.screens.alerts.QuickAlertState
+import com.fxalways.app.screens.dashboard.DashboardScreen
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate

@@ -1,5 +1,7 @@
-package com.fxalways.app.screens
+package com.fxalways.app.screens.converter
 
+import com.fxalways.app.screens.*
+import com.fxalways.app.screens.providers.normalizeProviderPreferenceCodes
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.components.formatRate
 

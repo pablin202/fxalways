@@ -22,6 +22,7 @@ import com.fxalways.app.data.PortfolioTransactionType
 import com.fxalways.app.data.Watchlist
 import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.data.importPortfolioCsv
+import com.fxalways.app.screens.watchlist.WatchlistScreen
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate

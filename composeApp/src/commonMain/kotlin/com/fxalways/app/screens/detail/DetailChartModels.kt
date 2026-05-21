@@ -1,5 +1,6 @@
-package com.fxalways.app.screens
+package com.fxalways.app.screens.detail
 
+import com.fxalways.app.screens.*
 import com.fxalways.app.data.mock.DetailSeries
 import com.fxalways.designsystem.components.Period
 

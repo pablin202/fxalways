@@ -22,6 +22,7 @@ import com.fxalways.app.data.AlertKind
 import com.fxalways.app.data.AlertsState
 import com.fxalways.app.data.LiveRatesState
 import com.fxalways.app.data.PriceAlert
+import com.fxalways.app.screens.alerts.AlertsScreen
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate

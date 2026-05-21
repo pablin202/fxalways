@@ -1,0 +1,235 @@
+package com.fxalways.app.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import com.fxalways.app.ExternalUrlOpener
+import com.fxalways.app.ThemeMode
+import com.fxalways.app.UserBackupState
+import com.fxalways.app.UserProfile
+import com.fxalways.app.data.AlertsState
+import com.fxalways.app.data.AlertsStore
+import com.fxalways.app.data.DetailStore
+import com.fxalways.app.data.DetailUiState
+import com.fxalways.app.data.LiveRatesState
+import com.fxalways.app.data.LiveRatesStore
+import com.fxalways.app.data.NewsUiState
+import com.fxalways.app.data.NewsStore
+import com.fxalways.app.data.WatchlistState
+import com.fxalways.app.data.WatchlistStore
+import com.fxalways.app.data.mock.NewsStory
+import com.fxalways.app.subscription.SubscriptionGateway
+import com.fxalways.app.subscription.SubscriptionState
+import com.fxalways.app.screens.alerts.canCreateAlert
+import com.fxalways.app.screens.alerts.findQuickAlert
+import com.fxalways.app.screens.detail.DetailScreen
+import com.fxalways.app.screens.news.NewsDetailScreen
+import com.fxalways.app.screens.paywall.FxPaywallRoute
+import com.fxalways.designsystem.components.FxBottomBar
+import com.fxalways.designsystem.components.FxRate
+import com.fxalways.designsystem.theme.FxTheme
+
+@Composable
+internal fun FxShellContent(
+    startupReady: Boolean,
+    showPaywall: Boolean,
+    detailNewsStory: NewsStory?,
+    detailRate: FxRate?,
+    selectedTab: FxTab,
+    moreRoute: MoreRoute,
+    liveState: LiveRatesState,
+    newsState: NewsUiState,
+    alertsState: AlertsState,
+    watchlistState: WatchlistState,
+    detailState: DetailUiState,
+    subscriptionState: SubscriptionState,
+    subscriptionReady: Boolean,
+    subscriptionActionInProgress: Boolean,
+    userProfile: UserProfile,
+    compareCurrencyCodes: List<String>,
+    converterCurrencyCodes: List<String>,
+    providerPreferenceCodes: List<String>,
+    travelerCurrency: String,
+    travelerBudgetBase: Double,
+    themeMode: ThemeMode,
+    appLanguage: String,
+    baseCurrency: String,
+    backupState: UserBackupState,
+    backupSyncing: Boolean,
+    lastSyncedAtMillis: Long?,
+    subscriptionGateway: SubscriptionGateway,
+    liveStore: LiveRatesStore,
+    newsStore: NewsStore,
+    alertsStore: AlertsStore,
+    watchlistStore: WatchlistStore,
+    detailStore: DetailStore,
+    onSelectTab: (FxTab) -> Unit,
+    onOpenMoreRoute: (MoreRoute) -> Unit,
+    onOpenPaywall: (String) -> Unit,
+    onOpenDetail: (FxRate, String) -> Unit,
+    onOpenStory: (NewsStory, String) -> Unit,
+    onPaywallVisibleChange: (Boolean) -> Unit,
+    onDetailNewsStoryChange: (NewsStory?) -> Unit,
+    onDetailRateChange: (FxRate?) -> Unit,
+    onMoreRouteChange: (MoreRoute) -> Unit,
+    onCompareCurrencyCodesChange: (List<String>) -> Unit,
+    onConverterCurrencyCodesChange: (List<String>) -> Unit,
+    onProviderPreferenceCodesChange: (List<String>) -> Unit,
+    onTravelerCurrencyChange: (String) -> Unit,
+    onTravelerBudgetBaseChange: (Double) -> Unit,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    onLanguageChange: (String) -> Unit,
+    onBaseCurrencyChange: (String) -> Unit,
+    onUserProfileChange: (UserProfile) -> Unit,
+    onSubscriptionStateChange: (SubscriptionState) -> Unit,
+    onSubscriptionReadyChange: (Boolean) -> Unit,
+    onSubscriptionActionInProgressChange: (Boolean) -> Unit,
+    onBackupStateChange: (UserBackupState) -> Unit,
+    onBackupReadyChange: (Boolean) -> Unit,
+    onBackupSyncingChange: (Boolean) -> Unit,
+    onLastSyncedAtMillisChange: (Long?) -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(FxTheme.colors.bg)
+            .safeContentPadding(),
+    ) {
+        Box(Modifier.weight(1f)) {
+            when {
+                !startupReady -> StartupLoadingScreen(baseCurrency, appLanguage)
+                showPaywall -> FxPaywallRoute(
+                    subscriptionState = subscriptionState,
+                    actionInProgress = subscriptionActionInProgress,
+                    userProfile = userProfile,
+                    subscriptionGateway = subscriptionGateway,
+                    onClose = { onPaywallVisibleChange(false) },
+                    onSubscriptionStateChange = onSubscriptionStateChange,
+                    onSubscriptionReadyChange = onSubscriptionReadyChange,
+                    onActionInProgressChange = onSubscriptionActionInProgressChange,
+                    onPaywallVisibleChange = onPaywallVisibleChange,
+                )
+                detailNewsStory != null -> NewsDetailScreen(
+                    story = detailNewsStory,
+                    onBack = { onDetailNewsStoryChange(null) },
+                    onOpenUrl = ExternalUrlOpener::open,
+                )
+                detailRate != null -> FxDetailRoute(
+                    rate = detailRate,
+                    liveState = liveState,
+                    alertsState = alertsState,
+                    subscriptionState = subscriptionState,
+                    subscriptionReady = subscriptionReady,
+                    detailState = detailState,
+                    newsState = newsState,
+                    alertsStore = alertsStore,
+                    detailStore = detailStore,
+                    onBack = { onDetailRateChange(null) },
+                    onOpenPaywall = onOpenPaywall,
+                    onOpenStory = onOpenStory,
+                )
+                else -> FxMainTabRoute(
+                    selectedTab = selectedTab,
+                    moreRoute = moreRoute,
+                    liveState = liveState,
+                    newsState = newsState,
+                    alertsState = alertsState,
+                    watchlistState = watchlistState,
+                    subscriptionState = subscriptionState,
+                    subscriptionReady = subscriptionReady,
+                    userProfile = userProfile,
+                    compareCurrencyCodes = compareCurrencyCodes,
+                    converterCurrencyCodes = converterCurrencyCodes,
+                    providerPreferenceCodes = providerPreferenceCodes,
+                    travelerCurrency = travelerCurrency,
+                    travelerBudgetBase = travelerBudgetBase,
+                    themeMode = themeMode,
+                    appLanguage = appLanguage,
+                    baseCurrency = baseCurrency,
+                    backupState = backupState,
+                    backupSyncing = backupSyncing,
+                    lastSyncedAtMillis = lastSyncedAtMillis,
+                    subscriptionGateway = subscriptionGateway,
+                    liveStore = liveStore,
+                    newsStore = newsStore,
+                    alertsStore = alertsStore,
+                    watchlistStore = watchlistStore,
+                    onSelectTab = onSelectTab,
+                    onOpenMoreRoute = onOpenMoreRoute,
+                    onOpenPaywall = onOpenPaywall,
+                    onOpenDetail = onOpenDetail,
+                    onOpenStory = onOpenStory,
+                    onMoreRouteChange = onMoreRouteChange,
+                    onCompareCurrencyCodesChange = onCompareCurrencyCodesChange,
+                    onConverterCurrencyCodesChange = onConverterCurrencyCodesChange,
+                    onProviderPreferenceCodesChange = onProviderPreferenceCodesChange,
+                    onTravelerCurrencyChange = onTravelerCurrencyChange,
+                    onTravelerBudgetBaseChange = onTravelerBudgetBaseChange,
+                    onThemeModeChange = onThemeModeChange,
+                    onLanguageChange = onLanguageChange,
+                    onBaseCurrencyChange = onBaseCurrencyChange,
+                    onUserProfileChange = onUserProfileChange,
+                    onSubscriptionStateChange = onSubscriptionStateChange,
+                    onSubscriptionReadyChange = onSubscriptionReadyChange,
+                    onBackupStateChange = onBackupStateChange,
+                    onBackupReadyChange = onBackupReadyChange,
+                    onBackupSyncingChange = onBackupSyncingChange,
+                    onLastSyncedAtMillisChange = onLastSyncedAtMillisChange,
+                )
+            }
+        }
+        if (startupReady) {
+            FxBottomBar(
+                tabs = FxTab.entries.map { ui(it.label) },
+                selectedIndex = selectedTab.ordinal,
+                onSelect = { onSelectTab(FxTab.entries[it]) },
+                iconKeys = FxTab.entries.map { it.label },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FxDetailRoute(
+    rate: FxRate,
+    liveState: LiveRatesState,
+    alertsState: AlertsState,
+    subscriptionState: SubscriptionState,
+    subscriptionReady: Boolean,
+    detailState: DetailUiState,
+    newsState: NewsUiState,
+    alertsStore: AlertsStore,
+    detailStore: DetailStore,
+    onBack: () -> Unit,
+    onOpenPaywall: (String) -> Unit,
+    onOpenStory: (NewsStory, String) -> Unit,
+) {
+    DetailScreen(
+        liveState = liveState,
+        alertsState = alertsState,
+        subscriptionState = subscriptionState,
+        subscriptionReady = subscriptionReady,
+        detailState = detailState,
+        newsState = newsState,
+        rate = rate,
+        onBack = onBack,
+        onOpenPaywall = { onOpenPaywall("currency_detail") },
+        onLoadHistory = detailStore::load,
+        onOpenUrl = ExternalUrlOpener::open,
+        onOpenStory = { onOpenStory(it, "currency_detail") },
+        onCreateAlert = { alertRate ->
+            if (
+                canCreateAlert(subscriptionState, alertsState.alerts.size) ||
+                alertsState.alerts.findQuickAlert(liveState.baseCurrency, alertRate) != null
+            ) {
+                alertsStore.addQuickAlert(liveState.baseCurrency, alertRate)
+            } else {
+                onOpenPaywall("currency_detail_alert_limit")
+            }
+        },
+    )
+}

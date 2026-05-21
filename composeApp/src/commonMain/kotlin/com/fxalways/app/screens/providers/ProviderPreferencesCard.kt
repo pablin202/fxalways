@@ -1,5 +1,6 @@
-package com.fxalways.app.screens
+package com.fxalways.app.screens.providers
 
+import com.fxalways.app.screens.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.UserProfile
+import com.fxalways.app.screens.onboarding.OnboardingScreen
 import com.fxalways.designsystem.theme.FxTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals

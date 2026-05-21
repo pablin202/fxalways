@@ -1,0 +1,28 @@
+package com.fxalways.app.screens.i18n
+
+internal val uiTranslationsFR = mapOf(
+        "Rates" to "Taux", "Convert" to "Convertir", "Compare" to "Comparer", "News" to "Actus", "More" to "Plus",
+        "Settings" to "Réglages", "Alerts" to "Alertes", "Watchlist" to "Suivi", "Traveler" to "Voyage",
+        "LIVE" to "EN DIRECT", "CACHED" to "CACHE", "Edit" to "Modifier", "See all" to "Tout voir", "Preview" to "Aperçu",
+        "OCR beta" to "OCR bêta", "Scan price" to "Scanner le prix", "OCR price scanner" to "Scanner de prix OCR",
+        "Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices." to "Le scanner caméra remplit le contrôle de coût caché depuis un prix en rayon, reçu ou caisse.",
+        "Manual entry" to "Saisie manuelle", "Live camera OCR + currency detection" to "OCR caméra en direct + détection de devise",
+        "Live" to "En direct", "Loading" to "Chargement", "Estimated" to "Estimé", "Active" to "Actif", "Ready" to "Prêt",
+        "Unlimited" to "Illimité", "base" to "base", "favorites" to "favoris", "FAVORITES" to "FAVORIS", "FEES" to "FRAIS",
+        "Reverse" to "Inverser", "Edit list" to "Modifier", "HISTORY" to "HISTORIQUE", "STATISTICS" to "STATISTIQUES",
+        "Open" to "Ouverture", "High" to "Haut", "Low" to "Bas", "Range" to "Plage", "Average" to "Moyenne",
+        "RELATED NEWS" to "ACTUS LIÉES", "STRONGEST" to "PLUS FORT", "WEAKEST" to "PLUS FAIBLE", "No data" to "Aucune donnée",
+        "DESTINATION" to "DESTINATION", "TRIP BUDGET" to "BUDGET", "CHEAT SHEET" to "AIDE-MÉMOIRE", "TIPPING" to "POURBOIRE",
+        "TAX" to "TAXE", "TOOLS" to "OUTILS", "PRICE TARGETS" to "OBJECTIFS", "CUSTOM ALERT" to "ALERTE PERSONNALISÉE",
+        "Target rate" to "Taux cible", "Daily move %" to "Variation quotidienne %", "ACTIVE ALERTS" to "ALERTES ACTIVES",
+        "Tracked currencies" to "Devises suivies", "PORTFOLIO HOLDINGS" to "PORTEFEUILLE", "ADD OR REMOVE" to "AJOUTER OU RETIRER",
+        "amount" to "montant", "done" to "terminé", "tracked" to "suivi", "add" to "ajouter", "paused" to "en pause",
+        "CURRENT" to "ACTUEL", "Never" to "Jamais", "pause" to "pause", "resume" to "reprendre", "test" to "tester",
+        "MARKET STREAM" to "MARCHÉ", "SENTIMENT" to "SENTIMENT", "BULLISH" to "HAUSSIER", "NEUTRAL" to "NEUTRE", "BEARISH" to "BAISSIER",
+        "Updated" to "Mis à jour", "REGION" to "RÉGION", "CURRENCY" to "DEVISE", "TOPIC" to "SUJET", "News detail" to "Détail",
+        "SOURCE" to "SOURCE", "Publisher" to "Éditeur", "Choose base currency" to "Choisir la devise de base",
+        "Search currency" to "Chercher une devise", "No currencies found" to "Aucune devise trouvée", "Cancel" to "Annuler", "Apply" to "Appliquer",
+        "System" to "Système", "Light" to "Clair", "Dark" to "Sombre", "Version" to "Version", "active" to "actif",
+        "Above" to "Au-dessus", "Below" to "En dessous", "Continue" to "Continuer", "Processing..." to "Traitement...",
+        "Available" to "Disponible", "No connection" to "Pas de connexion", "Skip" to "Ignorer", "Get started" to "Commencer", "Next  →" to "Suivant  →",
+    )

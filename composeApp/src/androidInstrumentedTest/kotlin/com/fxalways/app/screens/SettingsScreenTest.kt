@@ -17,6 +17,7 @@ import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.ThemeMode
 import com.fxalways.app.UserBackupState
 import com.fxalways.app.UserProfile
+import com.fxalways.app.screens.settings.SettingsScreen
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
