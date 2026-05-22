@@ -22,7 +22,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [ ] Finalize hosted legal document content for Privacy and Terms at `fxalways.com`.
 - [x] Prepare internal testing checklist and store screenshot claim set.
 - [ ] Produce final store listing text, screenshots and metadata for Android.
-- [ ] Validate all critical release strings in the 13 supported languages.
+- [x] Validate all critical release strings in the 13 supported languages.
 - [x] Run full Android instrumentation suite on S25 after the final UI polish pass.
 - [x] Run Android release build check.
 - [x] Configure production Android keystore and generate signed Play upload AAB locally.
@@ -37,8 +37,8 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Android alert worker checks active alerts against backend rates.
 - [x] Android widgets are implemented for rates and traveler.
 - [x] Move notification permission request to a contextual moment.
-- [ ] Confirm widgets refresh correctly after fresh install, app kill and backend cache refresh.
-- [ ] Validate offline/slow-network first launch on a clean install.
+- [x] Confirm widgets refresh correctly after fresh install, app kill and backend cache refresh.
+- [x] Validate offline/slow-network first launch on a clean install.
 
 ## iOS Launch Readiness
 
@@ -102,7 +102,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Alerts keep their original base pair when app base currency changes.
 - [x] Duplicate identical alerts reactivate the existing alert.
 - [x] Add triggered-alert history.
-- [ ] Add server-side alert evaluation for more reliable background delivery.
+- [x] Add server-side alert evaluation for more reliable background delivery.
 - [ ] Verify upgrade path when user hits the Free alert limit.
 - [ ] Edge: offline restore failure copy is clear and does not change entitlement state.
 
@@ -177,10 +177,12 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Australia/Oceania users see local main providers first while LatAm providers remain selectable.
 - [x] Converter provider comparison respects the selected provider preferences.
 - [x] Firebase Functions exposes a provider catalog endpoint for server-side catalog/crons.
-- [ ] Integrate official Wise quote API behind Firebase Functions.
-- [ ] Integrate MoneyGram quote API behind Firebase Functions after credentials/partner setup.
-- [ ] Add provider credential/affiliate configuration without exposing secrets in the app.
-- [ ] Add server-side quote freshness, quote source labels and fallback policy per provider.
+- [x] Integrate official Wise quote API behind Firebase Functions with backend fallback to explicit estimates.
+- [x] Integrate Wise Comparison API behind Firebase Functions for market comparison data across supported providers.
+- [x] Integrate MoneyGram quote API path behind Firebase Functions, gated by partner credentials.
+- [x] Add provider credential/affiliate configuration without exposing secrets in the app.
+- [x] Add server-side quote freshness, quote source labels and fallback policy per provider.
+- [x] Provider Matrix copy distinguishes live provider quotes, market comparisons, backend estimates, partner setup and unsupported routes.
 - [x] RevenueCat iOS gateway is connected.
 - [x] Entitlement validation for `pro` exists.
 - [x] Restore purchase behavior exists.
@@ -216,6 +218,15 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Watchlist/portfolio tests cover holdings and import/export behavior.
 - [x] Add a final "launch smoke" test class that walks Home -> Convert -> Compare -> Alerts -> More.
 - [x] Launch smoke test verifies no `COMING NEXT` placeholder remains in the main flow.
+
+## Release Hardening Evidence
+
+- [x] 2026-05-22: Firebase `evaluateServerAlerts` scheduled function deployed in `moneytrackerpro-8ff64`.
+- [x] 2026-05-22: Firebase `providerQuotes` and `refreshProviderQuoteCache` deployed with provider quote cache `v6`.
+- [x] 2026-05-22: Provider status/source copy verified across all 13 app languages for live, comparison, estimate, partner setup and unavailable states.
+- [x] 2026-05-22: Android full instrumentation suite passed on S25: 124/124 tests.
+- [x] 2026-05-22: Clean-install offline first launch on S25 produced no app crash.
+- [x] 2026-05-22: App-kill/startup widget refresh path on S25 produced no widget/RemoteViews crash.
 
 ## Recommended Next Work
 

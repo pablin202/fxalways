@@ -140,6 +140,45 @@ data class ProviderCatalogDto(
     val other: List<ProviderCatalogItemDto> = emptyList(),
 )
 
+@Serializable
+data class ProviderQuoteDto(
+    val providerId: String,
+    val provider: String,
+    val status: String,
+    val source: String,
+    val sourceUrl: String = "",
+    val amount: Double,
+    val sourceCurrency: String,
+    val targetCurrency: String,
+    val receivedAmount: Double,
+    val feeAmount: Double,
+    val markupPercent: Double,
+    val lossAmount: Double,
+    val lossPercent: Double,
+    val effectiveRate: Double,
+    val deliverySpeed: String,
+    val paymentMethod: String,
+    val riskLabel: String,
+    val bestFor: String,
+    val quoteMode: String,
+    val refreshedAt: String,
+    val expiresAt: String,
+    val message: String,
+)
+
+@Serializable
+data class ProviderQuotesDto(
+    val provider: String,
+    val refreshedAt: String,
+    val base: String,
+    val target: String,
+    val amount: Double,
+    val plan: String,
+    val midMarketRate: Double,
+    val midMarketTarget: Double,
+    val quotes: List<ProviderQuoteDto> = emptyList(),
+)
+
 data class WatchPair(
     val base: String,
     val quote: String,

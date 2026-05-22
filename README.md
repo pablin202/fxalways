@@ -232,6 +232,12 @@ Endpoints:
 
 - `GET /latestRates?base=USD`
 - `GET /historicalRates?base=USD&quote=EUR&days=365`
+- `GET /providerCatalog?base=AUD`
+- `GET /providerQuotes?base=AUD&target=ARS&amount=500&providers=wise,revolut,moneygram&plan=pro`
+
+Provider quotes run through Firebase Functions so provider credentials stay off-device. Wise uses the official quote endpoint when reachable and Wise Comparison API for market comparison data across supported providers. Revolut and MoneyGram switch to live mode when `REVOLUT_API_TOKEN`, `MONEYGRAM_ACCESS_TOKEN` and `MONEYGRAM_PARTNER_ID` are configured in the backend environment; otherwise the endpoint returns explicit `comparison`, `partner_setup` or `estimated` statuses with source labels. Provider Matrix copy treats those states separately so production UI never implies an estimate or comparison is a locked provider quote.
+
+Server-side alert evaluation runs as the scheduled `evaluateServerAlerts` Firebase Function every 15 minutes. It reads backed-up alert snapshots, evaluates target-rate and daily-change alerts against backend rates, writes `lastTriggeredAtMillis` back to the backup payload and records server alert events under each user.
 
 ## Deploy Firebase
 

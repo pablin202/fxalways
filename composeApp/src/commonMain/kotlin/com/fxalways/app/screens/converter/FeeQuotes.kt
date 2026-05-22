@@ -1,6 +1,7 @@
 package com.fxalways.app.screens.converter
 
 import com.fxalways.app.screens.*
+import com.fxalways.app.domain.ProviderQuoteDto
 import com.fxalways.app.screens.providers.normalizeProviderPreferenceCodes
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.components.formatRate
@@ -27,6 +28,9 @@ internal data class EstimatedFeeQuote(
     val bestFor: String,
     val lossTargetValue: Double,
     val lossPercentValue: Double,
+    val sourceStatus: String = "estimated",
+    val sourceLabel: String = "Local estimate",
+    val sourceMessage: String = "Estimated locally until backend quote refresh completes.",
     val isHighFee: Boolean = false,
 )
 
@@ -108,7 +112,70 @@ internal fun estimatedFeeQuotes(
             bestFor = template.bestFor,
             lossTargetValue = lossTarget,
             lossPercentValue = lossPct,
+            sourceStatus = if (template.providerId == "mid_market" || template.providerId == "custom") "local" else "estimated",
+            sourceLabel = if (template.providerId == "mid_market") "Mid-market baseline" else "Local estimate",
+            sourceMessage = "Estimated locally until backend quote refresh completes.",
             isHighFee = highFee,
         )
     }.sortedWith(compareBy<EstimatedFeeQuote> { it.lossTargetValue }.thenBy { it.provider != "Custom" })
 }
+
+internal fun List<EstimatedFeeQuote>.withBackendProviderQuotes(
+    backendQuotes: List<ProviderQuoteDto>,
+    targetRate: FxRate,
+): List<EstimatedFeeQuote> {
+    if (backendQuotes.isEmpty()) return this
+    val backendByProvider = backendQuotes.associateBy { it.providerId }
+    return map { local ->
+        backendByProvider[local.providerId]?.toEstimatedFeeQuote(targetRate) ?: local
+    }.sortedWith(compareBy<EstimatedFeeQuote> { it.lossTargetValue }.thenBy { it.provider != "Custom" })
+}
+
+private fun ProviderQuoteDto.toEstimatedFeeQuote(targetRate: FxRate): EstimatedFeeQuote =
+    EstimatedFeeQuote(
+        providerId = providerId,
+        provider = provider,
+        badge = when (status) {
+            "live" -> "live"
+            "comparison" -> "market"
+            "partner_setup" -> "setup"
+            "unavailable" -> "unavailable"
+            else -> "estimated"
+        },
+        amount = formatConvertedAmount(targetRate, receivedAmount),
+        fee = "$sourceCurrency ${formatMoneyValue(feeAmount)}",
+        markup = "${formatRate(markupPercent)}%",
+        loss = "$targetCurrency ${formatMoneyValue(lossAmount)}",
+        lossPercent = "${formatRate(lossPercent)}%",
+        effectiveRate = "${formatRate(effectiveRate)} $targetCurrency",
+        deliverySpeed = deliverySpeed,
+        paymentMethod = paymentMethod,
+        riskLabel = riskLabel,
+        bestFor = bestFor,
+        lossTargetValue = lossAmount.coerceAtLeast(0.0),
+        lossPercentValue = lossPercent.coerceAtLeast(0.0),
+        sourceStatus = status,
+        sourceLabel = source.ifBlank { quoteMode },
+        sourceMessage = message,
+        isHighFee = status == "unavailable" || lossPercent >= 3.0,
+    )
+
+internal fun EstimatedFeeQuote.sourceStatusLabel(): String =
+    when (sourceStatus) {
+        "live" -> "Live provider quote"
+        "comparison" -> "Market comparison only"
+        "partner_setup" -> "Partner setup required"
+        "unavailable" -> "Unavailable for this route"
+        "local" -> "Local model"
+        else -> "FX Always estimate"
+    }
+
+internal fun EstimatedFeeQuote.sourceTrustLabel(): String =
+    when (sourceStatus) {
+        "live" -> "Provider API"
+        "comparison" -> "Comparison API"
+        "partner_setup" -> "Partner credentials needed"
+        "unavailable" -> "Not quoteable"
+        "local" -> sourceLabel
+        else -> "Local estimate"
+    }

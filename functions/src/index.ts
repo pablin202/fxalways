@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { getFirestore, QueryDocumentSnapshot, Timestamp } from "firebase-admin/firestore";
 import { defineSecret } from "firebase-functions/params";
 import { onRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
@@ -12,6 +12,7 @@ const frankfurterBaseUrl = process.env.FRANKFURTER_BASE_URL ?? "https://api.fran
 const coinPaprikaBaseUrl = process.env.COINPAPRIKA_BASE_URL ?? "https://api.coinpaprika.com/v1";
 const exchangeRateApiKey = process.env.EXCHANGE_RATE_API_KEY ?? "";
 const marketauxApiKey = defineSecret("MARKETAUX_API_KEY");
+const SERVER_ALERT_COOLDOWN_MILLIS = 6 * 60 * 60 * 1000;
 const supportedBases = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "BRL", "MXN", "NZD", "SGD"];
 const warmPairs = [
   ["USD", "EUR"],
@@ -119,6 +120,54 @@ type NewsFeedResponse = {
   items: NewsItem[];
 };
 
+type PriceAlertDirection = "Above" | "Below";
+type PriceAlertKind = "Target" | "DailyChange";
+
+type PriceAlert = {
+  id: string;
+  base: string;
+  quote: string;
+  target: number;
+  direction: PriceAlertDirection;
+  kind?: PriceAlertKind;
+  enabled?: boolean;
+  createdAtMillis?: number;
+  lastTriggeredAtMillis?: number | null;
+};
+
+type BackupSettings = {
+  themeMode?: string;
+  language?: string;
+  baseCurrency?: string;
+  travelerCurrency?: string;
+  travelerBudgetBase?: number;
+  converterCurrencyCodes?: string[];
+  compareCurrencyCodes?: string[];
+  providerPreferenceCodes?: string[];
+  userProfile?: string;
+};
+
+type UserBackupSnapshot = {
+  schemaVersion?: number;
+  updatedAtMillis?: number;
+  settings?: BackupSettings;
+  alerts?: PriceAlert[];
+  watchlist?: unknown;
+};
+
+type ServerAlertEvent = {
+  alertId: string;
+  uid: string;
+  base: string;
+  quote: string;
+  kind: PriceAlertKind;
+  direction: PriceAlertDirection;
+  target: number;
+  observedValue: number;
+  triggeredAtMillis: number;
+  source: "server";
+};
+
 type ProviderCatalogItem = {
   id: string;
   label: string;
@@ -138,6 +187,45 @@ type ProviderCatalogResponse = {
   baseCurrency: string;
   primary: ProviderCatalogItem[];
   other: ProviderCatalogItem[];
+};
+
+type ProviderQuoteStatus = "live" | "comparison" | "estimated" | "partner_setup" | "unavailable";
+
+type ProviderQuote = {
+  providerId: string;
+  provider: string;
+  status: ProviderQuoteStatus;
+  source: string;
+  sourceUrl: string;
+  amount: number;
+  sourceCurrency: string;
+  targetCurrency: string;
+  receivedAmount: number;
+  feeAmount: number;
+  markupPercent: number;
+  lossAmount: number;
+  lossPercent: number;
+  effectiveRate: number;
+  deliverySpeed: string;
+  paymentMethod: string;
+  riskLabel: string;
+  bestFor: string;
+  quoteMode: ProviderCatalogItem["quoteMode"];
+  refreshedAt: string;
+  expiresAt: string;
+  message: string;
+};
+
+type ProviderQuotesResponse = {
+  provider: string;
+  refreshedAt: string;
+  base: string;
+  target: string;
+  amount: number;
+  plan: "free" | "pro";
+  midMarketRate: number;
+  midMarketTarget: number;
+  quotes: ProviderQuote[];
 };
 
 type GdeltArticle = {
@@ -199,6 +287,66 @@ type CoinPaprikaTicker = {
   rank?: number;
   quotes?: {
     USD?: CoinPaprikaQuote;
+  };
+};
+
+type WiseQuoteResponse = {
+  sourceAmount?: number;
+  targetAmount?: number;
+  rate?: number;
+  rateExpirationTime?: string;
+  expirationTime?: string;
+  paymentOptions?: Array<{
+    formattedEstimatedDelivery?: string;
+    estimatedDelivery?: string;
+    payIn?: string;
+    targetAmount?: number;
+    disabled?: boolean;
+    price?: {
+      total?: {
+        value?: {
+          amount?: number;
+          currency?: string;
+        };
+      };
+    };
+  }>;
+};
+
+type RevolutRateResponse = {
+  from?: { amount?: number; currency?: string };
+  to?: { amount?: number; currency?: string };
+  rate?: number;
+  fee?: { amount?: number; currency?: string };
+  rate_date?: string;
+};
+
+type WiseComparisonResponse = {
+  providers?: WiseComparisonProvider[];
+};
+
+type WiseComparisonProvider = {
+  alias?: string;
+  name?: string;
+  type?: string;
+  quotes?: WiseComparisonQuote[];
+};
+
+type WiseComparisonQuote = {
+  dateCollected?: string;
+  fee?: number;
+  markup?: number;
+  rate?: number;
+  receivedAmount?: number;
+  sendAmount?: number | null;
+  sourceCountry?: string | null;
+  targetCountry?: string | null;
+  deliveryEstimation?: {
+    providerGivesEstimate?: boolean;
+    duration?: {
+      min?: string;
+      max?: string;
+    };
   };
 };
 
@@ -472,6 +620,50 @@ const providerCatalogItems: ProviderCatalogItem[] = [
   providerOption("uala", "Uala", "Wallet / payout", "Wallet only", ["latam"], ["ARS", "MXN", "COP"], false, 31, "LatAm wallet/card route."),
 ];
 
+const providerQuoteCacheVersion = "v6";
+
+const wiseComparisonAliases = new Map<string, string>([
+  ["wise", "wise"],
+  ["revolut", "revolut"],
+  ["moneygram", "moneygram"],
+  ["western-union", "western_union"],
+  ["western_union", "western_union"],
+  ["remitly", "remitly"],
+  ["paypal", "paypal_xoom"],
+  ["xoom", "paypal_xoom"],
+]);
+
+const providerComparisonAliases = new Map<string, string>(
+  Array.from(wiseComparisonAliases.entries()).map(([alias, id]) => [id, alias]),
+);
+
+const quoteTemplates = new Map<string, {
+  fixedFee: number;
+  feePercent: number;
+  markupPercent: number;
+  deliverySpeed: string;
+  paymentMethod: string;
+  riskLabel: string;
+  bestFor: string;
+  source: string;
+  sourceUrl: string;
+}>([
+  ["wise", { fixedFee: 0.35, feePercent: 0.45, markupPercent: 0.05, deliverySpeed: "Same day", paymentMethod: "Debit/bank", riskLabel: "Low", bestFor: "Low-cost transfer", source: "FX Always estimate after Wise quote API fallback", sourceUrl: "https://docs.wise.com/api-reference/quote" }],
+  ["revolut", { fixedFee: 0, feePercent: 0.8, markupPercent: 0.15, deliverySpeed: "Minutes", paymentMethod: "Card balance", riskLabel: "Low", bestFor: "Travel card spend", source: "FX Always estimate until Revolut Business API is configured", sourceUrl: "https://developer.revolut.com/docs/business/get-rate" }],
+  ["moneygram", { fixedFee: 1.5, feePercent: 0.7, markupPercent: 0.6, deliverySpeed: "Minutes", paymentMethod: "Cash pickup", riskLabel: "Medium", bestFor: "Cash pickup", source: "FX Always estimate until MoneyGram OAuth is configured", sourceUrl: "https://developer.moneygram.com/moneygram-developer/reference/instructpayouttransactionquote" }],
+  ["western_union", { fixedFee: 2.5, feePercent: 0.95, markupPercent: 1.2, deliverySpeed: "Same day", paymentMethod: "Cash pickup", riskLabel: "Medium", bestFor: "Broad cash network", source: "FX Always estimate; partner quote access required", sourceUrl: "https://www.westernunion.com" }],
+  ["remitly", { fixedFee: 1.99, feePercent: 0.6, markupPercent: 0.95, deliverySpeed: "Same day", paymentMethod: "Bank or wallet", riskLabel: "Medium", bestFor: "Family remittance", source: "FX Always estimate; partner quote access required", sourceUrl: "https://www.remitly.com" }],
+  ["paypal_xoom", { fixedFee: 2.99, feePercent: 0.8, markupPercent: 1.7, deliverySpeed: "Minutes", paymentMethod: "Wallet/bank", riskLabel: "Medium", bestFor: "PayPal identity", source: "FX Always estimate; Xoom partner quote access required", sourceUrl: "https://www.xoom.com" }],
+  ["remessa_online", { fixedFee: 0.9, feePercent: 0.55, markupPercent: 0.35, deliverySpeed: "Same day", paymentMethod: "Bank account", riskLabel: "Low", bestFor: "Brazil transfers", source: "FX Always estimate; partner quote access required", sourceUrl: "https://www.remessaonline.com.br" }],
+  ["global66", { fixedFee: 0.75, feePercent: 0.65, markupPercent: 0.55, deliverySpeed: "Same day", paymentMethod: "Wallet/bank", riskLabel: "Low", bestFor: "LatAm account route", source: "FX Always estimate; public quote API not configured", sourceUrl: "https://global66.com" }],
+  ["dolarapp", { fixedFee: 3, feePercent: 0.2, markupPercent: 0.3, deliverySpeed: "1-2 days", paymentMethod: "Digital dollar", riskLabel: "Medium", bestFor: "Digital dollar", source: "FX Always estimate; wallet quote API not configured", sourceUrl: "https://www.dolarapp.com" }],
+  ["airtm", { fixedFee: 1, feePercent: 1.1, markupPercent: 1.8, deliverySpeed: "Same day", paymentMethod: "Digital wallet", riskLabel: "High", bestFor: "Emerging markets", source: "FX Always estimate; wallet quote API not configured", sourceUrl: "https://www.airtm.com" }],
+  ["card_payment", { fixedFee: 0, feePercent: 0.3, markupPercent: 2.7, deliverySpeed: "Instant", paymentMethod: "Card terminal", riskLabel: "Medium", bestFor: "Emergency card payment", source: "FX Always local rail model", sourceUrl: "" }],
+  ["atm_cash", { fixedFee: 4, feePercent: 1, markupPercent: 3, deliverySpeed: "Instant", paymentMethod: "Cash withdrawal", riskLabel: "High", bestFor: "Cash access", source: "FX Always local rail model", sourceUrl: "" }],
+  ["bank_transfer", { fixedFee: 5, feePercent: 0.8, markupPercent: 3.2, deliverySpeed: "1-2 days", paymentMethod: "Bank account", riskLabel: "Medium", bestFor: "Bank fallback", source: "FX Always local rail model", sourceUrl: "" }],
+  ["airport_exchange", { fixedFee: 0, feePercent: 0, markupPercent: 8.5, deliverySpeed: "Instant", paymentMethod: "Airport cash", riskLabel: "Very high", bestFor: "Last resort", source: "FX Always local rail model", sourceUrl: "" }],
+]);
+
 export const latestRates = onRequest({ region, cors: true }, async (request, response) => {
   try {
     const base = normalizeCurrency(request.query.base, "USD");
@@ -491,6 +683,23 @@ export const providerCatalog = onRequest({ region, cors: true }, async (request,
     response.status(500).json({ message: errorMessage(error) });
   }
 });
+
+export const providerQuotes = onRequest(
+  { region, cors: true },
+  async (request, response) => {
+    try {
+      const base = normalizeCurrency(request.query.base, "USD");
+      const target = normalizeCurrency(request.query.target, "EUR");
+      const amount = normalizeAmount(request.query.amount, 100);
+      const plan = normalizePlan(request.query.plan);
+      const providers = normalizeProviderList(request.query.providers);
+      const payload = await getProviderQuotes(base, target, amount, providers, plan);
+      response.status(200).json(payload);
+    } catch (error) {
+      response.status(500).json({ message: errorMessage(error) });
+    }
+  },
+);
 
 export const supportedCurrencies = onRequest({ region, cors: true }, async (_request, response) => {
   try {
@@ -572,6 +781,32 @@ export const refreshCryptoCache = onSchedule(
   },
   async () => {
     await getCryptoMarkets("USD", 200, true);
+  },
+);
+
+export const refreshProviderQuoteCache = onSchedule(
+  {
+    region,
+    schedule: "every 15 minutes",
+    timeZone: "Etc/UTC",
+  },
+  async () => {
+    await Promise.all([
+      getProviderQuotes("AUD", "ARS", 500, ["wise", "revolut", "moneygram", "global66"], "pro", true),
+      getProviderQuotes("USD", "MXN", 500, ["wise", "moneygram", "western_union", "remitly"], "pro", true),
+      getProviderQuotes("EUR", "USD", 500, ["wise", "revolut", "bank_transfer"], "pro", true),
+    ]);
+  },
+);
+
+export const evaluateServerAlerts = onSchedule(
+  {
+    region,
+    schedule: "every 15 minutes",
+    timeZone: "Etc/UTC",
+  },
+  async () => {
+    await evaluateBackedUpAlerts();
   },
 );
 
@@ -1212,6 +1447,128 @@ function ageLabel(publishedAt: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+async function evaluateBackedUpAlerts(): Promise<void> {
+  const backups = await db.collectionGroup("backups").get();
+  const activeBackups = backups.docs
+    .map((doc) => {
+      const uid = doc.ref.parent.parent?.id;
+      const snapshot = parseBackupSnapshot(doc.get("payloadJson"));
+      return uid && snapshot?.alerts?.some((alert) => alert.enabled !== false) ? { doc, uid, snapshot } : null;
+    })
+    .filter((item): item is { doc: QueryDocumentSnapshot; uid: string; snapshot: UserBackupSnapshot } => Boolean(item));
+
+  if (activeBackups.length === 0) return;
+
+  const now = Date.now();
+  const uniqueBases = Array.from(new Set(activeBackups.flatMap((item) => item.snapshot.alerts ?? []).filter(isActiveAlert).map((alert) => alert.base)));
+  const ratesByBase = new Map<string, LatestRatesResponse>();
+  await Promise.all(uniqueBases.map(async (base) => ratesByBase.set(base, await getLatestRates(base))));
+
+  const dailyPairs = Array.from(new Set(
+    activeBackups
+      .flatMap((item) => item.snapshot.alerts ?? [])
+      .filter((alert) => isActiveAlert(alert) && normalizeAlertKind(alert.kind) === "DailyChange")
+      .map((alert) => `${alert.base}/${alert.quote}`),
+  ));
+  const dailyMovesByPair = new Map<string, number | null>();
+  await Promise.all(dailyPairs.map(async (pair) => {
+    const [base, quote] = pair.split("/");
+    const history = await getHistoricalRates(base, quote, 2);
+    dailyMovesByPair.set(pair, dailyChangePct(history.points));
+  }));
+
+  await Promise.all(activeBackups.map(async ({ doc, uid, snapshot }) => {
+    const events: ServerAlertEvent[] = [];
+    const nextAlerts = (snapshot.alerts ?? []).map((alert) => {
+      const kind = normalizeAlertKind(alert.kind);
+      const currentRate = ratesByBase.get(alert.base)?.rates.find((rate) => rate.code === alert.quote)?.value ?? null;
+      const currentDailyChange = dailyMovesByPair.get(`${alert.base}/${alert.quote}`) ?? null;
+      const observedValue = kind === "DailyChange" ? currentDailyChange : currentRate;
+      if (!shouldTriggerServerAlert(alert, observedValue, now)) return alert;
+
+      events.push({
+        alertId: alert.id,
+        uid,
+        base: alert.base,
+        quote: alert.quote,
+        kind,
+        direction: alert.direction,
+        target: alert.target,
+        observedValue: observedValue ?? 0,
+        triggeredAtMillis: now,
+        source: "server",
+      });
+      return { ...alert, kind, lastTriggeredAtMillis: now };
+    });
+
+    if (events.length === 0) return;
+
+    const updatedSnapshot: UserBackupSnapshot = {
+      ...snapshot,
+      updatedAtMillis: now,
+      alerts: nextAlerts,
+    };
+    const batch = db.batch();
+    batch.set(doc.ref, {
+      payloadJson: JSON.stringify(updatedSnapshot),
+      schemaVersion: updatedSnapshot.schemaVersion ?? 1,
+      updatedAtMillis: now,
+      serverAlertEvaluatedAt: Timestamp.fromMillis(now),
+    }, { merge: true });
+    for (const event of events) {
+      const eventId = `${event.alertId}_${event.triggeredAtMillis}`;
+      batch.set(db.collection("users").doc(uid).collection("server_alert_events").doc(eventId), {
+        ...event,
+        triggeredAt: Timestamp.fromMillis(event.triggeredAtMillis),
+      });
+    }
+    await batch.commit();
+  }));
+}
+
+function parseBackupSnapshot(payloadJson: unknown): UserBackupSnapshot | null {
+  if (typeof payloadJson !== "string" || payloadJson.trim().length === 0) return null;
+  try {
+    return JSON.parse(payloadJson) as UserBackupSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function isActiveAlert(alert: PriceAlert): boolean {
+  return alert.enabled !== false &&
+    /^[A-Z]{3}$/.test(alert.base) &&
+    /^[A-Z]{3,5}$/.test(alert.quote) &&
+    Number.isFinite(alert.target);
+}
+
+function normalizeAlertKind(kind: PriceAlertKind | undefined): PriceAlertKind {
+  return kind === "DailyChange" ? "DailyChange" : "Target";
+}
+
+function shouldTriggerServerAlert(alert: PriceAlert, observedValue: number | null, now: number): boolean {
+  if (!isActiveAlert(alert) || observedValue == null || !Number.isFinite(observedValue)) return false;
+  const kind = normalizeAlertKind(alert.kind);
+  const crossed = kind === "DailyChange"
+    ? alert.direction === "Above"
+      ? observedValue >= alert.target
+      : observedValue <= -alert.target
+    : alert.direction === "Above"
+      ? observedValue >= alert.target
+      : observedValue <= alert.target;
+  const lastTriggeredAt = alert.lastTriggeredAtMillis ?? null;
+  const outsideCooldown = lastTriggeredAt == null || now - lastTriggeredAt >= SERVER_ALERT_COOLDOWN_MILLIS;
+  return crossed && outsideCooldown;
+}
+
+function dailyChangePct(points: Array<{ date: string; value: number }>): number | null {
+  const sorted = [...points].sort((left, right) => left.date.localeCompare(right.date));
+  const previous = sorted.at(-2)?.value;
+  const current = sorted.at(-1)?.value;
+  if (!previous || current == null) return null;
+  return ((current - previous) / previous) * 100;
+}
+
 function parseGdeltDate(value: string | undefined): string {
   if (!value) return new Date().toISOString();
   const compact = value.replace(/\D/g, "");
@@ -1245,11 +1602,41 @@ async function fetchJson<T>(url: URL): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function fetchJsonRequest<T>(url: URL, init: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    throw new Error(`Provider failed with ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
+
 function normalizeCurrency(value: unknown, fallback: string): string {
   const raw = Array.isArray(value) ? value[0] : value;
   if (typeof raw !== "string") return fallback;
   const currency = raw.trim().toUpperCase();
   return /^[A-Z]{3}$/.test(currency) ? currency : fallback;
+}
+
+function normalizeAmount(value: unknown, fallback: number): number {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = typeof raw === "string" ? Number.parseFloat(raw) : fallback;
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(parsed, 0.01), 1_000_000);
+}
+
+function normalizePlan(value: unknown): "free" | "pro" {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === "pro" ? "pro" : "free";
+}
+
+function normalizeProviderList(value: unknown): string[] {
+  const raw = Array.isArray(value) ? value.join(",") : value;
+  if (typeof raw !== "string") return [];
+  const validIds = new Set(providerCatalogItems.map((provider) => provider.id));
+  return raw
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter((item, index, items) => validIds.has(item) && items.indexOf(item) === index);
 }
 
 function normalizeDays(value: unknown): number {
@@ -1326,6 +1713,488 @@ function getProviderCatalog(baseCurrency: string): ProviderCatalogResponse {
   };
 }
 
+async function getProviderQuotes(
+  base: string,
+  target: string,
+  amount: number,
+  requestedProviders: string[],
+  plan: "free" | "pro",
+  forceRefresh = false,
+): Promise<ProviderQuotesResponse> {
+  const providerIds = selectedQuoteProviderIds(base, target, requestedProviders, plan);
+  const amountBucket = Math.round(amount * 100) / 100;
+  const docId = `${providerQuoteCacheVersion}_${base}_${target}_${amountBucket}_${plan}_${providerIds.join("-")}`;
+  const ref = db.collection("provider_quotes").doc(docId);
+  const cached = await ref.get();
+  const cachedData = cached.data() as (ProviderQuotesResponse & { expiresAt?: Timestamp }) | undefined;
+
+  if (!forceRefresh && cachedData?.expiresAt && cachedData.expiresAt.toMillis() > Date.now()) {
+    return stripExpiry(cachedData);
+  }
+
+  const midMarketRate = await getMidMarketRate(base, target);
+  const midMarketTarget = amount * midMarketRate;
+  const refreshedAt = new Date().toISOString();
+  const comparisonQuotes = await getWiseComparisonQuotes(base, target, amount, providerIds, midMarketRate, midMarketTarget, refreshedAt);
+  const comparisonByProvider = new Map(comparisonQuotes.map((quote) => [quote.providerId, quote]));
+  const quotes = await Promise.all(
+    providerIds.map((providerId) => buildProviderQuote(providerId, base, target, amount, midMarketRate, midMarketTarget, refreshedAt, comparisonByProvider.get(providerId))),
+  );
+  const payload: ProviderQuotesResponse = {
+    provider: "FX Always provider quotes",
+    refreshedAt,
+    base,
+    target,
+    amount,
+    plan,
+    midMarketRate,
+    midMarketTarget,
+    quotes: quotes.sort((left, right) => left.lossAmount - right.lossAmount || left.provider.localeCompare(right.provider)),
+  };
+
+  await ref.set({
+    ...payload,
+    expiresAt: Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+  });
+
+  return payload;
+}
+
+async function buildProviderQuote(
+  providerId: string,
+  base: string,
+  target: string,
+  amount: number,
+  midMarketRate: number,
+  midMarketTarget: number,
+  refreshedAt: string,
+  comparisonQuote?: ProviderQuote,
+): Promise<ProviderQuote> {
+  const provider = providerCatalogItems.find((item) => item.id === providerId);
+  if (!provider || !provider.quoteCapable || !provider.currencies.includes(base) || !provider.currencies.includes(target)) {
+    return unavailableQuote(providerId, base, target, amount, midMarketRate, midMarketTarget, refreshedAt, "Provider does not support this route in the current catalog.");
+  }
+
+  if (providerId === "wise") {
+    const wiseQuote = await getWiseQuote(base, target, amount, midMarketRate, midMarketTarget, refreshedAt);
+    if (wiseQuote) return wiseQuote;
+  }
+  if (comparisonQuote) return comparisonQuote;
+  if (providerId === "revolut") {
+    const revolutQuote = await getRevolutQuote(base, target, amount, midMarketRate, midMarketTarget, refreshedAt);
+    if (revolutQuote) return revolutQuote;
+  }
+  if (providerId === "moneygram" && configuredEnv("MONEYGRAM_ACCESS_TOKEN") && configuredEnv("MONEYGRAM_PARTNER_ID")) {
+    const moneyGramQuote = await getMoneyGramQuote(base, target, amount, midMarketRate, midMarketTarget, refreshedAt);
+    if (moneyGramQuote) return moneyGramQuote;
+  }
+
+  return estimatedProviderQuote(provider, base, target, amount, midMarketRate, midMarketTarget, refreshedAt);
+}
+
+async function getWiseQuote(
+  base: string,
+  target: string,
+  amount: number,
+  midMarketRate: number,
+  midMarketTarget: number,
+  refreshedAt: string,
+): Promise<ProviderQuote | null> {
+  const url = new URL(`${process.env.WISE_API_BASE_URL ?? "https://api.wise.com"}/v3/quotes`);
+  const token = configuredEnv("WISE_API_TOKEN");
+  try {
+    const upstream = await fetchJsonRequest<WiseQuoteResponse>(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        sourceCurrency: base,
+        targetCurrency: target,
+        sourceAmount: amount,
+      }),
+    });
+    const payment = upstream.paymentOptions
+      ?.filter((option) => option.disabled !== true && option.targetAmount && option.targetAmount > 0)
+      .sort((left, right) => finiteOrZero(left.price?.total?.value?.amount) - finiteOrZero(right.price?.total?.value?.amount))[0]
+      ?? upstream.paymentOptions?.find((option) => option.targetAmount && option.targetAmount > 0)
+      ?? upstream.paymentOptions?.[0];
+    const receivedAmount = finitePositive(upstream.targetAmount) ?? finitePositive(payment?.targetAmount);
+    const effectiveRate = finitePositive(upstream.rate) ?? (receivedAmount ? receivedAmount / amount : midMarketRate);
+    if (!receivedAmount || !effectiveRate || !payment) return null;
+    const feeAmount = finiteOrZero(payment?.price?.total?.value?.amount);
+    return completeQuote({
+      providerId: "wise",
+      provider: "Wise",
+      status: "live",
+      source: token ? "Wise Platform quote API" : "Wise Platform unauthenticated quote",
+      sourceUrl: "https://docs.wise.com/api-reference/quote",
+      amount,
+      base,
+      target,
+      receivedAmount,
+      feeAmount,
+      effectiveRate,
+      midMarketRate,
+      midMarketTarget,
+      deliverySpeed: payment?.formattedEstimatedDelivery ?? payment?.estimatedDelivery ?? "Same day",
+      paymentMethod: payment?.payIn?.replaceAll("_", " ").toLowerCase() ?? "Debit/bank",
+      riskLabel: "Low",
+      bestFor: "Low-cost transfer",
+      quoteMode: "Live quote ready",
+      refreshedAt,
+      expiresAt: upstream.rateExpirationTime ?? upstream.expirationTime,
+      message: token ? "Live provider quote from backend." : "Live provider sandbox quote; configure partner token before relying on production pricing.",
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function getWiseComparisonQuotes(
+  base: string,
+  target: string,
+  amount: number,
+  providerIds: string[],
+  midMarketRate: number,
+  midMarketTarget: number,
+  refreshedAt: string,
+): Promise<ProviderQuote[]> {
+  const aliases = providerIds
+    .map((id) => providerComparisonAliases.get(id))
+    .filter((alias): alias is string => Boolean(alias));
+  if (aliases.length === 0) return [];
+
+  const url = new URL(`${process.env.WISE_API_BASE_URL ?? "https://api.wise.com"}/v4/comparisons`);
+  url.searchParams.set("sourceCurrency", base);
+  url.searchParams.set("targetCurrency", target);
+  url.searchParams.set("sendAmount", amount.toString());
+  url.searchParams.set("providers", aliases.join(","));
+  url.searchParams.set("excludePartners", "true");
+  url.searchParams.set("includeWise", "true");
+
+  try {
+    const upstream = await fetchJson<WiseComparisonResponse>(url);
+    return upstream.providers
+      ?.map((provider) => wiseComparisonProviderQuote(provider, base, target, amount, midMarketRate, midMarketTarget, refreshedAt))
+      .filter((quote): quote is ProviderQuote => Boolean(quote))
+      ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function wiseComparisonProviderQuote(
+  comparisonProvider: WiseComparisonProvider,
+  base: string,
+  target: string,
+  amount: number,
+  midMarketRate: number,
+  midMarketTarget: number,
+  refreshedAt: string,
+): ProviderQuote | null {
+  const providerId = wiseComparisonAliases.get((comparisonProvider.alias ?? "").toLowerCase());
+  if (!providerId) return null;
+  const catalogProvider = providerCatalogItems.find((item) => item.id === providerId);
+  if (!catalogProvider) return null;
+  const quote = comparisonProvider.quotes
+    ?.filter((item) => finitePositive(item.receivedAmount) && finitePositive(item.rate))
+    .sort((left, right) => (right.receivedAmount ?? 0) - (left.receivedAmount ?? 0))[0];
+  if (!quote?.receivedAmount || !quote.rate) return null;
+
+  return completeQuote({
+    providerId,
+    provider: catalogProvider.label,
+    status: "comparison",
+    source: "Wise market comparison",
+    sourceUrl: "https://docs.wise.com/api-reference/comparison/comparisongetv3",
+    amount,
+    base,
+    target,
+    receivedAmount: quote.receivedAmount,
+    feeAmount: finiteOrZero(quote.fee),
+    effectiveRate: amount > 0 ? quote.receivedAmount / amount : quote.rate,
+    midMarketRate,
+    midMarketTarget,
+    deliverySpeed: comparisonDurationLabel(quote),
+    paymentMethod: comparisonProvider.type === "bank" ? "Bank transfer" : "Provider transfer",
+    riskLabel: "Medium",
+    bestFor: catalogProvider.subtitle.includes("cash") ? "Cash pickup" : "Market comparison",
+    quoteMode: catalogProvider.quoteMode,
+    refreshedAt,
+    expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    message: "Market comparison only; not a locked provider quote.",
+  });
+}
+
+async function getRevolutQuote(
+  base: string,
+  target: string,
+  amount: number,
+  midMarketRate: number,
+  midMarketTarget: number,
+  refreshedAt: string,
+): Promise<ProviderQuote | null> {
+  const token = configuredEnv("REVOLUT_API_TOKEN");
+  if (!token) return null;
+  const url = new URL(`${process.env.REVOLUT_API_BASE_URL ?? "https://b2b.revolut.com/api/1.0"}/rate`);
+  url.searchParams.set("from", base);
+  url.searchParams.set("to", target);
+  url.searchParams.set("amount", amount.toString());
+  try {
+    const upstream = await fetchJsonRequest<RevolutRateResponse>(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const receivedAmount = finitePositive(upstream.to?.amount) ?? amount * finiteOrZero(upstream.rate);
+    const effectiveRate = amount > 0 ? receivedAmount / amount : finiteOrZero(upstream.rate);
+    if (!receivedAmount || !effectiveRate) return null;
+    return completeQuote({
+      providerId: "revolut",
+      provider: "Revolut",
+      status: "live",
+      source: "Revolut Business exchange rate API",
+      sourceUrl: "https://developer.revolut.com/docs/business/get-rate",
+      amount,
+      base,
+      target,
+      receivedAmount,
+      feeAmount: finiteOrZero(upstream.fee?.amount),
+      effectiveRate,
+      midMarketRate,
+      midMarketTarget,
+      deliverySpeed: "Minutes",
+      paymentMethod: "Card balance",
+      riskLabel: "Low",
+      bestFor: "Travel card spend",
+      quoteMode: "Partner API required",
+      refreshedAt,
+      message: "Live provider quote from backend.",
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function getMoneyGramQuote(
+  base: string,
+  target: string,
+  amount: number,
+  midMarketRate: number,
+  midMarketTarget: number,
+  refreshedAt: string,
+): Promise<ProviderQuote | null> {
+  const token = configuredEnv("MONEYGRAM_ACCESS_TOKEN");
+  const partnerId = configuredEnv("MONEYGRAM_PARTNER_ID");
+  if (!token || !partnerId) return null;
+  const url = new URL(`${process.env.MONEYGRAM_API_BASE_URL ?? "https://sandboxapi.moneygram.com"}/transfer/v1/transactions/quote`);
+  try {
+    const upstream = await fetchJsonRequest<Record<string, unknown>>(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-MG-ClientRequestId": clientRequestId(),
+      },
+      body: JSON.stringify({
+        targetAudience: "CUSTOMER_FACING",
+        agentPartnerId: partnerId,
+        destinationCountryCode: countryForCurrency(target),
+        sendAmount: {
+          value: amount,
+          currencyCode: base,
+        },
+        receiveCurrencyCode: target,
+        sendAmountIncludingFee: true,
+      }),
+    });
+    const flattened = JSON.stringify(upstream);
+    const receivedAmount = firstNumber(flattened, /"receiveAmount"\s*:\s*\{[^}]*"value"\s*:\s*([0-9.]+)/)
+      ?? firstNumber(flattened, /"receiveAmount"\s*:\s*([0-9.]+)/);
+    const feeAmount = firstNumber(flattened, /"feeAmount"\s*:\s*\{[^}]*"value"\s*:\s*([0-9.]+)/) ?? 0;
+    const exchangeRate = firstNumber(flattened, /"exchangeRate"\s*:\s*([0-9.]+)/) ?? (receivedAmount ? receivedAmount / amount : midMarketRate);
+    if (!receivedAmount || !exchangeRate) return null;
+    return completeQuote({
+      providerId: "moneygram",
+      provider: "MoneyGram",
+      status: "live",
+      source: "MoneyGram Quote API",
+      sourceUrl: "https://developer.moneygram.com/moneygram-developer/reference/instructpayouttransactionquote",
+      amount,
+      base,
+      target,
+      receivedAmount,
+      feeAmount,
+      effectiveRate: receivedAmount / amount,
+      midMarketRate,
+      midMarketTarget,
+      deliverySpeed: "Minutes",
+      paymentMethod: "Cash pickup",
+      riskLabel: "Medium",
+      bestFor: "Cash pickup",
+      quoteMode: "Live quote ready",
+      refreshedAt,
+      message: "Live provider quote from backend.",
+    });
+  } catch {
+    return null;
+  }
+}
+
+function estimatedProviderQuote(
+  provider: ProviderCatalogItem,
+  base: string,
+  target: string,
+  amount: number,
+  midMarketRate: number,
+  midMarketTarget: number,
+  refreshedAt: string,
+): ProviderQuote {
+  const template = quoteTemplates.get(provider.id);
+  if (!template) {
+    return unavailableQuote(provider.id, base, target, amount, midMarketRate, midMarketTarget, refreshedAt, "Provider is selectable as a wallet or payout rail, but it is not a direct FX quote source.");
+  }
+  const variableFee = amount * template.feePercent / 100;
+  const feeAmount = Math.min(amount, template.fixedFee + variableFee);
+  const netSource = Math.max(0, amount - feeAmount);
+  const receivedAmount = netSource * midMarketRate * (1 - Math.min(Math.max(template.markupPercent, 0), 99) / 100);
+  const status: ProviderQuoteStatus = provider.quoteMode === "Partner API required" ? "partner_setup" : "estimated";
+  return completeQuote({
+    providerId: provider.id,
+    provider: provider.label,
+    status,
+    source: template.source,
+    sourceUrl: template.sourceUrl,
+    amount,
+    base,
+    target,
+    receivedAmount,
+    feeAmount,
+    effectiveRate: amount > 0 ? receivedAmount / amount : 0,
+    midMarketRate,
+    midMarketTarget,
+    deliverySpeed: template.deliverySpeed,
+    paymentMethod: template.paymentMethod,
+    riskLabel: template.riskLabel,
+    bestFor: template.bestFor,
+    quoteMode: provider.quoteMode,
+    refreshedAt,
+    message: status === "partner_setup"
+      ? "Partner credentials are required before this provider can be marked live."
+      : "FX Always backend estimate until a direct provider API is configured.",
+  });
+}
+
+function unavailableQuote(
+  providerId: string,
+  base: string,
+  target: string,
+  amount: number,
+  midMarketRate: number,
+  midMarketTarget: number,
+  refreshedAt: string,
+  message: string,
+): ProviderQuote {
+  const provider = providerCatalogItems.find((item) => item.id === providerId);
+  return completeQuote({
+    providerId,
+    provider: provider?.label ?? providerId,
+    status: "unavailable",
+    source: "FX Always provider catalog",
+    sourceUrl: "",
+    amount,
+    base,
+    target,
+    receivedAmount: 0,
+    feeAmount: 0,
+    effectiveRate: 0,
+    midMarketRate,
+    midMarketTarget,
+    deliverySpeed: "Unavailable",
+    paymentMethod: "Unavailable",
+    riskLabel: "High",
+    bestFor: "Unavailable",
+    quoteMode: provider?.quoteMode ?? "Wallet only",
+    refreshedAt,
+    message,
+  });
+}
+
+function completeQuote(input: {
+  providerId: string;
+  provider: string;
+  status: ProviderQuoteStatus;
+  source: string;
+  sourceUrl: string;
+  amount: number;
+  base: string;
+  target: string;
+  receivedAmount: number;
+  feeAmount: number;
+  effectiveRate: number;
+  midMarketRate: number;
+  midMarketTarget: number;
+  deliverySpeed: string;
+  paymentMethod: string;
+  riskLabel: string;
+  bestFor: string;
+  quoteMode: ProviderCatalogItem["quoteMode"];
+  refreshedAt: string;
+  expiresAt?: string;
+  message: string;
+}): ProviderQuote {
+  const lossAmount = Math.max(0, input.midMarketTarget - input.receivedAmount);
+  const lossPercent = input.midMarketTarget > 0 ? lossAmount / input.midMarketTarget * 100 : 0;
+  const markupPercent = input.midMarketRate > 0 && input.effectiveRate > 0
+    ? Math.max(0, (1 - input.effectiveRate / input.midMarketRate) * 100)
+    : 0;
+  return {
+    providerId: input.providerId,
+    provider: input.provider,
+    status: input.status,
+    source: input.source,
+    sourceUrl: input.sourceUrl,
+    amount: roundMoney(input.amount),
+    sourceCurrency: input.base,
+    targetCurrency: input.target,
+    receivedAmount: roundMoney(input.receivedAmount),
+    feeAmount: roundMoney(input.feeAmount),
+    markupPercent: roundPercent(markupPercent),
+    lossAmount: roundMoney(lossAmount),
+    lossPercent: roundPercent(lossPercent),
+    effectiveRate: roundRate(input.effectiveRate),
+    deliverySpeed: input.deliverySpeed,
+    paymentMethod: titleCase(input.paymentMethod),
+    riskLabel: input.riskLabel,
+    bestFor: input.bestFor,
+    quoteMode: input.quoteMode,
+    refreshedAt: input.refreshedAt,
+    expiresAt: input.expiresAt ?? new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    message: input.message,
+  };
+}
+
+async function getMidMarketRate(base: string, target: string): Promise<number> {
+  if (base === target) return 1;
+  const latest = await getLatestRates(base);
+  const rate = latest.rates.find((item) => item.code === target)?.value;
+  if (rate && Number.isFinite(rate) && rate > 0) return rate;
+  throw new Error(`No mid-market rate for ${base}/${target}`);
+}
+
+function selectedQuoteProviderIds(base: string, target: string, requestedProviders: string[], plan: "free" | "pro"): string[] {
+  const requested = requestedProviders.length > 0
+    ? requestedProviders
+    : getProviderCatalog(base).primary.filter((provider) => provider.quoteCapable).map((provider) => provider.id);
+  const valid = requested
+    .filter((id, index, items) => items.indexOf(id) === index)
+    .filter((id) => {
+      const provider = providerCatalogItems.find((item) => item.id === id);
+      return provider?.quoteCapable === true && provider.currencies.includes(base) && provider.currencies.includes(target);
+    });
+  return (plan === "free" ? valid.slice(0, 2) : valid).slice(0, 12);
+}
+
 function compareProviders(left: ProviderCatalogItem, right: ProviderCatalogItem): number {
   if (right.priority !== left.priority) return right.priority - left.priority;
   return left.label.localeCompare(right.label);
@@ -1339,8 +2208,86 @@ function finiteOrZero(value: number | undefined): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function finitePositive(value: number | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function finiteOrNull(value: number | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function roundMoney(value: number): number {
+  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+}
+
+function roundPercent(value: number): number {
+  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+}
+
+function roundRate(value: number): number {
+  return Math.round((Number.isFinite(value) ? value : 0) * 1_000_000) / 1_000_000;
+}
+
+function titleCase(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function configuredEnv(name: string): string {
+  return (process.env[name] ?? "").trim();
+}
+
+function firstNumber(value: string, pattern: RegExp): number | null {
+  const match = value.match(pattern);
+  if (!match?.[1]) return null;
+  const parsed = Number.parseFloat(match[1]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function clientRequestId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? stableId(`${Date.now()}_${Math.random()}`);
+}
+
+function comparisonDurationLabel(quote: WiseComparisonQuote): string {
+  const maxDuration = quote.deliveryEstimation?.duration?.max ?? quote.deliveryEstimation?.duration?.min;
+  if (!maxDuration) return quote.deliveryEstimation?.providerGivesEstimate ? "Provider estimate" : "Market estimate";
+  const hours = durationHours(maxDuration);
+  if (hours === null) return "Provider estimate";
+  if (hours <= 1) return "Minutes";
+  if (hours <= 24) return "Same day";
+  if (hours <= 48) return "1-2 days";
+  return "2+ days";
+}
+
+function durationHours(value: string): number | null {
+  const match = value.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?$/);
+  if (!match) return null;
+  const days = Number.parseInt(match[1] ?? "0", 10);
+  const hours = Number.parseInt(match[2] ?? "0", 10);
+  const minutes = Number.parseInt(match[3] ?? "0", 10);
+  return days * 24 + hours + minutes / 60;
+}
+
+function countryForCurrency(currency: string): string {
+  switch (currency) {
+    case "ARS": return "ARG";
+    case "AUD": return "AUS";
+    case "BRL": return "BRA";
+    case "CAD": return "CAN";
+    case "CHF": return "CHE";
+    case "CLP": return "CHL";
+    case "COP": return "COL";
+    case "EUR": return "ESP";
+    case "GBP": return "GBR";
+    case "JPY": return "JPN";
+    case "MXN": return "MEX";
+    case "PEN": return "PER";
+    case "USD": return "USA";
+    default: return "USA";
+  }
 }
 
 function cryptoSparkline(currentPrice: number, quote: CoinPaprikaQuote | undefined): number[] {

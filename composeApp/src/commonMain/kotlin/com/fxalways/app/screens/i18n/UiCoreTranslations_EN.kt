@@ -60,6 +60,7 @@ internal val uiTranslationsEN = mapOf(
         "Best route now" to "Best route now",
         "Enter an amount to compare real routes." to "Enter an amount to compare real routes.",
         "Use this route" to "Use this route",
+        "Save decision" to "Save decision",
         "Set better-rate alert" to "Set better-rate alert",
         "PROVIDER MATRIX" to "PROVIDER MATRIX",
         "Delivery" to "Delivery",

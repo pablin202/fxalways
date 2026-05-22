@@ -108,7 +108,7 @@ internal fun TransferIntentCard(
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GhostButton(
-                    text = ui("Use this route"),
+                    text = ui("Save decision"),
                     modifier = Modifier.weight(1f).testTag("transfer_intent_use_route"),
                     onClick = {
                         val decision = currentDecision

@@ -247,6 +247,18 @@ internal fun FeeComparisonRow(quote: EstimatedFeeQuote, rank: Int) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                Text(
+                    "${ui("Source")} ${ui(quote.sourceLabel)}",
+                    style = FxTheme.typography.captionMono,
+                    color = when (quote.sourceStatus) {
+                        "live" -> FxTheme.colors.up
+                        "partner_setup", "estimated" -> FxTheme.colors.accent
+                        else -> FxTheme.colors.textFaint
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("fee_quote_source_${quote.provider}"),
+                )
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(quote.amount, style = FxTheme.typography.numberBody, color = FxTheme.colors.text, textAlign = TextAlign.End)

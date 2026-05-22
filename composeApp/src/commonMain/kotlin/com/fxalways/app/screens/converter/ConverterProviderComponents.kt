@@ -227,21 +227,33 @@ internal fun providerComparisonHistory(
 @Composable
 internal fun ProviderMatrixCard(
     quotes: List<EstimatedFeeQuote>,
+    isLoading: Boolean,
+    errorMessage: String?,
     isPremium: Boolean,
     onOpenPaywall: () -> Unit,
 ) {
     val visibleQuotes = quotes.take(if (isPremium) 6 else 2)
     BentoCard(Modifier.testTag("converter_provider_matrix"), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            when {
+                isLoading -> Text(ui("Refreshing provider quotes..."), style = FxTheme.typography.captionMono, color = FxTheme.colors.accent, modifier = Modifier.testTag("provider_quotes_loading"))
+                errorMessage != null -> Text(ui("Provider quotes unavailable; showing estimates."), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, modifier = Modifier.testTag("provider_quotes_error"))
+            }
             if (visibleQuotes.isEmpty()) {
                 Text(ui("Enter an amount to compare real routes."), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
             }
             visibleQuotes.forEachIndexed { index, quote ->
                 KeyValueRow(
                     ui(quote.provider),
-                    "${ui("Delivery")} ${ui(quote.deliverySpeed)} · ${ui("Risk")} ${ui(quote.riskLabel)}",
-                    "${ui("Payment")} ${ui(quote.paymentMethod)} · ${ui("Best for")} ${ui(quote.bestFor)}",
+                    "${ui("Delivery")} ${ui(quote.deliverySpeed)} · ${ui(quote.sourceStatusLabel())}",
+                    "${ui("Payment")} ${ui(quote.paymentMethod)} · ${ui("Source")} ${ui(quote.sourceTrustLabel())}",
                     modifier = Modifier.testTag("provider_matrix_row_$index"),
+                )
+                Text(
+                    ui(quote.sourceMessage),
+                    style = FxTheme.typography.captionMono,
+                    color = FxTheme.colors.textFaint,
+                    modifier = Modifier.fillMaxWidth().testTag("provider_matrix_source_note_$index"),
                 )
             }
             if (!isPremium) {

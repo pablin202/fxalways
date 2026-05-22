@@ -61,5 +61,6 @@ internal fun FxConverterRoute(
             }
         },
         onOpenProviderUrl = ExternalUrlOpener::open,
+        enableLiveProviderQuotes = true,
     )
 }

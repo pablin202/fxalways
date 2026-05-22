@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,7 +21,9 @@ import com.fxalways.app.data.mock.ConverterRates
 import com.fxalways.app.data.AlertsState
 import com.fxalways.app.data.AlertDirection
 import com.fxalways.app.data.AlertKind
+import com.fxalways.app.data.ExchangeApi
 import com.fxalways.app.data.LiveRatesState
+import com.fxalways.app.domain.ProviderQuoteDto
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.app.subscription.featureAccess
 import com.fxalways.app.screens.alerts.findMatchingAlert
@@ -54,6 +57,7 @@ fun ConverterScreen(
     onOpenPaywall: () -> Unit,
     onCreateTransferAlert: (FxRate, FxRate, Double) -> Unit = { _, _, _ -> },
     onOpenProviderUrl: (String) -> Unit = {},
+    enableLiveProviderQuotes: Boolean = false,
 ) {
     val access = subscriptionState.featureAccess()
     val focusManager = LocalFocusManager.current
@@ -106,7 +110,45 @@ fun ConverterScreen(
     val providerCodes = remember(selectedProviderCodes, sourceRate.code, targetRate.code) {
         normalizeProviderPreferenceCodes(selectedProviderCodes, sourceRate.code, targetRate.code)
     }
+    var backendProviderQuotes by remember { mutableStateOf(emptyList<ProviderQuoteDto>()) }
+    var providerQuotesLoading by remember { mutableStateOf(false) }
+    var providerQuotesError by remember { mutableStateOf<String?>(null) }
+    val providerQuoteApi = remember(enableLiveProviderQuotes) { if (enableLiveProviderQuotes) ExchangeApi() else null }
+    LaunchedEffect(
+        enableLiveProviderQuotes,
+        sourceRate.code,
+        targetRate.code,
+        amountValue,
+        providerCodes,
+        subscriptionState.isPremium,
+    ) {
+        if (!enableLiveProviderQuotes || providerQuoteApi == null || amountValue <= 0.0 || sourceRate.code == targetRate.code) {
+            backendProviderQuotes = emptyList()
+            providerQuotesLoading = false
+            providerQuotesError = null
+            return@LaunchedEffect
+        }
+        providerQuotesLoading = true
+        providerQuotesError = null
+        runCatching {
+            providerQuoteApi.providerQuotes(
+                base = sourceRate.code,
+                target = targetRate.code,
+                amount = amountValue,
+                providers = providerCodes.quoteCapableProviderCodes(),
+                isPremium = subscriptionState.isPremium,
+            )
+        }.onSuccess { response ->
+            backendProviderQuotes = response.quotes
+            providerQuotesError = null
+        }.onFailure { throwable ->
+            backendProviderQuotes = emptyList()
+            providerQuotesError = throwable.message
+        }
+        providerQuotesLoading = false
+    }
     val allFeeQuotes = estimatedFeeQuotes(sourceRate, targetRate, amountValue, customFee, providerCodes)
+        .withBackendProviderQuotes(backendProviderQuotes, targetRate)
     val feeQuotes = if (access.canUseFullFeeComparison) {
         allFeeQuotes.take(EstimatedFeeQuoteCount)
     } else {
@@ -306,9 +348,20 @@ fun ConverterScreen(
             onOpenProviderUrl = onOpenProviderUrl,
             onOpenPaywall = onOpenPaywall,
         )
-        SectionLabel(ui("PROVIDER MATRIX"), right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
+        SectionLabel(
+            ui("PROVIDER MATRIX"),
+            right = when {
+                providerQuotesLoading -> ui("Refreshing")
+                backendProviderQuotes.any { it.status == "live" } -> ui("Live")
+                backendProviderQuotes.isNotEmpty() -> ui("Backend")
+                access.canUseFullFeeComparison -> ui("Estimated")
+                else -> ui("Preview")
+            },
+        )
         ProviderMatrixCard(
             quotes = feeQuotes.filterNot { it.provider == "Mid-market" },
+            isLoading = providerQuotesLoading,
+            errorMessage = providerQuotesError,
             isPremium = subscriptionState.isPremium,
             onOpenPaywall = onOpenPaywall,
         )

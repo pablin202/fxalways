@@ -135,6 +135,7 @@ internal val uiTranslationsESCore = mapOf(
         "Best route now" to "Mejor ruta ahora",
         "Enter an amount to compare real routes." to "Ingresa un monto para comparar rutas reales.",
         "Use this route" to "Usar esta ruta",
+        "Save decision" to "Guardar decision",
         "Set better-rate alert" to "Crear alerta de mejor rate",
         "PROVIDER MATRIX" to "MATRIZ DE PROVEEDORES",
         "Delivery" to "Entrega",

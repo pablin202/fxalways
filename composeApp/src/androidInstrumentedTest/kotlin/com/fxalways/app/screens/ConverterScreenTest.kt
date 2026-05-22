@@ -23,7 +23,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.data.AlertsState
 import com.fxalways.app.data.LiveRatesState
+import com.fxalways.app.domain.ProviderQuoteDto
 import com.fxalways.app.screens.converter.ConverterScreen
+import com.fxalways.app.screens.converter.CustomFeeInput
+import com.fxalways.app.screens.converter.estimatedFeeQuotes
+import com.fxalways.app.screens.converter.withBackendProviderQuotes
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
@@ -73,6 +77,7 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_fee_upsell").performScrollTo().assertIsDisplayed()
 
         compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fee_quote_source_Wise").assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Revolut").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("fee_quote_Card payment").assertCountEquals(0)
         compose.onAllNodesWithTag("fee_quote_ATM cash").assertCountEquals(0)
@@ -107,6 +112,7 @@ class ConverterScreenTest {
         compose.onNodeWithText("Before payday").assertIsDisplayed()
         compose.onAllNodesWithTag("remittance_upsell").assertCountEquals(0)
         compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fee_quote_source_Wise").assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Revolut").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Card payment").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_ATM cash").performScrollTo().assertIsDisplayed()
@@ -130,6 +136,54 @@ class ConverterScreenTest {
         compose.onNodeWithTag("fee_quote_MoneyGram").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("fee_quote_Revolut").assertCountEquals(0)
         compose.onAllNodesWithTag("fee_quote_Card payment").assertCountEquals(0)
+    }
+
+    @Test
+    fun backendProviderQuoteReplacesLocalProviderEstimate() {
+        val state = testLiveRatesState()
+        val source = state.allFiat.first { it.code == "USD" }
+        val target = state.allFiat.first { it.code == "EUR" }
+
+        val merged = estimatedFeeQuotes(
+            sourceRate = source,
+            targetRate = target,
+            amount = 100.0,
+            customFee = CustomFeeInput(0.0, 0.0, 0.0),
+            selectedProviderCodes = listOf("wise", "revolut"),
+        ).withBackendProviderQuotes(
+            backendQuotes = listOf(
+                ProviderQuoteDto(
+                    providerId = "wise",
+                    provider = "Wise",
+                    status = "live",
+                    source = "Wise Platform quote API",
+                    amount = 100.0,
+                    sourceCurrency = "USD",
+                    targetCurrency = "EUR",
+                    receivedAmount = 91.5,
+                    feeAmount = 0.42,
+                    markupPercent = 0.1,
+                    lossAmount = 0.5,
+                    lossPercent = 0.54,
+                    effectiveRate = 0.915,
+                    deliverySpeed = "Same day",
+                    paymentMethod = "Bank transfer",
+                    riskLabel = "Low",
+                    bestFor = "Low-cost transfer",
+                    quoteMode = "Live quote ready",
+                    refreshedAt = "2026-05-22T00:00:00Z",
+                    expiresAt = "2026-05-22T00:10:00Z",
+                    message = "Live Wise quote from backend.",
+                ),
+            ),
+            targetRate = target,
+        )
+
+        val wise = merged.first { it.providerId == "wise" }
+        assertEquals("live", wise.sourceStatus)
+        assertEquals("Wise Platform quote API", wise.sourceLabel)
+        assertEquals("EUR 91.5000", wise.amount)
+        assertTrue(merged.any { it.providerId == "revolut" && it.sourceStatus == "estimated" })
     }
 
     @Test

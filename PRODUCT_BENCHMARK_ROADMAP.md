@@ -112,9 +112,15 @@ These items should move FX Always from a polished converter into a product that 
 - Provider comparison history by route and amount. Started in Convert and UI-tested.
 - Provider preferences by market: Settings now separates local/main providers from other markets, lets users select LatAm wallets/rails even when their base is Australia, syncs those choices through Firebase backup, and filters Convert provider comparisons/transfer intent to the selected quote-capable providers. UI-tested.
 - Firebase provider catalog endpoint: Functions exposes `providerCatalog?base=...` with primary/other grouping, quote mode and market metadata so the static in-app catalog can move server-side without changing the UX.
-- Quote-source model: current provider prices remain clearly estimated unless a provider has official/partner quote integration. Wise and MoneyGram are first candidates for live quote work; Venmo, PayPay, Mercado Pago, Nequi, Yape, Pix and PicPay are treated as wallet/local rails until direct quote APIs or partnerships are available.
+- Provider quote backend: Functions now exposes `providerQuotes` with freshness, source labels, Free/Pro provider caps, Wise live quote support, Wise Comparison market data for supported providers, Revolut/MoneyGram credential-gated adapters and explicit estimated/partner-setup fallbacks. Provider Matrix copy now separates live provider quotes, market comparisons, backend estimates, partner setup and unsupported routes. Venmo, PayPay, Mercado Pago, Nequi, Yape, Pix and PicPay remain wallet/local rails until direct quote APIs or partnerships are available.
 - OCR price/receipt converter.
 - More explicit family/remittance workflows.
+
+## Release Hardening
+
+- Server-side alert evaluation runs every 15 minutes through Firebase Functions and updates backed-up alert snapshots when target-rate or daily-change alerts trigger.
+- Provider quote cache `v6` invalidates old production copy so users see the transparent provider status labels immediately.
+- Android release QA for this pass covered full instrumentation, clean offline first launch, startup widget refresh and S25 reinstall.
 
 ## P3
 

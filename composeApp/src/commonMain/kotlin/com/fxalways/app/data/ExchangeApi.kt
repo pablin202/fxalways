@@ -6,6 +6,7 @@ import com.fxalways.app.domain.HistoricalSeries
 import com.fxalways.app.domain.LatestRates
 import com.fxalways.app.domain.NewsFeedDto
 import com.fxalways.app.domain.ProviderCatalogDto
+import com.fxalways.app.domain.ProviderQuotesDto
 import com.fxalways.app.domain.SupportedCurrenciesResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -47,6 +48,21 @@ class ExchangeApi(
     suspend fun providerCatalog(base: String): ProviderCatalogDto =
         client.get("$baseUrl/providerCatalog") {
             parameter("base", base)
+        }.body()
+
+    suspend fun providerQuotes(
+        base: String,
+        target: String,
+        amount: Double,
+        providers: List<String>,
+        isPremium: Boolean,
+    ): ProviderQuotesDto =
+        client.get("$baseUrl/providerQuotes") {
+            parameter("base", base)
+            parameter("target", target)
+            parameter("amount", amount)
+            parameter("providers", providers.joinToString(","))
+            parameter("plan", if (isPremium) "pro" else "free")
         }.body()
 
     suspend fun history(base: String, quote: String, days: Int = 365): HistoricalSeries =
