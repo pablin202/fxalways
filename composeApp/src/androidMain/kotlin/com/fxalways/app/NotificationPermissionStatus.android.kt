@@ -12,9 +12,9 @@ actual object NotificationPermissionStatus {
 
     actual val subtitle: String
         get() = if (canPostNotifications()) {
-            "Android can deliver local price alerts while checks run in the background"
+            "Server push alerts are active; Android keeps local alert checks as fallback"
         } else {
-            "Android permission is required before local price alerts can be delivered"
+            "Android permission is required before server or local price alerts can be delivered"
         }
 
     actual fun requestIfNeeded() {

@@ -102,13 +102,14 @@ class PriceAlertWorker(
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val text = localizedAlertNotificationText(alert, currentRate, currentDailyChange)
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("${alert.base}/${alert.quote} alert hit")
-            .setContentText(alert.notificationBody(currentRate, currentDailyChange))
+            .setContentTitle(text.title)
+            .setContentText(text.body)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("${alert.base}/${alert.quote}: ${alert.notificationBody(currentRate, currentDailyChange)}"),
+                    .bigText(text.expandedBody),
             )
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -128,31 +129,13 @@ class PriceAlertWorker(
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Price alerts",
+            alertNotificationCopy(AppSettingsPrefs.language()).priceAlerts,
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = "Currency pair target alerts"
+            description = alertNotificationCopy(AppSettingsPrefs.language()).channelDescription
         }
         manager.createNotificationChannel(channel)
     }
-
-    private val AlertDirection.label: String
-        get() = when (this) {
-            AlertDirection.Above -> "Above"
-            AlertDirection.Below -> "Below"
-        }
-
-    private fun PriceAlert.notificationBody(currentRate: Double?, currentDailyChange: Double?): String =
-        when (kind) {
-            AlertKind.Target -> "${direction.label} ${formatRate(target)} · now ${currentRate?.let(::formatRate) ?: "--"}"
-            AlertKind.DailyChange -> "${direction.dailyLabel} ${formatPercentValue(target)}% · 24h ${currentDailyChange?.let(::formatSignedPercent) ?: "--"}"
-        }
-
-    private val AlertDirection.dailyLabel: String
-        get() = when (this) {
-            AlertDirection.Above -> "Up"
-            AlertDirection.Below -> "Down"
-        }
 
     private fun List<HistoricalPoint>.dailyChangePct(): Double? {
         val sorted = sortedBy { it.date }
@@ -160,14 +143,6 @@ class PriceAlertWorker(
         val current = sorted.lastOrNull()?.value ?: return null
         if (previous == 0.0) return null
         return ((current - previous) / previous) * 100.0
-    }
-
-    private fun formatPercentValue(value: Double): String =
-        ((value * 10.0).toInt() / 10.0).toString()
-
-    private fun formatSignedPercent(value: Double): String {
-        val sign = if (value >= 0.0) "+" else "-"
-        return "$sign${formatPercentValue(kotlin.math.abs(value))}%"
     }
 
     private companion object {

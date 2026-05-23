@@ -83,6 +83,7 @@ kotlin {
             implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.firebase.auth)
             implementation(libs.firebase.firestore)
+            implementation(libs.firebase.messaging)
             implementation(libs.google.play.services.auth)
             implementation(libs.guava)
             implementation(libs.mlkit.text.recognition)

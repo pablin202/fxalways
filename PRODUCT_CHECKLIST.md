@@ -103,6 +103,9 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Duplicate identical alerts reactivate the existing alert.
 - [x] Add triggered-alert history.
 - [x] Add server-side alert evaluation for more reliable background delivery.
+- [x] Server-side alert evaluation sends FCM push notifications to registered Android devices.
+- [x] Android keeps the local alert worker as a fallback path.
+- [x] Alert notification copy is localized for local Android alerts and server FCM pushes.
 - [ ] Verify upgrade path when user hits the Free alert limit.
 - [ ] Edge: offline restore failure copy is clear and does not change entitlement state.
 
@@ -223,6 +226,9 @@ Use this as the release checklist. Mark items only after Android device testing 
 
 - [x] 2026-05-22: Firebase `evaluateServerAlerts` scheduled function deployed in `moneytrackerpro-8ff64`.
 - [x] 2026-05-22: Firebase `providerQuotes` and `refreshProviderQuoteCache` deployed with provider quote cache `v6`.
+- [x] 2026-05-22: Firebase `evaluateServerAlerts` redeployed with FCM push fanout for server alert events.
+- [x] 2026-05-22: S25 reinstall verified Android FCM token registration via `FxPushToken`.
+- [x] 2026-05-22: Alert notification i18n added for all 13 supported languages; `evaluateServerAlerts` redeployed.
 - [x] 2026-05-22: Provider status/source copy verified across all 13 app languages for live, comparison, estimate, partner setup and unavailable states.
 - [x] 2026-05-22: Android full instrumentation suite passed on S25: 124/124 tests.
 - [x] 2026-05-22: Clean-install offline first launch on S25 produced no app crash.

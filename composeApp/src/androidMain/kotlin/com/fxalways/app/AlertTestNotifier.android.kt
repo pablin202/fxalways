@@ -11,8 +11,6 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import com.fxalways.app.data.AlertDirection
-import com.fxalways.app.data.AlertKind
 import com.fxalways.app.data.PriceAlert
 
 actual object AlertTestNotifier {
@@ -31,10 +29,11 @@ actual object AlertTestNotifier {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val text = localizedAlertNotificationText(alert, currentRate = null, currentDailyChange = null, isTest = true)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Test alert · ${alert.base}/${alert.quote}")
-            .setContentText(alert.testBody())
+            .setContentTitle(text.title)
+            .setContentText(localizedTestAlertBody(alert))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -50,31 +49,11 @@ actual object AlertTestNotifier {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val copy = alertNotificationCopy(AppSettingsPrefs.language())
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Price alerts", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Currency pair target alerts"
+            NotificationChannel(CHANNEL_ID, copy.priceAlerts, NotificationManager.IMPORTANCE_HIGH).apply {
+                description = copy.channelDescription
             },
         )
     }
-
-    private fun PriceAlert.testBody(): String =
-        when (kind) {
-            AlertKind.Target -> "${direction.targetLabel} ${formatRate(target)}"
-            AlertKind.DailyChange -> "${direction.dailyLabel} ${formatPercentValue(target)}% daily move"
-        }
-
-    private val AlertDirection.targetLabel: String
-        get() = when (this) {
-            AlertDirection.Above -> "Above"
-            AlertDirection.Below -> "Below"
-        }
-
-    private val AlertDirection.dailyLabel: String
-        get() = when (this) {
-            AlertDirection.Above -> "Up"
-            AlertDirection.Below -> "Down"
-        }
-
-    private fun formatPercentValue(value: Double): String =
-        ((value * 10.0).toInt() / 10.0).toString()
 }

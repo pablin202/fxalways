@@ -6,8 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import com.fxalways.observability.Observability
 import com.fxalways.observability.installFirebaseObservability
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -15,6 +17,7 @@ class MainActivity : ComponentActivity() {
         installFirebaseObservability(this)
         intent?.trackWidgetOpen()
         AndroidAppContext.init(this)
+        registerPushToken()
         AndroidAlertScheduler.schedule(this)
         FxAlwaysWidgetProvider.updateAll(this)
         enableEdgeToEdge(
@@ -40,6 +43,13 @@ class MainActivity : ComponentActivity() {
         getStringExtra(EXTRA_WIDGET_SOURCE)?.let { source ->
             Observability.event("widget_used", mapOf("source" to source))
             removeExtra(EXTRA_WIDGET_SOURCE)
+        }
+    }
+
+    private fun registerPushToken() {
+        lifecycleScope.launch {
+            val userState = UserBackupGateway.ensureUser()
+            PushTokenGateway.registerForUser(userState.uid)
         }
     }
 

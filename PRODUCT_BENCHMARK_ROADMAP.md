@@ -118,7 +118,8 @@ These items should move FX Always from a polished converter into a product that 
 
 ## Release Hardening
 
-- Server-side alert evaluation runs every 15 minutes through Firebase Functions and updates backed-up alert snapshots when target-rate or daily-change alerts trigger.
+- Server-side alert evaluation runs every 15 minutes through Firebase Functions, updates backed-up alert snapshots when target-rate or daily-change alerts trigger and sends FCM push notifications to registered Android devices.
+- Android keeps the local alert worker as a fallback when device-side scheduling is available.
 - Provider quote cache `v6` invalidates old production copy so users see the transparent provider status labels immediately.
 - Android release QA for this pass covered full instrumentation, clean offline first launch, startup widget refresh and S25 reinstall.
 

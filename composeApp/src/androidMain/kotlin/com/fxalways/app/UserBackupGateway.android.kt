@@ -84,6 +84,7 @@ actual object UserBackupGateway {
         val finalUser = try {
             currentUser.linkWithCredential(credential).await().user
         } catch (collision: FirebaseAuthUserCollisionException) {
+            PushTokenGateway.unregisterForUser(currentUser.uid, reason = "google_account_collision")
             if (currentUser.isAnonymous) {
                 runCatching { deleteAnonymousBackup(currentUser.uid) }
                 runCatching { currentUser.delete().await() }
@@ -94,6 +95,7 @@ actual object UserBackupGateway {
         val remoteSnapshot = pullSnapshot()
         val merged = mergeBackupSnapshots(localSnapshot, remoteSnapshot)
         pushSnapshot(merged)
+        PushTokenGateway.registerForUser(finalUser.uid)
 
         return AccountLinkResult(
             state = UserBackupState(
@@ -117,6 +119,8 @@ actual object UserBackupGateway {
     actual suspend fun signOutToAnonymous(localSnapshot: UserBackupSnapshot): AccountLinkResult {
         GoogleSignInBridge.signOut()
         val auth = FirebaseAuth.getInstance()
+        val previousUid = auth.currentUser?.uid
+        PushTokenGateway.unregisterForUser(previousUid, reason = "sign_out")
         auth.signOut()
         val user = auth.signInAnonymously().await().user ?: error("Anonymous Firebase sign-in failed")
         val state = UserBackupState(
@@ -125,6 +129,7 @@ actual object UserBackupGateway {
             isAvailable = true,
         )
         pushSnapshot(localSnapshot)
+        PushTokenGateway.registerForUser(user.uid)
         return AccountLinkResult(state = state, snapshot = localSnapshot)
     }
 

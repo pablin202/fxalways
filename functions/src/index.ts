@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, QueryDocumentSnapshot, Timestamp } from "firebase-admin/firestore";
+import { getMessaging, MulticastMessage } from "firebase-admin/messaging";
 import { defineSecret } from "firebase-functions/params";
 import { onRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
@@ -7,6 +8,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 initializeApp();
 
 const db = getFirestore();
+const messaging = getMessaging();
 const region = "us-central1";
 const frankfurterBaseUrl = process.env.FRANKFURTER_BASE_URL ?? "https://api.frankfurter.dev/v2";
 const coinPaprikaBaseUrl = process.env.COINPAPRIKA_BASE_URL ?? "https://api.coinpaprika.com/v1";
@@ -166,6 +168,22 @@ type ServerAlertEvent = {
   observedValue: number;
   triggeredAtMillis: number;
   source: "server";
+};
+
+type PushTokenDoc = {
+  token?: string;
+  platform?: string;
+  enabled?: boolean;
+};
+
+type AlertNotificationCopy = {
+  alertHit: string;
+  above: string;
+  below: string;
+  up: string;
+  down: string;
+  now: string;
+  twentyFourHour: string;
 };
 
 type ProviderCatalogItem = {
@@ -1523,7 +1541,120 @@ async function evaluateBackedUpAlerts(): Promise<void> {
       });
     }
     await batch.commit();
+    await sendAlertPushes(uid, events, snapshot.settings?.language);
   }));
+}
+
+async function sendAlertPushes(uid: string, events: ServerAlertEvent[], language: string | undefined): Promise<void> {
+  const tokensSnapshot = await db.collection("users").doc(uid).collection("push_tokens")
+    .where("enabled", "==", true)
+    .get();
+  const tokenDocs = tokensSnapshot.docs
+    .map((doc) => ({ doc, data: doc.data() as PushTokenDoc }))
+    .filter((item) => typeof item.data.token === "string" && item.data.token.length > 0);
+  if (tokenDocs.length === 0) return;
+
+  for (const event of events) {
+    const title = alertPushTitle(event, language);
+    const body = alertPushBody(event, language);
+    const message: MulticastMessage = {
+      tokens: tokenDocs.map((item) => item.data.token as string),
+      notification: {
+        title,
+        body,
+      },
+      data: {
+        type: "price_alert",
+        alertId: event.alertId,
+        base: event.base,
+        quote: event.quote,
+        kind: event.kind,
+        direction: event.direction,
+        target: String(event.target),
+        observedValue: String(event.observedValue),
+        language: normalizeAlertLanguage(language),
+        title,
+        body,
+      },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "price_alerts",
+          clickAction: "android.intent.action.MAIN",
+        },
+      },
+    };
+    const result = await messaging.sendEachForMulticast(message);
+    const cleanupBatch = db.batch();
+    let cleanupWrites = 0;
+    result.responses.forEach((response, index) => {
+      const code = response.error?.code ?? "";
+      if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+        cleanupBatch.set(tokenDocs[index].doc.ref, {
+          enabled: false,
+          disabledAt: Timestamp.fromMillis(Date.now()),
+          disabledReason: code,
+        }, { merge: true });
+        cleanupWrites += 1;
+      }
+    });
+    if (cleanupWrites > 0) {
+      await cleanupBatch.commit();
+    }
+  }
+}
+
+function alertPushTitle(event: ServerAlertEvent, language: string | undefined): string {
+  const copy = alertNotificationCopy(language);
+  return `${event.base}/${event.quote} ${copy.alertHit}`;
+}
+
+function alertPushBody(event: ServerAlertEvent, language: string | undefined): string {
+  const copy = alertNotificationCopy(language);
+  if (event.kind === "DailyChange") {
+    const direction = event.direction === "Above" ? copy.up : copy.down;
+    return `${direction} ${formatPercent(event.target)} · ${copy.twentyFourHour} ${formatSignedPercent(event.observedValue)}`;
+  }
+  const direction = event.direction === "Above" ? copy.above : copy.below;
+  return `${direction} ${formatNumber(event.target)} · ${copy.now} ${formatNumber(event.observedValue)}`;
+}
+
+function alertNotificationCopy(language: string | undefined): AlertNotificationCopy {
+  const copies: Record<string, AlertNotificationCopy> = {
+    en: { alertHit: "alert hit", above: "Above", below: "Below", up: "Up", down: "Down", now: "now", twentyFourHour: "24h" },
+    es: { alertHit: "alcanzó la alerta", above: "Por encima de", below: "Por debajo de", up: "Sube", down: "Baja", now: "ahora", twentyFourHour: "24 h" },
+    pt: { alertHit: "atingiu o alerta", above: "Acima de", below: "Abaixo de", up: "Sobe", down: "Cai", now: "agora", twentyFourHour: "24 h" },
+    zh: { alertHit: "已触发提醒", above: "高于", below: "低于", up: "上涨", down: "下跌", now: "当前", twentyFourHour: "24小时" },
+    hi: { alertHit: "अलर्ट चालू हुआ", above: "ऊपर", below: "नीचे", up: "ऊपर", down: "नीचे", now: "अभी", twentyFourHour: "24घं" },
+    fr: { alertHit: "a déclenché l'alerte", above: "Au-dessus de", below: "Sous", up: "Hausse", down: "Baisse", now: "maintenant", twentyFourHour: "24 h" },
+    ar: { alertHit: "تم تشغيل التنبيه", above: "فوق", below: "تحت", up: "صعود", down: "هبوط", now: "الآن", twentyFourHour: "24س" },
+    bn: { alertHit: "অ্যালার্ট চালু হয়েছে", above: "উপরে", below: "নিচে", up: "উপরে", down: "নিচে", now: "এখন", twentyFourHour: "২৪ঘ" },
+    ru: { alertHit: "сработало", above: "Выше", below: "Ниже", up: "Рост", down: "Падение", now: "сейчас", twentyFourHour: "24 ч" },
+    ur: { alertHit: "الرٹ چل گیا", above: "اوپر", below: "نیچے", up: "اوپر", down: "نیچے", now: "اب", twentyFourHour: "24گھنٹے" },
+    id: { alertHit: "memicu peringatan", above: "Di atas", below: "Di bawah", up: "Naik", down: "Turun", now: "sekarang", twentyFourHour: "24 jam" },
+    de: { alertHit: "Alarm ausgelöst", above: "Über", below: "Unter", up: "Steigt", down: "Fällt", now: "jetzt", twentyFourHour: "24 h" },
+    ja: { alertHit: "アラート発火", above: "上回る", below: "下回る", up: "上昇", down: "下落", now: "現在", twentyFourHour: "24時間" },
+  };
+  return copies[normalizeAlertLanguage(language)] ?? copies.en;
+}
+
+function normalizeAlertLanguage(language: string | undefined): string {
+  const normalized = (language ?? "en").toLowerCase().split(/[-_]/)[0];
+  return normalized.length > 0 ? normalized : "en";
+}
+
+function formatNumber(value: number): string {
+  if (!Number.isFinite(value)) return "--";
+  return value.toLocaleString("en-US", { maximumFractionDigits: Math.abs(value) < 1 ? 6 : 4 });
+}
+
+function formatPercent(value: number): string {
+  return `${formatNumber(value)}%`;
+}
+
+function formatSignedPercent(value: number): string {
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${formatNumber(value)}%`;
 }
 
 function parseBackupSnapshot(payloadJson: unknown): UserBackupSnapshot | null {
