@@ -19,15 +19,11 @@ LOCALE = "en"
 ORIENTATION = "portrait"
 
 PREFERRED_DEVICES: list[tuple[str, list[int]]] = [
-    ("NexusLowRes", [30, 29, 28, 27, 26]),
-    ("Pixel2", [30, 29, 28, 27, 26]),
-    ("Pixel5", [31, 30]),
-    ("Pixel6", [35, 34, 33, 32, 31]),
-    ("Pixel7", [35, 34, 33]),
-    ("Pixel8", [35, 34]),
-    ("PixelTablet", [35, 34, 33]),
-    ("MediumPhone.arm", [35, 34, 33]),
     ("SmallPhone.arm", [35, 34, 33]),
+    ("MediumPhone.arm", [35, 34, 33]),
+    ("MediumTablet.arm", [35, 34, 33]),
+    ("Pixel2.arm", [33, 32, 31, 30, 29, 28, 27, 26]),
+    ("AndroidTablet270dpi.arm", [30]),
 ]
 
 
@@ -91,6 +87,24 @@ def is_virtual(model: dict[str, Any]) -> bool:
     return "virtual" in searchable
 
 
+def is_mobile_test_device(model: dict[str, Any]) -> bool:
+    identifier = (model_id(model) or "").lower()
+    form_factor = str(
+        model.get("formFactor")
+        or model.get("form")
+        or ""
+    ).upper()
+    tags = " ".join(str(tag).lower() for tag in model.get("tags") or [])
+
+    if form_factor not in {"PHONE", "TABLET"}:
+        return False
+    if any(blocked in identifier for blocked in ("tv", "wear", "auto")):
+        return False
+    if any(blocked in tags for blocked in ("deprecated", "reduced_stability")):
+        return False
+    return True
+
+
 def read_catalog(path: Path) -> list[dict[str, Any]]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -126,9 +140,9 @@ def select_devices(models: list[dict[str, Any]]) -> list[tuple[str, int]]:
             return selected
 
     fallback_models = sorted(
-        models,
+        [model for model in models if is_virtual(model) and is_mobile_test_device(model)],
         key=lambda model: (
-            not is_virtual(model),
+            str(model.get("formFactor") or model.get("form") or "") != "PHONE",
             model_id(model) or "",
         ),
     )
