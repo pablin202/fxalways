@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -109,18 +110,10 @@ class CompareScreenTest {
 
     @Test
     fun proEditSheetAddsCryptoAndBoardShowsIt() {
-        val baseState = testLiveRatesState()
-        val usd = baseState.allFiat.first { it.code == "USD" }
-        val eur = baseState.allFiat.first { it.code == "EUR" }
         val harness = renderCompare(
             isPremium = true,
             selectedCodes = listOf("EUR"),
-            liveState = baseState.copy(
-                compare = listOf(eur),
-                favorites = emptyList(),
-                converter = listOf(usd, eur),
-                allFiat = listOf(usd, eur),
-            ),
+            liveState = cryptoEditLiveRatesState(),
         )
 
         compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
@@ -133,9 +126,10 @@ class CompareScreenTest {
 
     @Test
     fun proEditSheetDismissAppliesDraftSelection() {
-        val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR"))
+        val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR"), liveState = cryptoEditLiveRatesState())
 
         compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_search").performTextReplacement("sol")
         compose.onNodeWithTag("currency_list_SOL").performScrollTo().performClick()
         compose.onNodeWithTag("currency_list_scroll").performTouchInput { swipeDown() }
 
@@ -145,9 +139,10 @@ class CompareScreenTest {
 
     @Test
     fun proEditSheetCancelDiscardsDraftSelection() {
-        val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR"))
+        val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR"), liveState = cryptoEditLiveRatesState())
 
         compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_search").performTextReplacement("sol")
         compose.onNodeWithTag("currency_list_SOL").performScrollTo().performClick()
         compose.onNodeWithText("Cancel").performClick()
 
@@ -223,6 +218,18 @@ class CompareScreenTest {
             compare = listOf(eur, gbp, jpy, chf, mxn),
             crypto = listOf(btc, usdt, sol),
             allFiat = listOf(usd, eur, gbp, jpy, chf, mxn),
+        )
+    }
+
+    private fun cryptoEditLiveRatesState(): LiveRatesState {
+        val state = testLiveRatesState()
+        val usd = state.allFiat.first { it.code == "USD" }
+        val eur = state.allFiat.first { it.code == "EUR" }
+        return state.copy(
+            compare = listOf(eur),
+            favorites = emptyList(),
+            converter = listOf(usd, eur),
+            allFiat = listOf(usd, eur),
         )
     }
 

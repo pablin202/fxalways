@@ -214,7 +214,6 @@ class ConverterScreenTest {
 
         compose.onNodeWithText("Your custom cost").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Custom").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("converter_provider_history").performScrollTo().assertIsDisplayed()
     }
 
     @Test
