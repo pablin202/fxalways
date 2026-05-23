@@ -165,7 +165,14 @@ internal fun SmartTimingCard(
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(ui(insight.signal), style = FxTheme.typography.bodyStrong, color = insight.color(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        ui(insight.signal),
+                        style = FxTheme.typography.bodyStrong,
+                        color = insight.color(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.testTag("converter_timing_signal"),
+                    )
                     Text(insight.action, style = FxTheme.typography.caption, color = FxTheme.colors.textDim, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("converter_timing_action"))
                 }
                 Box(

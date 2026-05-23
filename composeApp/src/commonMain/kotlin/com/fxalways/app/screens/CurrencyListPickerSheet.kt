@@ -127,7 +127,8 @@ internal fun CurrencyListPickerSheet(
             LazyColumn(
                 Modifier
                     .fillMaxWidth()
-                    .height(430.dp)
+                    .weight(1f, fill = false)
+                    .heightIn(max = 430.dp)
                     .testTag("currency_list_scroll"),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {

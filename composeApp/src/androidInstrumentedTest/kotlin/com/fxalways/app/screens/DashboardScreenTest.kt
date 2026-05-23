@@ -45,7 +45,7 @@ class DashboardScreenTest {
         compose.onNodeWithTag("retention_loop_watch").assertIsDisplayed()
         compose.onNodeWithTag("retention_loop_proof").assertIsDisplayed()
         compose.onNodeWithTag("retention_loop_reason").assertIsDisplayed()
-        compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Indicative mid-market rates.", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_snapshot").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_stablecoins").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_avg").performScrollTo().assertIsDisplayed()

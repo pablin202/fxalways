@@ -52,7 +52,7 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_decision_card").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_decision_timing").assertIsDisplayed()
         compose.onNodeWithTag("converter_decision_route").assertIsDisplayed()
-        compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Indicative mid-market rates.", substring = true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("FEES · USD → EUR").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_fee_reality_check").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Best real-world route").assertIsDisplayed()
@@ -253,7 +253,7 @@ class ConverterScreenTest {
 
         compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_timing_score").assertIsDisplayed()
-        compose.onNodeWithText("Strong rate").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_signal").assertIsDisplayed()
         compose.onNodeWithTag("converter_timing_7d").assertIsDisplayed()
         compose.onAllNodesWithTag("converter_timing_30d").assertCountEquals(0)
         compose.onAllNodesWithTag("converter_timing_90d").assertCountEquals(0)
@@ -324,7 +324,7 @@ class ConverterScreenTest {
         renderConverter(isPremium = true)
 
         compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Strong rate").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_signal").assertIsDisplayed()
         compose.onNodeWithTag("converter_timing_7d").assertIsDisplayed()
         compose.onNodeWithTag("converter_timing_30d").assertIsDisplayed()
         compose.onNodeWithTag("converter_timing_90d").assertIsDisplayed()
@@ -351,8 +351,8 @@ class ConverterScreenTest {
         renderConverter(isPremium = true, liveState = fallingLiveRatesState())
 
         compose.onNodeWithTag("converter_smart_timing").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Wait").assertIsDisplayed()
-        compose.onNodeWithText("Wait or set an alert", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_signal").assertIsDisplayed()
+        compose.onNodeWithTag("converter_timing_action").assertIsDisplayed()
         compose.onNodeWithTag("converter_timing_7d").assertIsDisplayed()
         compose.onNodeWithTag("converter_timing_30d").assertIsDisplayed()
         compose.onNodeWithTag("converter_timing_90d").assertIsDisplayed()

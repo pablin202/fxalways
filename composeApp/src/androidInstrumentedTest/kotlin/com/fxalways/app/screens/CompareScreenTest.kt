@@ -102,18 +102,30 @@ class CompareScreenTest {
 
         compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
         compose.onNodeWithTag("currency_list_JPY").performScrollTo().performClick()
-        compose.onNodeWithTag("currency_list_apply").performClick()
+        compose.onNodeWithTag("currency_list_apply").assertIsDisplayed().performClick()
 
         compose.runOnIdle { assertEquals(listOf("EUR", "GBP", "CHF", "MXN"), harness.selectedCodes) }
     }
 
     @Test
     fun proEditSheetAddsCryptoAndBoardShowsIt() {
-        val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR"))
+        val baseState = testLiveRatesState()
+        val usd = baseState.allFiat.first { it.code == "USD" }
+        val eur = baseState.allFiat.first { it.code == "EUR" }
+        val harness = renderCompare(
+            isPremium = true,
+            selectedCodes = listOf("EUR"),
+            liveState = baseState.copy(
+                compare = listOf(eur),
+                favorites = emptyList(),
+                converter = listOf(usd, eur),
+                allFiat = listOf(usd, eur),
+            ),
+        )
 
         compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
         compose.onNodeWithTag("currency_list_SOL").performScrollTo().performClick()
-        compose.onNodeWithTag("currency_list_apply").performClick()
+        compose.onNodeWithTag("currency_list_apply").assertIsDisplayed().performClick()
 
         compose.onNodeWithTag("compare_tile_SOL").performScrollTo().assertIsDisplayed()
         compose.runOnIdle { assertTrue("SOL" in harness.selectedCodes) }

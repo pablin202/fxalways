@@ -262,8 +262,8 @@ class AlertsScreenTest {
             assertEquals(1, harness.manualCreateCalls)
         }
         compose.onNodeWithTag("alert_card_eur_custom").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Existing alert reactivated USD/EUR.").assertIsDisplayed()
-        compose.onNodeWithText("on").assertIsDisplayed()
+        compose.onNodeWithText("Existing alert reactivated USD/EUR.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("on").performScrollTo().assertIsDisplayed()
     }
 
     @Test
