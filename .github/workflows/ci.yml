@@ -12,6 +12,7 @@ permissions:
 
 env:
   FIREBASE_TEST_LAB_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT || 'moneytrackerpro-8ff64' }}
+  FIREBASE_TEST_LAB_RESULTS_BUCKET: ${{ vars.FIREBASE_TEST_LAB_RESULTS_BUCKET || 'moneytrackerpro-8ff64-test-lab-results' }}
 
 jobs:
   android:
@@ -131,6 +132,7 @@ jobs:
             --num-flaky-test-attempts 1 \
             --timeout 30m \
             --client-details matrixLabel="main-${{ github.run_number }}-${{ github.sha }}" \
+            --results-bucket "$FIREBASE_TEST_LAB_RESULTS_BUCKET" \
             --results-dir "github/${{ github.run_id }}-${{ github.run_attempt }}" \
             "${DEVICE_ARGS[@]}"
 

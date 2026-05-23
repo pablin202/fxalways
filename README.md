@@ -181,10 +181,11 @@ Cada push a `main` ejecuta todos los UI tests Android en Firebase Test Lab. El w
 Configuracion requerida en GitHub:
 
 - Repository variable `FIREBASE_TEST_LAB_PROJECT`: Firebase/GCP project id. Default actual: `moneytrackerpro-8ff64`.
+- Repository variable `FIREBASE_TEST_LAB_RESULTS_BUCKET`: Cloud Storage bucket para resultados. Default actual: `moneytrackerpro-8ff64-test-lab-results`.
 - Repository secret `GCP_WORKLOAD_IDENTITY_PROVIDER`: provider de Workload Identity Federation para GitHub Actions.
 - Repository secret `GCP_SERVICE_ACCOUNT`: service account usado por el workflow.
 
-El service account necesita permisos para ejecutar Firebase Test Lab y escribir resultados en Cloud Storage. En GCP, asignar permisos equivalentes a Firebase Test Lab Admin para el proyecto y Storage Object Admin sobre el bucket de resultados que use Test Lab.
+El service account necesita permisos para ejecutar Firebase Test Lab y escribir resultados en Cloud Storage. En GCP, asignar permisos equivalentes a Firebase Test Lab Admin para el proyecto y Storage Object Admin sobre el bucket de resultados que use Test Lab. APIs requeridas: `testing.googleapis.com` y `toolresults.googleapis.com`.
 
 ### Advertencias de Play Console
 
