@@ -45,6 +45,7 @@ import com.fxalways.designsystem.components.BentoCard
 import com.fxalways.designsystem.components.CurrencyRow
 import com.fxalways.designsystem.components.Eyebrow
 import com.fxalways.designsystem.components.FxRate
+import com.fxalways.designsystem.components.KeyValueRow
 import com.fxalways.designsystem.components.LiveDot
 import com.fxalways.designsystem.components.MetricTile
 import com.fxalways.designsystem.components.Pill
@@ -175,6 +176,18 @@ fun DashboardScreen(
                 onCreateSuggestedAlert = onCreateSuggestedAlert,
                 modifier = Modifier.testTag("dashboard_best_next_action"),
             )
+            RetentionLoopCard(
+                profile = userProfile,
+                suggestedPair = preset.suggestedPair,
+                suggestedAmount = preset.suggestedAmount,
+                watchedRate = visibleFavorites.firstOrNull() ?: liveState.favorites.firstOrNull(),
+                suggestedAlertState = suggestedProfileAlertState,
+                onOpenConverter = onOpenConverter,
+                onCreateSuggestedAlert = onCreateSuggestedAlert,
+                onOpenTraveler = onOpenTraveler,
+                onOpenWatchlist = onOpenWatchlist,
+                modifier = Modifier.testTag("dashboard_retention_loop"),
+            )
             ProfileInsightCard(
                 profile = userProfile,
                 isPremium = subscriptionState.isPremium,
@@ -278,6 +291,123 @@ fun DashboardScreen(
         }
     }
 }
+
+@Composable
+private fun RetentionLoopCard(
+    profile: UserProfile,
+    suggestedPair: String,
+    suggestedAmount: String,
+    watchedRate: FxRate?,
+    suggestedAlertState: QuickAlertState?,
+    onOpenConverter: () -> Unit,
+    onCreateSuggestedAlert: () -> Unit,
+    onOpenTraveler: () -> Unit,
+    onOpenWatchlist: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val loop = profile.retentionLoopCopy()
+    val amount = suggestedAmount.toDoubleOrNull() ?: 500.0
+    val avoidedSpread = amount * loop.spreadProofPercent / 100.0
+    val alertState = when (suggestedAlertState) {
+        QuickAlertState.Active -> "Alert watching"
+        QuickAlertState.Paused -> "Alert paused"
+        QuickAlertState.Locked -> "Pro alert needed"
+        else -> "No alert yet"
+    }
+    BentoCard(modifier, padding = 14.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("TODAY'S MONEY BRIEF"), color = FxTheme.colors.accent)
+                Pill(ui(loop.loopLabel), variant = PillVariant.Ghost)
+            }
+            Text(ui(loop.headline), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(
+                    ui("Watch"),
+                    watchedRate?.code ?: formatProfilePair(suggestedPair),
+                    watchedRate?.let { formatChange(it.change24h) } ?: ui("profile pair"),
+                    Modifier.weight(1f).height(76.dp).testTag("retention_loop_watch"),
+                )
+                MetricTile(
+                    ui("Proof"),
+                    "${formatMoneyValue(avoidedSpread)} ${ui("saved")}",
+                    "${formatRate(loop.spreadProofPercent)}% ${ui("bad spread")}",
+                    Modifier.weight(1f).height(76.dp).testTag("retention_loop_proof"),
+                )
+            }
+            KeyValueRow(
+                ui("Why come back"),
+                ui(loop.returnReason),
+                "${formatProfilePair(suggestedPair)} · ${ui(alertState)}",
+                modifier = Modifier.testTag("retention_loop_reason"),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton(
+                    text = ui(loop.primaryAction),
+                    modifier = Modifier.weight(1f).testTag("retention_loop_primary"),
+                    onClick = when (profile) {
+                        UserProfile.Traveler -> onOpenTraveler
+                        UserProfile.CryptoHolder,
+                        UserProfile.Savings -> onOpenWatchlist
+                        else -> onOpenConverter
+                    },
+                )
+                GhostButton(
+                    text = ui("Set alert"),
+                    modifier = Modifier.weight(1f).testTag("retention_loop_alert"),
+                    onClick = onCreateSuggestedAlert,
+                )
+            }
+        }
+    }
+}
+
+private data class RetentionLoopCopy(
+    val loopLabel: String,
+    val headline: String,
+    val returnReason: String,
+    val primaryAction: String,
+    val spreadProofPercent: Double,
+)
+
+private fun UserProfile.retentionLoopCopy(): RetentionLoopCopy =
+    when (this) {
+        UserProfile.Traveler -> RetentionLoopCopy(
+            loopLabel = "Travel loop",
+            headline = "Check the local price before the next payment.",
+            returnReason = "Rates, OCR and alerts tell you when card or cash is safer.",
+            primaryAction = "Open traveler tools",
+            spreadProofPercent = 3.0,
+        )
+        UserProfile.Remittances -> RetentionLoopCopy(
+            loopLabel = "Send loop",
+            headline = "Compare the route before the next transfer.",
+            returnReason = "Provider fees move enough that the best route can change before payday.",
+            primaryAction = "Compare route",
+            spreadProofPercent = 2.0,
+        )
+        UserProfile.Freelancer -> RetentionLoopCopy(
+            loopLabel = "Income loop",
+            headline = "Check invoice currency before accepting a rate.",
+            returnReason = "Small spreads compound across repeat invoices and withdrawals.",
+            primaryAction = "Check invoice",
+            spreadProofPercent = 1.5,
+        )
+        UserProfile.CryptoHolder -> RetentionLoopCopy(
+            loopLabel = "Exposure loop",
+            headline = "Watch the biggest move before rebalancing.",
+            returnReason = "Daily movement and stablecoin exposure are easier to act on together.",
+            primaryAction = "Open watchlist",
+            spreadProofPercent = 1.0,
+        )
+        UserProfile.Savings -> RetentionLoopCopy(
+            loopLabel = "Savings loop",
+            headline = "Wait for a better window unless the signal improves.",
+            returnReason = "Alerts and long-range context reduce unnecessary conversions.",
+            primaryAction = "Review allocation",
+            spreadProofPercent = 1.0,
+        )
+    }
 
 @Composable
 private fun BestNextActionCard(

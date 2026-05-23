@@ -46,6 +46,8 @@ class WatchlistScreenTest {
         compose.onNodeWithTag("watchlist_groups").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("watchlist_group_tracking_only").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_group_fiat").assertIsDisplayed()
+        compose.onNodeWithText("Reason: create an alert or amount next", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Reason: travel, income or savings", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("watchlist_currency_CHF").performScrollTo().performClick()
         compose.onNodeWithTag("watchlist_holding_CHF").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Track unlimited currencies").performScrollTo().assertIsDisplayed()

@@ -8,6 +8,10 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+
+env:
+  FIREBASE_TEST_LAB_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT || 'moneytrackerpro-8ff64' }}
 
 jobs:
   android:
@@ -43,8 +47,21 @@ jobs:
           -PANDROID_VERSION_CODE=${{ github.run_number }}
           :composeApp:compileDebugKotlinAndroid
           :composeApp:compileDebugAndroidTestKotlinAndroid
+          :composeApp:assembleDebug
+          :composeApp:packageDebugAndroidTest
           :composeApp:assembleRelease
           :composeApp:bundleRelease
+
+      - name: Upload Firebase Test Lab artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: android-firebase-test-lab-artifacts
+          path: |
+            composeApp/build/outputs/apk/debug/*.apk
+            composeApp/build/outputs/apk/androidTest/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
@@ -56,6 +73,66 @@ jobs:
             composeApp/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 7
+
+  firebase-test-lab:
+    name: Firebase Test Lab UI tests
+    runs-on: ubuntu-latest
+    needs: android
+    timeout-minutes: 60
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Test Lab artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-firebase-test-lab-artifacts
+          path: test-lab-artifacts
+
+      - name: Validate Firebase Test Lab auth config
+        run: |
+          test -n "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing secret GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
+          test -n "${{ secrets.GCP_SERVICE_ACCOUNT }}" || (echo "Missing secret GCP_SERVICE_ACCOUNT" && exit 1)
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Select Test Lab devices
+        run: |
+          set -euo pipefail
+          gcloud config set project "$FIREBASE_TEST_LAB_PROJECT"
+          gcloud firebase test android models list --format=json > test-lab-models.json
+          python3 .github/scripts/select_test_lab_devices.py test-lab-models.json > test-lab-devices.args
+          echo "Selected Firebase Test Lab devices:"
+          cat test-lab-devices.args
+
+      - name: Run instrumentation tests in Firebase Test Lab
+        run: |
+          set -euo pipefail
+          APP_APK="$(find test-lab-artifacts -path '*/debug/*.apk' ! -name '*androidTest*' | head -n 1)"
+          TEST_APK="$(find test-lab-artifacts -path '*/androidTest/debug/*.apk' | head -n 1)"
+          test -f "$APP_APK" || (echo "Missing app debug APK" && exit 1)
+          test -f "$TEST_APK" || (echo "Missing androidTest APK" && exit 1)
+          mapfile -t DEVICE_ARGS < test-lab-devices.args
+          gcloud firebase test android run \
+            --project "$FIREBASE_TEST_LAB_PROJECT" \
+            --type instrumentation \
+            --app "$APP_APK" \
+            --test "$TEST_APK" \
+            --use-orchestrator \
+            --num-flaky-test-attempts 1 \
+            --timeout 30m \
+            --client-details matrixLabel="main-${{ github.run_number }}-${{ github.sha }}" \
+            --results-dir "github/${{ github.run_id }}-${{ github.run_attempt }}" \
+            "${DEVICE_ARGS[@]}"
 
   functions:
     name: Firebase Functions build

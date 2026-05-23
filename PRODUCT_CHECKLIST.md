@@ -17,6 +17,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] README reflects the competitive feature set and recommended next product block.
 - [x] Product benchmark and cross-market roadmap are documented in `PRODUCT_BENCHMARK_ROADMAP.md`.
 - [x] P7 commercial productization pass is implemented in Home, Convert, Alerts and documentation.
+- [x] P8 retention loop pass is implemented in Home and Watchlist.
 
 ## Release Blockers
 
@@ -160,6 +161,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Watchlist persists locally on Android/iOS.
 - [x] Free users are limited to 4 tracked currencies; Pro is unlimited.
 - [x] Users can add/remove currencies.
+- [x] Watchlist groups explain why each tracked bucket matters.
 - [x] Tracked rows open detail screen.
 - [x] Portfolio holdings persist by currency code.
 - [x] Large holding inputs no longer jump/focus out.
@@ -209,6 +211,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Profile persists in settings and backup.
 - [x] Home shows profile-aware Free/Pro focus, suggested pair and suggested alert.
 - [x] Home shows a profile-aware best next action with convert, alert and provider comparison actions.
+- [x] Home shows a daily money brief with watch target, proof-of-value and return reason.
 - [x] Profile can preselect converter currencies, compare currencies, watchlist, traveler destination and suggested amount when defaults are still untouched.
 - [x] Paywall adapts copy to selected profile.
 - [x] App opens on Rates/Home instead of jumping to Watchlist after profile selection.
@@ -265,4 +268,5 @@ Use this as the release checklist. Mark items only after Android device testing 
 21. [x] P6: add widget quick setup for rates pair and traveler destination.
 22. [x] P6: harden Android widget layout rendering for Samsung/RemoteViews.
 23. [x] P7: add commercial decision layer to Home, Convert, Provider Matrix and Alerts.
-24. Release: close legal content, store listing, release signing and full instrumentation run.
+24. [x] P8: add retention loop brief and watchlist reasons.
+25. Release: close legal content, store listing, release signing and full instrumentation run.

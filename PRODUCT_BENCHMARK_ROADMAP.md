@@ -155,6 +155,13 @@ These items should move FX Always from a polished converter into a product that 
 - Remittance planning now includes simple recipient profiles so repeat family, client, savings and trip flows are easier to understand.
 - Store screenshot claim set should lead with: "Know when to convert", "Compare real provider cost", "Scan prices abroad", "Get push alerts", "Track your multi-currency money".
 
+## P8
+
+- Retention loop pass inside the product, focused on activation, habit and perceived savings rather than store copy.
+- Home now includes a daily money brief with watch target, proof-of-value and a profile-specific return reason.
+- Watchlist groups now explain why each bucket exists, so tracked currencies feel intentional instead of arbitrary.
+- The loop strategy is: profile -> daily brief -> best action -> alert/watch/provider decision -> return trigger.
+
 ## Immediate Implementation Order
 
 1. Strengthen Convert with an explicit fee/spread reality check card.

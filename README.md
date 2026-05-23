@@ -169,6 +169,23 @@ Ejemplo manual:
 
 GitHub Actions usa `github.run_number` como `ANDROID_VERSION_CODE`, por lo que los artefactos de CI tienen codigo creciente automaticamente.
 
+### Firebase Test Lab en CI
+
+Cada push a `main` ejecuta todos los UI tests Android en Firebase Test Lab. El workflow:
+
+- Compila el APK debug y el APK `androidTest`.
+- Consulta el catalogo actual de Test Lab con `gcloud firebase test android models list`.
+- Selecciona 3 devices disponibles con distintas familias/resoluciones cuando existen en el catalogo.
+- Corre `gcloud firebase test android run` como instrumentation test, sin `test-targets`, para ejecutar toda la suite.
+
+Configuracion requerida en GitHub:
+
+- Repository variable `FIREBASE_TEST_LAB_PROJECT`: Firebase/GCP project id. Default actual: `moneytrackerpro-8ff64`.
+- Repository secret `GCP_WORKLOAD_IDENTITY_PROVIDER`: provider de Workload Identity Federation para GitHub Actions.
+- Repository secret `GCP_SERVICE_ACCOUNT`: service account usado por el workflow.
+
+El service account necesita permisos para ejecutar Firebase Test Lab y escribir resultados en Cloud Storage. En GCP, asignar permisos equivalentes a Firebase Test Lab Admin para el proyecto y Storage Object Admin sobre el bucket de resultados que use Test Lab.
+
 ### Advertencias de Play Console
 
 - `No hay archivo de desofuscacion`: normal mientras `isMinifyEnabled=false`. No hay `mapping.txt` porque no se usa R8/ProGuard en release.

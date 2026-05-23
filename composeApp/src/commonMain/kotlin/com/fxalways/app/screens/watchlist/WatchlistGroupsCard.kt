@@ -40,7 +40,7 @@ internal fun WatchlistGroupsCard(
                     KeyValueRow(
                         ui(group.label),
                         group.codes.joinToString(" · "),
-                        ui(group.subtitle),
+                        "${ui(group.subtitle)} · ${ui(group.reason)}",
                         modifier = Modifier.testTag("watchlist_group_${group.id}"),
                     )
                 }
@@ -53,6 +53,7 @@ private data class WatchlistDynamicGroup(
     val id: String,
     val label: String,
     val subtitle: String,
+    val reason: String,
     val codes: List<String>,
 )
 
@@ -72,19 +73,19 @@ private fun watchlistDynamicGroups(
 
     return listOfNotNull(
         valuedCodes.takeIf { it.isNotEmpty() }?.let {
-            WatchlistDynamicGroup("valued", "Valued holdings", "Currencies with entered amounts", it)
+            WatchlistDynamicGroup("valued", "Valued holdings", "Currencies with entered amounts", "Reason: portfolio impact", it)
         },
         trackingOnlyCodes.takeIf { it.isNotEmpty() }?.let {
-            WatchlistDynamicGroup("tracking_only", "Tracking only", "No amount entered yet", it)
+            WatchlistDynamicGroup("tracking_only", "Tracking only", "No amount entered yet", "Reason: create an alert or amount next", it)
         },
         fiatCodes.takeIf { it.isNotEmpty() }?.let {
-            WatchlistDynamicGroup("fiat", "Fiat exposure", "Tracked government currencies", it)
+            WatchlistDynamicGroup("fiat", "Fiat exposure", "Tracked government currencies", "Reason: travel, income or savings", it)
         },
         cryptoCodes.takeIf { it.isNotEmpty() }?.let {
-            WatchlistDynamicGroup("crypto", "Crypto exposure", "Tracked crypto assets and stablecoins", it)
+            WatchlistDynamicGroup("crypto", "Crypto exposure", "Tracked crypto assets and stablecoins", "Reason: volatility and allocation", it)
         },
         moverCodes.takeIf { it.isNotEmpty() }?.let {
-            WatchlistDynamicGroup("movers", "Largest movers", "Sorted by absolute 24h move", it)
+            WatchlistDynamicGroup("movers", "Largest movers", "Sorted by absolute 24h move", "Reason: today's action trigger", it)
         },
     )
 }
