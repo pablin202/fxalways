@@ -56,6 +56,9 @@ class AlertsScreenTest {
 
         compose.runOnIdle { assertEquals(0, harness.notificationPermissionRequests) }
         compose.onNodeWithText("0/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithTag("alerts_monitoring_status").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Server checks").assertIsDisplayed()
+        compose.onNodeWithText("Local fallback").assertIsDisplayed()
         compose.onNodeWithTag("alert_action_center").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("alert_action_empty").assertIsDisplayed()
         compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("0.95")

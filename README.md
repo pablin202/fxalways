@@ -22,7 +22,10 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - Import/export CSV Pro de portfolio con holdings, average cost y transacciones.
 - Crypto live catalog con core crypto para Free y catalogo expandido para Pro.
 - Comparador de costos estimados por proveedor, monto y par: mejor proveedor, monto recibido, perdida vs mid-market y ahorro potencial.
+- Capa de decision comercial: Home recomienda la proxima accion, Convert resume timing + mejor ruta + alerta, y Provider Matrix separa quote live/comparacion/estimado/setup.
 - Alertas de tipo target rate y daily move.
+- Alertas server-side con FCM para Android y worker local como fallback.
+- OCR price scanner para Pro en Android, integrado al chequeo local-vs-live de precios.
 - Traveler mode con presupuesto local, cash buffer y cheat sheet de gasto.
 - Backup/sync de usuario en Android con Firebase.
 - Onboarding personalizado con perfiles Traveler, Crypto holder, Remittances, Freelancer y Savings; aplica pares, watchlist, destino traveler, monto inicial, Home y paywall segun perfil.
@@ -43,6 +46,7 @@ Free esta pensado para validar valor diario sin bloquear lo esencial:
 
 - Core FX/crypto inicial.
 - Conversor, Home, traveler basics y alertas basicas.
+- Comparacion de hasta 2 proveedores seleccionados y estimaciones transparentes.
 - Crypto core: BTC, ETH, USDT y USDC.
 - Historial corto y previews Pro donde corresponde.
 
@@ -53,7 +57,7 @@ Pro aumenta profundidad y retencion:
 - Historial largo.
 - Import/export CSV.
 - Alertas avanzadas.
-- Comparaciones y sugerencias mas completas.
+- Comparaciones de proveedores completas, estado de quote, perfiles de destinatario completos, OCR scanner y sugerencias mas completas.
 - Mas personalizacion por perfil.
 
 ## Roadmap competitivo
@@ -61,6 +65,8 @@ Pro aumenta profundidad y retencion:
 Benchmark detallado y roadmap por mercado: [PRODUCT_BENCHMARK_ROADMAP.md](PRODUCT_BENCHMARK_ROADMAP.md).
 
 Para competir contra conversores FX, money transfer apps y trackers crypto modernos, FX Always debe priorizar features que aumenten retencion diaria y valor Pro:
+
+Posicionamiento actual: FX Always es una decision layer de FX, no un money transmitter. La app muestra mid-market, fees/spread estimados, provider status, alertas y contexto para decidir mejor antes de convertir, pagar o enviar. Claims recomendados para screenshots de Play: "Know when to convert", "Compare real provider cost", "Scan prices abroad", "Get push alerts", "Track your multi-currency money".
 
 1. Portfolio Pro completo con P&L y allocation. Implementado en primera version.
    - Cash por moneda, crypto holdings y stablecoins.

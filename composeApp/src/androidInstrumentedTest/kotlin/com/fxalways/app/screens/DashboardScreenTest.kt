@@ -37,6 +37,10 @@ class DashboardScreenTest {
         compose.onNodeWithTag("dashboard_crypto_header").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_rate_trust").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_trust_details").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_best_next_action").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_best_action_convert").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_best_action_alert").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_best_action_providers").assertIsDisplayed()
         compose.onNodeWithText("Indicative mid-market rates.", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_snapshot").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_crypto_stablecoins").performScrollTo().assertIsDisplayed()
@@ -113,18 +117,18 @@ class DashboardScreenTest {
         val harness = renderDashboard(isPremium = false, userProfile = UserProfile.Remittances)
 
         compose.onNodeWithText("Send money smarter").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_free_focus").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_pro_focus").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_pair").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_alert").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_free_focus").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_pro_focus").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_pair").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_action").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_workflow").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_workflow_primary").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert_action").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Mid-market + custom cost").assertIsDisplayed()
-        compose.onNodeWithText("Full provider comparison + alerts").assertIsDisplayed()
-        compose.onNodeWithText("USD -> MXN").assertIsDisplayed()
-        compose.onNodeWithText("Target rate above last 7d average").assertIsDisplayed()
+        compose.onNodeWithText("Mid-market + custom cost").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Full provider comparison + alerts").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("USD → MXN").assertCountEquals(3)
+        compose.onNodeWithText("Target rate above last 7d average").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Create suggested alert").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert_action").performClick()
 
@@ -139,18 +143,28 @@ class DashboardScreenTest {
     }
 
     @Test
+    fun providerProfileActionRoutesToConverterWorkflow() {
+        val harness = renderDashboard(isPremium = true, userProfile = UserProfile.Remittances)
+        compose.onNodeWithTag("dashboard_profile_action_button").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(1, harness.converterClicks)
+            assertEquals(0, harness.watchlistClicks)
+        }
+    }
+
+    @Test
     fun proDashboardShowsProProfileState() {
         val harness = renderDashboard(isPremium = true, userProfile = UserProfile.CryptoHolder, suggestedProfileAlertState = QuickAlertState.Active)
 
         compose.onNodeWithText("Crypto portfolio focus").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_free_focus").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_pro_focus").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_pair").assertIsDisplayed()
-        compose.onNodeWithTag("dashboard_profile_alert").assertIsDisplayed()
-        compose.onNodeWithText("BTC, ETH, USDT, USDC").assertIsDisplayed()
-        compose.onNodeWithText("Expanded crypto catalog + holdings").assertIsDisplayed()
-        compose.onNodeWithText("USD -> BTC").assertIsDisplayed()
-        compose.onNodeWithText("BTC/ETH daily move above 3%").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_free_focus").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_pro_focus").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_pair").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_alert").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("BTC, ETH, USDT, USDC").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Expanded crypto catalog + holdings").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("USD → BTC").assertCountEquals(2)
+        compose.onNodeWithText("BTC/ETH daily move above 3%").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Suggested alert active").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert_action").performScrollTo().performClick()
         compose.onAllNodesWithText("Pro").assertCountEquals(2)

@@ -153,6 +153,15 @@ internal fun UserProfile.preset(): ProfilePreset =
         )
     }
 
+internal fun formatProfilePair(pair: String): String {
+    val parts = pair.replace("→", "->").split("->", limit = 2)
+    return if (parts.size == 2) {
+        "${parts[0].trim()} → ${parts[1].trim()}"
+    } else {
+        pair.trim()
+    }
+}
+
 private data class ProfileAction(
     val title: String,
     val subtitle: String,
@@ -232,7 +241,7 @@ internal fun ProfileInsightCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                ProfileMetricTile(ui("Suggested pair"), preset.suggestedPair, preset.suggestedProvider, Modifier.weight(1f).testTag("dashboard_profile_pair"))
+                ProfileMetricTile(ui("Suggested pair"), formatProfilePair(preset.suggestedPair), preset.suggestedProvider, Modifier.weight(1f).testTag("dashboard_profile_pair"))
                 ProfileMetricTile(ui("Suggested alert"), ui(preset.suggestedAlert), ui(preset.suggestedHolding), Modifier.weight(1f).testTag("dashboard_profile_alert"))
             }
             suggestedAlertState?.let { state ->
@@ -269,8 +278,8 @@ internal fun ProfileActionCard(
                         UserProfile.Traveler -> onOpenTraveler()
                         UserProfile.CryptoHolder -> onCreateSuggestedAlert()
                         UserProfile.Remittances,
-                        UserProfile.Freelancer -> onOpenConverter()
-                        UserProfile.Savings -> onOpenWatchlist()
+                        UserProfile.Freelancer,
+                        UserProfile.Savings -> onOpenConverter()
                     }
                 },
             )

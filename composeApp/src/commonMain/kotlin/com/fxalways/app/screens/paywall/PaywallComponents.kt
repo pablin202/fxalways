@@ -27,6 +27,7 @@ import com.fxalways.app.subscription.SubscriptionPlan
 import com.fxalways.app.subscription.SubscriptionPlanKind
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.app.screens.profile.copy
+import com.fxalways.app.screens.profile.formatProfilePair
 import com.fxalways.app.screens.profile.preset
 import com.fxalways.app.screens.shared.privacyPolicyUrl
 import com.fxalways.app.screens.shared.termsOfUseUrl
@@ -85,7 +86,7 @@ fun PaywallScreen(
                 Text(ui(profileCopy.proFocus), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
                 PaywallProfileSignal(
                     label = ui("Suggested pair"),
-                    value = profilePreset.suggestedPair,
+                    value = formatProfilePair(profilePreset.suggestedPair),
                     detail = profilePreset.suggestedProvider,
                 )
                 PaywallProfileSignal(

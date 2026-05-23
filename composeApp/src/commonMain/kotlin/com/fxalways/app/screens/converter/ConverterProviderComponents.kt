@@ -225,6 +225,68 @@ internal fun providerComparisonHistory(
 }
 
 @Composable
+internal fun ProviderRecommendationCard(
+    quote: EstimatedFeeQuote?,
+    potentialSavings: Double,
+    isPremium: Boolean,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier,
+    onOpenPaywall: () -> Unit,
+) {
+    val badge = when {
+        isLoading -> "Refreshing"
+        quote == null -> "Needs amount"
+        quote.sourceStatus == "live" -> "Live quote"
+        quote.sourceStatus == "comparison" -> "Market comparison"
+        quote.sourceStatus == "partner_setup" -> "Partner setup"
+        quote.sourceStatus == "unavailable" -> "Unsupported"
+        else -> "Best estimate"
+    }
+    BentoCard(modifier, padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("PROVIDER RECOMMENDATION"), color = FxTheme.colors.accent)
+                Pill(ui(badge), variant = if (quote?.sourceStatus == "live") PillVariant.Up else PillVariant.Ghost)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetricTile(
+                    ui("Best value"),
+                    quote?.let { ui(it.provider) } ?: ui("None yet"),
+                    quote?.amount ?: ui("Enter amount"),
+                    Modifier.weight(1f).testTag("provider_reco_best_value"),
+                )
+                MetricTile(
+                    ui("Potential savings"),
+                    quote?.let { quote.amount.substringBefore(" ") + " " + formatMoneyValue(potentialSavings) } ?: "--",
+                    quote?.let { ui(it.sourceStatusLabel()) },
+                    Modifier.weight(1f).testTag("provider_reco_savings"),
+                )
+            }
+            KeyValueRow(
+                ui("Why this route"),
+                quote?.let { ui(it.bestFor) } ?: ui("Enter an amount to compare real routes."),
+                quote?.let { "${ui("Delivery")} ${ui(it.deliverySpeed)} · ${ui("Payment")} ${ui(it.paymentMethod)}" }
+                    ?: ui("Provider rates can differ"),
+                modifier = Modifier.testTag("provider_reco_reason"),
+            )
+            KeyValueRow(
+                ui("Quote completeness"),
+                quote?.let { ui(it.sourceStatusLabel()) } ?: ui("Needs amount"),
+                quote?.let { ui(it.sourceMessage) } ?: ui("Compare providers before moving money."),
+                modifier = Modifier.testTag("provider_reco_completeness"),
+            )
+            if (!isPremium) {
+                GhostButton(
+                    text = ui("Pro unlocks every provider route and quote status."),
+                    modifier = Modifier.fillMaxWidth().testTag("provider_reco_upsell"),
+                    onClick = onOpenPaywall,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun ProviderMatrixCard(
     quotes: List<EstimatedFeeQuote>,
     isLoading: Boolean,

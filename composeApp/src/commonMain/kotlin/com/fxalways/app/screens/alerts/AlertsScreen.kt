@@ -160,7 +160,7 @@ fun AlertsScreen(
                 }
 	                Text(ui("Watch breakouts without watching charts."), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 Text(
-	                    ui("Android checks every 15 min when online. iOS saves alerts now; push delivery is next."),
+	                    ui("Server push monitoring is active. Android keeps local 15 min checks as fallback when online."),
                     style = FxTheme.typography.caption,
                     color = FxTheme.colors.textDim,
                     maxLines = 2,
@@ -168,6 +168,11 @@ fun AlertsScreen(
                 )
             }
         }
+        AlertMonitoringStatusCard(
+            activeCount = alertsState.activeCount,
+            isPremium = subscriptionState.isPremium,
+            modifier = Modifier.testTag("alerts_monitoring_status"),
+        )
 
         if (liveState.isInitialRateLoading()) {
             LoadingSkeletonCard(
@@ -322,6 +327,32 @@ fun AlertsScreen(
             currentRatesByCode = currentRatesByCode,
             baseCurrency = liveState.baseCurrency,
         )
+        }
+    }
+}
+
+@Composable
+private fun AlertMonitoringStatusCard(
+    activeCount: Int,
+    isPremium: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    BentoCard(modifier.fillMaxWidth(), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("ALERT MONITORING"))
+                Pill(if (activeCount > 0) ui("Push active") else ui("Ready"), variant = if (activeCount > 0) PillVariant.Up else PillVariant.Ghost)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Pill(ui("Server checks"), variant = PillVariant.Ghost, modifier = Modifier.weight(1f))
+                Pill(ui("Local fallback"), variant = PillVariant.Ghost, modifier = Modifier.weight(1f))
+                Pill(if (isPremium) "FX/ PRO" else "FX/ FREE", variant = PillVariant.Ghost, modifier = Modifier.weight(1f))
+            }
+            Text(
+                ui("Alerts are evaluated on the backend and delivered through FCM when available; local checks remain a safety fallback."),
+                style = FxTheme.typography.caption,
+                color = FxTheme.colors.textDim,
+            )
         }
     }
 }

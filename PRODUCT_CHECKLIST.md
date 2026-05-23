@@ -16,6 +16,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Legal links open `https://fxalways.com/legal?doc=privacy&lang={lang}` and `https://fxalways.com/legal?doc=terms&lang={lang}`.
 - [x] README reflects the competitive feature set and recommended next product block.
 - [x] Product benchmark and cross-market roadmap are documented in `PRODUCT_BENCHMARK_ROADMAP.md`.
+- [x] P7 commercial productization pass is implemented in Home, Convert, Alerts and documentation.
 
 ## Release Blockers
 
@@ -70,6 +71,9 @@ Use this as the release checklist. Mark items only after Android device testing 
 
 - [x] Uses live rates from selected base currency.
 - [x] Fee comparison has Free/Pro gating.
+- [x] Shows an explicit conversion decision card with timing, best route and alert action.
+- [x] Shows a provider recommendation card before the Provider Matrix.
+- [x] Remittance planner supports simple recipient profiles.
 - [x] Amount input is editable and preserves focus with large values.
 - [x] Reverse pair action exists.
 - [x] Free users can edit a limited converter currency list.
@@ -95,6 +99,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 
 - [x] Alerts persist locally on Android/iOS.
 - [x] Free users are limited to 1 alert; Pro is unlimited.
+- [x] Alerts screen states backend/FCM monitoring and Android local fallback clearly.
 - [x] Supports Above/Below target-rate alerts.
 - [x] Supports Daily Move alert type.
 - [x] Supports quick presets: -1%, -0.5%, +0.5%, +1%.
@@ -203,6 +208,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Onboarding asks for Traveler, Crypto holder, Remittances, Freelancer or Savings.
 - [x] Profile persists in settings and backup.
 - [x] Home shows profile-aware Free/Pro focus, suggested pair and suggested alert.
+- [x] Home shows a profile-aware best next action with convert, alert and provider comparison actions.
 - [x] Profile can preselect converter currencies, compare currencies, watchlist, traveler destination and suggested amount when defaults are still untouched.
 - [x] Paywall adapts copy to selected profile.
 - [x] App opens on Rates/Home instead of jumping to Watchlist after profile selection.
@@ -258,4 +264,5 @@ Use this as the release checklist. Mark items only after Android device testing 
 20. [x] P6: add Android OCR price scanner with local-vs-live hidden cost check.
 21. [x] P6: add widget quick setup for rates pair and traveler destination.
 22. [x] P6: harden Android widget layout rendering for Samsung/RemoteViews.
-23. Release: close legal content, store listing, release signing and full instrumentation run.
+23. [x] P7: add commercial decision layer to Home, Convert, Provider Matrix and Alerts.
+24. Release: close legal content, store listing, release signing and full instrumentation run.

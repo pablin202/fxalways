@@ -199,7 +199,7 @@ class PaywallScreenTest {
         compose.onNodeWithTag("paywall_profile_offer").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Send money smarter").assertIsDisplayed()
         compose.onNodeWithText("Full provider comparison + alerts").assertIsDisplayed()
-        compose.onNodeWithText("USD -> MXN").assertIsDisplayed()
+        compose.onNodeWithText("USD → MXN").assertIsDisplayed()
         compose.onNodeWithText("Wise first, compare bank transfer").assertIsDisplayed()
     }
 

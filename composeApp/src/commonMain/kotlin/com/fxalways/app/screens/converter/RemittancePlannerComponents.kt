@@ -24,8 +24,10 @@ internal fun RemittancePlannerCard(
     amountValue: Double,
     quote: EstimatedFeeQuote?,
     cadence: String,
+    recipientProfile: String,
     isPremium: Boolean,
     onCadenceChange: (String) -> Unit,
+    onRecipientProfileChange: (String) -> Unit,
     onOpenPaywall: () -> Unit,
 ) {
     val cadenceMultiplier = when (cadence) {
@@ -50,11 +52,13 @@ internal fun RemittancePlannerCard(
     } else {
         listOf("One-time", "Monthly")
     }
+    val recipientProfiles = listOf("Family support", "Freelance client", "Savings account", "Trip wallet")
+    val visibleRecipientProfiles = recipientProfiles.take(if (isPremium) recipientProfiles.size else 2)
     BentoCard(Modifier.testTag("converter_remittance_planner"), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricTile(
-                    ui("Family route"),
+                    ui(recipientProfile),
                     "${sourceRate.code} → ${targetRate.code}",
                     quote?.provider?.let { ui(it) } ?: ui("based on current best route"),
                     Modifier.weight(1f).testTag("remittance_family_route"),
@@ -65,6 +69,18 @@ internal fun RemittancePlannerCard(
                     ui("based on current best route"),
                     Modifier.weight(1f).testTag("remittance_recipient_estimate"),
                 )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("remittance_recipient_profiles")) {
+                visibleRecipientProfiles.forEach { option ->
+                    Pill(
+                        ui(option),
+                        variant = if (recipientProfile == option) PillVariant.Accent else PillVariant.Ghost,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("remittance_profile_${option.replace(" ", "_")}")
+                            .clickable { onRecipientProfileChange(option) },
+                    )
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 cadenceOptions.forEach { option ->
@@ -87,7 +103,7 @@ internal fun RemittancePlannerCard(
             KeyValueRow(
                 ui("Reminder cadence"),
                 if (isPremium) ui("Before payday") else ui("Monthly"),
-                if (isPremium) "${ui("Family route")} · ${sourceRate.code}/${targetRate.code}" else ui("Pro unlocks reminder planning and extra cadences."),
+                if (isPremium) "${ui(recipientProfile)} · ${sourceRate.code}/${targetRate.code}" else ui("Pro unlocks reminder planning and extra cadences."),
                 modifier = Modifier.testTag("remittance_reminder_cadence"),
             )
             KeyValueRow(
@@ -104,7 +120,7 @@ internal fun RemittancePlannerCard(
             )
             if (!isPremium) {
                 GhostButton(
-                    text = ui("Pro unlocks reminder planning and extra cadences."),
+                    text = ui("Pro unlocks all recipient profiles, reminder planning and extra cadences."),
                     modifier = Modifier.fillMaxWidth().testTag("remittance_upsell"),
                     onClick = onOpenPaywall,
                 )

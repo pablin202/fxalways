@@ -38,6 +38,7 @@ import com.fxalways.app.screens.detail.isInitialRateLoading
 import com.fxalways.app.screens.profile.ProfileActionCard
 import com.fxalways.app.screens.profile.ProfileInsightCard
 import com.fxalways.app.screens.profile.ProfileWorkflowCard
+import com.fxalways.app.screens.profile.formatProfilePair
 import com.fxalways.app.screens.profile.preset
 import com.fxalways.app.screens.shared.ProUpsellCard
 import com.fxalways.designsystem.components.BentoCard
@@ -46,6 +47,8 @@ import com.fxalways.designsystem.components.Eyebrow
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.components.LiveDot
 import com.fxalways.designsystem.components.MetricTile
+import com.fxalways.designsystem.components.Pill
+import com.fxalways.designsystem.components.PillVariant
 import com.fxalways.designsystem.components.ScreenHeader
 import com.fxalways.designsystem.components.SectionLabel
 import com.fxalways.designsystem.components.formatChange
@@ -164,6 +167,14 @@ fun DashboardScreen(
                 modifier = Modifier.testTag("dashboard_market_loading_skeleton"),
             )
         } else {
+            BestNextActionCard(
+                profile = userProfile,
+                suggestedPair = preset.suggestedPair,
+                suggestedAlertState = suggestedProfileAlertState,
+                onOpenConverter = onOpenConverter,
+                onCreateSuggestedAlert = onCreateSuggestedAlert,
+                modifier = Modifier.testTag("dashboard_best_next_action"),
+            )
             ProfileInsightCard(
                 profile = userProfile,
                 isPremium = subscriptionState.isPremium,
@@ -264,6 +275,64 @@ fun DashboardScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BestNextActionCard(
+    profile: UserProfile,
+    suggestedPair: String,
+    suggestedAlertState: QuickAlertState?,
+    onOpenConverter: () -> Unit,
+    onCreateSuggestedAlert: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val title = when (profile) {
+        UserProfile.Traveler -> "Scan a local price before you pay"
+        UserProfile.Remittances -> "Compare the route before sending"
+        UserProfile.Freelancer -> "Check invoice currency before converting"
+        UserProfile.CryptoHolder -> "Review allocation drift before moving"
+        UserProfile.Savings -> "Wait for a stronger conversion window"
+    }
+    val body = when (profile) {
+        UserProfile.Traveler -> "Use the scanner, provider cost and alert together before a card or cash decision."
+        UserProfile.Remittances -> "Start from amount, compare providers, then save the best route or alert."
+        UserProfile.Freelancer -> "Keep invoice currency, fees and timing visible before accepting a rate."
+        UserProfile.CryptoHolder -> "Check the watchlist move and rebalance only when the signal is strong."
+        UserProfile.Savings -> "Track your main pair and let alerts catch a better entry."
+    }
+    val alertLabel = when (suggestedAlertState) {
+        QuickAlertState.Active -> "Alert active"
+        QuickAlertState.Paused -> "Resume alert"
+        QuickAlertState.Locked -> "Pro alert"
+        else -> "Set next alert"
+    }
+    BentoCard(modifier, padding = 14.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("BEST NEXT ACTION"), color = FxTheme.colors.accent)
+                Pill(formatProfilePair(suggestedPair), variant = PillVariant.Ghost)
+            }
+            Text(ui(title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Text(ui(body), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton(
+                    text = ui("Convert now"),
+                    modifier = Modifier.weight(1f).testTag("dashboard_best_action_convert"),
+                    onClick = onOpenConverter,
+                )
+                GhostButton(
+                    text = ui(alertLabel),
+                    modifier = Modifier.weight(1f).testTag("dashboard_best_action_alert"),
+                    onClick = onCreateSuggestedAlert,
+                )
+            }
+            GhostButton(
+                text = ui("Compare providers"),
+                modifier = Modifier.fillMaxWidth().testTag("dashboard_best_action_providers"),
+                onClick = onOpenConverter,
+            )
         }
     }
 }

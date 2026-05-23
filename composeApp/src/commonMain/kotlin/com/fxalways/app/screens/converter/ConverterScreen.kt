@@ -89,6 +89,7 @@ fun ConverterScreen(
     var customFeePercentText by remember { mutableStateOf("1.00") }
     var customMarkupPercentText by remember { mutableStateOf("2.50") }
     var remittanceCadence by remember { mutableStateOf("Monthly") }
+    var recipientProfile by remember { mutableStateOf("Family support") }
     var transferPurpose by remember { mutableStateOf("Family") }
     var transferDecisionHistory by remember { mutableStateOf(emptyList<TransferDecision>()) }
     var scannedPriceText by remember { mutableStateOf("25") }
@@ -263,6 +264,17 @@ fun ConverterScreen(
             },
             onEditList = { showCurrencyPicker = true },
         )
+        ConversionDecisionCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            convertedAmount = convertedAmount(amountValue, sourceRate, targetRate),
+            timingInsight = timingInsight,
+            bestRoute = bestRealWorldQuote ?: bestQuote,
+            isPremium = subscriptionState.isPremium,
+            onCreateAlert = { onCreateTransferAlert(sourceRate, targetRate, transferAlertTarget(sourceRate, targetRate)) },
+            onOpenPaywall = onOpenPaywall,
+        )
         SectionLabel("${ui("SMART TIMING")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
         SmartTimingCard(
             insight = timingInsight,
@@ -320,8 +332,10 @@ fun ConverterScreen(
             amountValue = amountValue,
             quote = bestRealWorldQuote ?: bestQuote,
             cadence = remittanceCadence,
+            recipientProfile = recipientProfile,
             isPremium = subscriptionState.isPremium,
             onCadenceChange = { remittanceCadence = it },
+            onRecipientProfileChange = { recipientProfile = it },
             onOpenPaywall = onOpenPaywall,
         )
         SectionLabel("${ui("TRANSFER INTENT")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
@@ -357,6 +371,14 @@ fun ConverterScreen(
                 access.canUseFullFeeComparison -> ui("Estimated")
                 else -> ui("Preview")
             },
+        )
+        ProviderRecommendationCard(
+            quote = bestRealWorldQuote ?: bestQuote,
+            potentialSavings = potentialSavings,
+            isPremium = subscriptionState.isPremium,
+            isLoading = providerQuotesLoading,
+            modifier = Modifier.testTag("converter_provider_recommendation"),
+            onOpenPaywall = onOpenPaywall,
         )
         ProviderMatrixCard(
             quotes = feeQuotes.filterNot { it.provider == "Mid-market" },

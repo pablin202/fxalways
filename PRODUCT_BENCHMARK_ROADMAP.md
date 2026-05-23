@@ -145,6 +145,16 @@ These items should move FX Always from a polished converter into a product that 
 - Widget quick setup in Settings: users can pin the rates widget pair and traveler widget destination, then refresh Android widgets immediately. UI-tested.
 - Widget rendering hardening for Samsung/RemoteViews: solid backgrounds, explicit padding and safe widget view classes.
 
+## P7
+
+- Commercial productization pass against Wise, XE, Revolut, WorldRemit/Remitly-style remittance flows and emerging-market wallet behavior.
+- Home now surfaces one profile-aware "best next action" so the product feels like a decision assistant instead of only a rates board.
+- Convert now starts from a decision card: amount, timing signal, best route, provider trust state and alert action are visible before deeper analysis.
+- Provider Matrix now has a recommendation layer above the table with best value, quote completeness, live/comparison/partner/estimate status and Pro unlock copy.
+- Alerts now explain production monitoring honestly: backend evaluation with FCM delivery where available, plus Android local checks as fallback.
+- Remittance planning now includes simple recipient profiles so repeat family, client, savings and trip flows are easier to understand.
+- Store screenshot claim set should lead with: "Know when to convert", "Compare real provider cost", "Scan prices abroad", "Get push alerts", "Track your multi-currency money".
+
 ## Immediate Implementation Order
 
 1. Strengthen Convert with an explicit fee/spread reality check card.
