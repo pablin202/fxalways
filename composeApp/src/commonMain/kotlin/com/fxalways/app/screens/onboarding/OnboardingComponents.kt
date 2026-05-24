@@ -14,6 +14,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fxalways.app.DeviceLocale
@@ -95,18 +97,19 @@ fun OnboardingScreen(onComplete: (UserProfile) -> Unit = {}) {
     val pagerState = rememberPagerState(pageCount = { steps.size })
     val scope = rememberCoroutineScope()
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(FxTheme.colors.bg),
     ) {
+        val compactHeight = maxHeight < 720.dp
         GridBg(Modifier.matchParentSize().alpha(0.10f), radialMask = false)
         GridBg(Modifier.matchParentSize().alpha(0.30f))
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .safeContentPadding()
-                .padding(horizontal = 18.dp, vertical = 18.dp),
+                .padding(horizontal = 18.dp, vertical = if (compactHeight) 12.dp else 18.dp),
         ) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -133,12 +136,13 @@ fun OnboardingScreen(onComplete: (UserProfile) -> Unit = {}) {
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 key = { it },
             ) { page ->
-                OnboardingPage(step = steps[page])
+                OnboardingPage(step = steps[page], compactHeight = compactHeight)
             }
 
             OnboardingProfilePicker(
                 selectedProfile = selectedProfile,
                 onProfileSelected = { selectedProfile = it },
+                compactHeight = compactHeight,
             )
 
             Row(
@@ -182,15 +186,16 @@ fun OnboardingScreen(onComplete: (UserProfile) -> Unit = {}) {
 private fun OnboardingProfilePicker(
     selectedProfile: UserProfile,
     onProfileSelected: (UserProfile) -> Unit,
+    compactHeight: Boolean,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(FxTheme.colors.bg)
             .testTag("onboarding_profile_picker")
-            .padding(top = 8.dp)
-            .padding(bottom = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(top = if (compactHeight) 6.dp else 8.dp)
+            .padding(bottom = if (compactHeight) 8.dp else 12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compactHeight) 6.dp else 8.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Eyebrow(ui("Choose your focus"), color = FxTheme.colors.accent)
@@ -207,7 +212,7 @@ private fun OnboardingProfilePicker(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
+                            .height(if (compactHeight) 40.dp else 44.dp)
                             .testTag("onboarding_profile_${profile.name}")
                             .clip(FxTheme.shapes.field)
                             .background(if (selectedProfile == profile) FxTheme.colors.accentSoft else FxTheme.colors.surface2)
@@ -239,32 +244,32 @@ private fun OnboardingProfilePicker(
 }
 
 @Composable
-private fun OnboardingPage(step: OnboardingStep) {
+private fun OnboardingPage(step: OnboardingStep, compactHeight: Boolean) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.Start,
     ) {
-        Spacer(Modifier.height(34.dp))
+        Spacer(Modifier.height(if (compactHeight) 12.dp else 34.dp))
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            OnboardingGlyph(step.glyph)
+            OnboardingGlyph(step.glyph, size = if (compactHeight) 168.dp else 246.dp)
         }
-        Spacer(Modifier.height(26.dp))
+        Spacer(Modifier.height(if (compactHeight) 14.dp else 26.dp))
         Eyebrow(step.tag, color = FxTheme.colors.accent)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(if (compactHeight) 8.dp else 10.dp))
         Text(step.title, style = FxTheme.typography.titleXL, color = FxTheme.colors.text)
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(if (compactHeight) 10.dp else 14.dp))
         Text(
             step.body,
             style = FxTheme.typography.body,
             color = FxTheme.colors.textDim,
-            maxLines = 3,
+            maxLines = if (compactHeight) 2 else 3,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
 @Composable
-private fun OnboardingGlyph(glyph: String) {
+private fun OnboardingGlyph(glyph: String, size: Dp) {
     val transition = rememberInfiniteTransition(label = "onboarding-glyph")
     val rotation by transition.animateFloat(
         initialValue = 0f,
@@ -276,26 +281,26 @@ private fun OnboardingGlyph(glyph: String) {
         label = "onboarding-glyph-rotation",
     )
     Box(
-        modifier = Modifier.size(246.dp),
+        modifier = Modifier.size(size),
         contentAlignment = Alignment.Center,
     ) {
         GridBg(Modifier.fillMaxSize().alpha(0.36f))
         Box(
             modifier = Modifier
-                .size(168.dp)
+                .size(size * 0.68f)
                 .clip(CircleShape)
                 .border(1.dp, FxTheme.colors.accentLine, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .size(132.dp)
+                    .size(size * 0.54f)
                     .border(1.dp, FxTheme.colors.accentLine, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     glyph,
-                    style = FxTheme.typography.display.copy(fontSize = 72.sp),
+                    style = FxTheme.typography.display.copy(fontSize = if (size < 200.dp) 52.sp else 72.sp),
                     color = FxTheme.colors.accent,
                     modifier = Modifier.graphicsLayer { rotationZ = rotation },
                 )
