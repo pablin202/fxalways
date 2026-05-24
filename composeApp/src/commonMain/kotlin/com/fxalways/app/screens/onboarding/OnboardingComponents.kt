@@ -49,7 +49,6 @@ import com.fxalways.app.DeviceLocale
 import com.fxalways.app.UserProfile
 import com.fxalways.designsystem.components.Eyebrow
 import com.fxalways.designsystem.components.GridBg
-import com.fxalways.designsystem.components.LiveDot
 import com.fxalways.designsystem.components.Pill
 import com.fxalways.designsystem.components.PillVariant
 import com.fxalways.designsystem.theme.FxTheme
@@ -60,15 +59,12 @@ private data class OnboardingStep(
     val title: String,
     val body: String,
     val glyph: String,
-    val signal: String,
 )
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(onComplete: (UserProfile) -> Unit = {}) {
     val localCurrency = remember { DeviceLocale.currencyCode }
-    val localRegion = remember { DeviceLocale.region.uppercase() }
-    val localLanguage = remember { DeviceLocale.language.uppercase() }
     var selectedProfile by remember { mutableStateOf(UserProfile.Traveler) }
     val steps = listOf(
         OnboardingStep(
@@ -76,28 +72,24 @@ fun OnboardingScreen(onComplete: (UserProfile) -> Unit = {}) {
             title = ui("Fresh rates.\nAlways ready."),
             body = ui("The app starts with your local base currency and keeps rates refreshed from the backend."),
             glyph = "⌖",
-            signal = "${ui("Local base")} · $localCurrency",
         ),
         OnboardingStep(
             tag = ui("STEP 02 · FEES THAT MATTER"),
             title = ui("See the cost\nbefore you send."),
             body = ui("Compare estimated provider fees by amount and currency pair, then unlock deeper comparisons with Pro."),
             glyph = "⬢",
-            signal = "${ui("Converter")} · ${ui("fees")} · Pro",
         ),
         OnboardingStep(
             tag = ui("STEP 03 · TRAVEL READY"),
             title = ui("Your wallet\nfollows the map."),
             body = ui("Auto-detect local currency on landing. Offline-safe last rates. Per-country tipping built in."),
             glyph = "◐",
-            signal = "${ui("Region")} · $localRegion",
         ),
         OnboardingStep(
             tag = ui("STEP 04 · BACKUP"),
             title = ui("Start private.\nRestore later."),
             body = ui("A guest backup is created silently. You can connect Google on Android or Apple on iOS when you want portability."),
             glyph = "∞",
-            signal = "${ui("Language")} · $localLanguage",
         ),
     )
     val pagerState = rememberPagerState(pageCount = { steps.size })
@@ -252,35 +244,22 @@ private fun OnboardingPage(step: OnboardingStep) {
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.Start,
     ) {
-        Spacer(Modifier.weight(0.18f))
+        Spacer(Modifier.height(34.dp))
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             OnboardingGlyph(step.glyph)
         }
-        Spacer(Modifier.weight(0.18f))
+        Spacer(Modifier.height(26.dp))
         Eyebrow(step.tag, color = FxTheme.colors.accent)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
         Text(step.title, style = FxTheme.typography.titleXL, color = FxTheme.colors.text)
-        Spacer(Modifier.height(18.dp))
-        Text(step.body, style = FxTheme.typography.body, color = FxTheme.colors.textDim)
-        Spacer(Modifier.height(18.dp))
-        OnboardingSignal(step.signal)
-        Spacer(Modifier.weight(0.22f))
-    }
-}
-
-@Composable
-private fun OnboardingSignal(text: String) {
-    Row(
-        modifier = Modifier
-            .clip(FxTheme.shapes.field)
-            .background(FxTheme.colors.surface2)
-            .border(1.dp, FxTheme.colors.border, FxTheme.shapes.field)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LiveDot(Modifier.size(8.dp))
-        Text(text, style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+        Spacer(Modifier.height(14.dp))
+        Text(
+            step.body,
+            style = FxTheme.typography.body,
+            color = FxTheme.colors.textDim,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -297,26 +276,26 @@ private fun OnboardingGlyph(glyph: String) {
         label = "onboarding-glyph-rotation",
     )
     Box(
-        modifier = Modifier.size(300.dp),
+        modifier = Modifier.size(246.dp),
         contentAlignment = Alignment.Center,
     ) {
         GridBg(Modifier.fillMaxSize().alpha(0.36f))
         Box(
             modifier = Modifier
-                .size(200.dp)
+                .size(168.dp)
                 .clip(CircleShape)
                 .border(1.dp, FxTheme.colors.accentLine, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Box(
                 modifier = Modifier
-                    .size(156.dp)
+                    .size(132.dp)
                     .border(1.dp, FxTheme.colors.accentLine, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     glyph,
-                    style = FxTheme.typography.display.copy(fontSize = 86.sp),
+                    style = FxTheme.typography.display.copy(fontSize = 72.sp),
                     color = FxTheme.colors.accent,
                     modifier = Modifier.graphicsLayer { rotationZ = rotation },
                 )

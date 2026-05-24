@@ -47,6 +47,21 @@ class OnboardingScreenTest {
         compose.runOnIdle { assertEquals(listOf(UserProfile.Remittances), completedProfiles) }
     }
 
+    @Test
+    fun profilePickerDoesNotCoverStepBodyOnLongCopyPages() {
+        renderOnboarding {}
+
+        compose.onNodeWithText("Next  →").performClick()
+        compose.onNodeWithText("Compare estimated provider fees", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("onboarding_profile_picker").assertIsDisplayed()
+
+        repeat(2) {
+            compose.onNodeWithText("Next  →").performClick()
+        }
+        compose.onNodeWithText("A guest backup is created silently", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("onboarding_profile_picker").assertIsDisplayed()
+    }
+
     private fun renderOnboarding(onComplete: (UserProfile) -> Unit) {
         AndroidAppContext.init(compose.activity)
         compose.setContent {
