@@ -7,6 +7,8 @@ internal val uiTranslationsESExtendedApp = mapOf(
         "monthly plan controls" to "controles del plan mensual",
         "PRICE TARGETS" to "OBJETIVOS DE PRECIO",
         "Watch breakouts without watching charts." to "Sigue rupturas sin mirar gráficos.",
+        "Know when a rate is worth acting on." to "Sabe cuándo conviene actuar sobre un rate.",
+        "We monitor your saved pairs and notify you when your target is ready." to "Monitoreamos tus pares guardados y te avisamos cuando tu objetivo está listo.",
         "Android checks every 15 min when online. iOS saves alerts now; push delivery is next." to "Android revisa cada 15 min online. iOS guarda alertas ahora; push viene después.",
         "NOTIFICATION DIGEST" to "DIGEST DE NOTIFICACIONES",
         "Daily" to "Diario",

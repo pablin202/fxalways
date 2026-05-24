@@ -42,43 +42,47 @@ fun MoreScreen(
     onOpenPaywall: () -> Unit,
 ) {
     ScreenScaffold {
-        ScreenHeader(ui("More"), sub = ui("TOOLS"), subtitle = ui("Travel, preferences and account"))
+        ScreenHeader(ui("More"), sub = ui("TOOLS"), subtitle = ui("Traveler tools, alerts and account"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 MoreRow(
                     icon = MoreFeatureIcon.Traveler,
                     title = ui("Traveler"),
-                    subtitle = ui("Local cheat sheets and offline rates"),
+                    subtitle = ui("Tipping, cash/card and local prices"),
                     onClick = onOpenTraveler,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.News,
                     title = ui("News"),
-                    subtitle = ui("Market stream and sentiment"),
+                    subtitle = ui("Market context when you need it"),
                     onClick = onOpenNews,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Alerts,
                     title = ui("Alerts"),
-                    subtitle = "$alertsCount ${ui("active")} · ${ui("price targets and breakouts")}",
+                    subtitle = "$alertsCount ${ui("active")} · ${ui("know when a rate is worth acting on")}",
                     onClick = onOpenAlerts,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Watchlist,
                     title = ui("Watchlist"),
-                    subtitle = "$watchlistCount ${ui("currencies")} · ${ui("custom tracking")}",
+                    subtitle = "$watchlistCount ${ui("currencies")} · ${ui("track the currencies you care about")}",
                     onClick = onOpenWatchlist,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Settings,
                     title = ui("Settings"),
-                    subtitle = ui("Theme mode, base currency and version"),
+                    subtitle = ui("Account, language, providers and widgets"),
                     onClick = onOpenSettings,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Pro,
                     title = if (subscriptionState.isPremium) ui("FX/ Pro active") else ui("Upgrade to Pro"),
-                    subtitle = subscriptionState.localizedProStatusLabel(),
+                    subtitle = if (subscriptionState.isPremium) {
+                        subscriptionState.localizedProStatusLabel()
+                    } else {
+                        ui("Unlock OCR, alerts and full provider comparison")
+                    },
                     onClick = onOpenPaywall,
                 )
             }

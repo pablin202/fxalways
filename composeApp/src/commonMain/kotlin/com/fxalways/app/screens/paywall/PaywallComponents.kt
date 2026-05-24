@@ -59,6 +59,20 @@ fun PaywallScreen(
         ?: subscriptionState.plans.first()
     val profileCopy = userProfile.copy()
     val profilePreset = userProfile.preset()
+    val heroTitle = when (userProfile) {
+        UserProfile.Traveler -> "Travel with fewer money surprises."
+        UserProfile.Remittances -> "Send money with clearer costs."
+        UserProfile.Freelancer -> "Protect every cross-border payment."
+        UserProfile.CryptoHolder -> "Track currency moves before they matter."
+        UserProfile.Savings -> "Keep long-term currency risk visible."
+    }
+    val heroBody = when (userProfile) {
+        UserProfile.Traveler -> "Pro adds live OCR, full traveler tools, unlimited alerts and deeper provider comparison."
+        UserProfile.Remittances -> "Pro expands provider routes, recurring alerts and delivery context before you send."
+        UserProfile.Freelancer -> "Pro keeps invoice currency, provider loss, alerts and longer history visible."
+        UserProfile.CryptoHolder -> "Pro unlocks more tracked assets, alerts, comparison and longer history."
+        UserProfile.Savings -> "Pro adds unlimited watchlists, longer history and alerts across every currency you track."
+    }
     LaunchedEffect(selectedPlan.kind) {
         selectedKind = selectedPlan.kind
     }
@@ -68,9 +82,9 @@ fun PaywallScreen(
             Text("×", style = FxTheme.typography.titleL, color = FxTheme.colors.textDim, modifier = Modifier.testTag("paywall_close").clickable(onClick = onClose))
         }
         Eyebrow("FX/ PRO", color = FxTheme.colors.accent)
-        Text(ui("The full picture.\nMore rates. More context."), style = FxTheme.typography.display, color = FxTheme.colors.text)
+        Text(ui(heroTitle), style = FxTheme.typography.display, color = FxTheme.colors.text)
         Text(
-            ui("Monthly or annual Pro unlocks unlimited alerts, deeper history, expanded comparisons, traveler tools and watchlists."),
+            ui(heroBody),
             style = FxTheme.typography.body,
             color = FxTheme.colors.textDim,
         )

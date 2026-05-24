@@ -32,7 +32,7 @@ class DashboardScreenTest {
 
     @Test
     fun freeDashboardShowsCryptoSnapshotAndFocusedAssetList() {
-        val harness = renderDashboard(isPremium = false)
+        val harness = renderDashboard(isPremium = false, userProfile = UserProfile.CryptoHolder)
 
         compose.onNodeWithTag("dashboard_crypto_header").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_rate_trust").performScrollTo().assertIsDisplayed()
@@ -99,6 +99,7 @@ class DashboardScreenTest {
     fun loadingDashboardShowsSkeletonAndTrustStatus() {
         renderDashboard(
             isPremium = false,
+            userProfile = UserProfile.CryptoHolder,
             liveState = testLiveRatesState().copy(isLoading = true, isLive = false, updatedLabel = "loading"),
         )
 
@@ -142,8 +143,27 @@ class DashboardScreenTest {
     @Test
     fun travelerProfileActionRoutesToTravelerWorkflow() {
         val travelerHarness = renderDashboard(isPremium = true, userProfile = UserProfile.Traveler)
-        compose.onNodeWithTag("dashboard_profile_action_button").performScrollTo().performClick()
+        compose.onNodeWithTag("dashboard_traveler_open").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(1, travelerHarness.travelerClicks) }
+    }
+
+    @Test
+    fun travelerDashboardPrioritizesTripToolsOverMarketDashboard() {
+        val harness = renderDashboard(isPremium = false, userProfile = UserProfile.Traveler)
+
+        compose.onNodeWithTag("dashboard_traveler_overview").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_traveler_context").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("LOCAL ETIQUETTE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_traveler_convert").performScrollTo().performClick()
+        compose.onNodeWithTag("dashboard_traveler_alert").performScrollTo().performClick()
+        compose.onAllNodesWithTag("dashboard_trust_details").assertCountEquals(0)
+        compose.onAllNodesWithTag("dashboard_crypto_snapshot").assertCountEquals(0)
+        compose.onAllNodesWithTag("dashboard_profile_workflow").assertCountEquals(0)
+
+        compose.runOnIdle {
+            assertEquals(1, harness.converterClicks)
+            assertEquals(1, harness.suggestedAlertClicks)
+        }
     }
 
     @Test
@@ -194,7 +214,7 @@ class DashboardScreenTest {
     private fun renderDashboard(
         isPremium: Boolean,
         trackedCurrencyCodes: List<String> = emptyList(),
-        userProfile: UserProfile = UserProfile.Traveler,
+        userProfile: UserProfile = UserProfile.CryptoHolder,
         suggestedProfileAlertState: QuickAlertState? = QuickAlertState.Create,
         liveState: LiveRatesState = testLiveRatesState(),
     ): DashboardHarness {

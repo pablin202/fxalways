@@ -31,7 +31,8 @@ class PaywallScreenTest {
     fun freePaywallShowsConcreteFreeVsProValueAndStartsSelectedPlan() {
         val harness = renderPaywall(SubscriptionState(isPremium = false))
 
-        compose.onNodeWithText("The full picture.", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Travel with fewer money surprises.").assertIsDisplayed()
+        compose.onNodeWithText("Pro adds live OCR", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("paywall_benefits").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_comparison").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_feature_alerts").performScrollTo().assertIsDisplayed()

@@ -149,10 +149,12 @@ fun DashboardScreen(
             liveState = liveState,
             modifier = Modifier.testTag("dashboard_rate_trust"),
         )
-        RateTrustDetailsCard(
-            liveState = liveState,
-            modifier = Modifier.testTag("dashboard_trust_details"),
-        )
+        if (userProfile != UserProfile.Traveler) {
+            RateTrustDetailsCard(
+                liveState = liveState,
+                modifier = Modifier.testTag("dashboard_trust_details"),
+            )
+        }
         if (liveState.errorMessage != null) {
             Text(ui("Live backend unavailable · using cached UI data"), style = FxTheme.typography.captionMono, color = FxTheme.colors.down)
         }
@@ -168,126 +170,187 @@ fun DashboardScreen(
                 modifier = Modifier.testTag("dashboard_market_loading_skeleton"),
             )
         } else {
-            BestNextActionCard(
-                profile = userProfile,
-                suggestedPair = preset.suggestedPair,
-                suggestedAlertState = suggestedProfileAlertState,
-                onOpenConverter = onOpenConverter,
-                onCreateSuggestedAlert = onCreateSuggestedAlert,
-                modifier = Modifier.testTag("dashboard_best_next_action"),
-            )
-            RetentionLoopCard(
-                profile = userProfile,
-                suggestedPair = preset.suggestedPair,
-                suggestedAmount = preset.suggestedAmount,
-                watchedRate = visibleFavorites.firstOrNull() ?: liveState.favorites.firstOrNull(),
-                suggestedAlertState = suggestedProfileAlertState,
-                onOpenConverter = onOpenConverter,
-                onCreateSuggestedAlert = onCreateSuggestedAlert,
-                onOpenTraveler = onOpenTraveler,
-                onOpenWatchlist = onOpenWatchlist,
-                modifier = Modifier.testTag("dashboard_retention_loop"),
-            )
-            ProfileInsightCard(
-                profile = userProfile,
-                isPremium = subscriptionState.isPremium,
-                suggestedAlertState = suggestedProfileAlertState,
-                modifier = Modifier.testTag("dashboard_profile_card"),
-                onCreateSuggestedAlert = onCreateSuggestedAlert,
-            )
-            ProfileActionCard(
-                profile = userProfile,
-                onCreateSuggestedAlert = onCreateSuggestedAlert,
-                onOpenConverter = onOpenConverter,
-                onOpenTraveler = onOpenTraveler,
-                onOpenWatchlist = onOpenWatchlist,
-            )
-            ProfileWorkflowCard(
-                profile = userProfile,
-                isPremium = subscriptionState.isPremium,
-            )
-            HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetricTile(ui("VOLATILITY · 24H"), "0.42%", null, Modifier.weight(1f).height(76.dp))
-                liveState.favorites.firstOrNull { it.code == "GBP" }?.let { MetricTile("GBP · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                liveState.favorites.firstOrNull { it.code == "JPY" }?.let { MetricTile("JPY · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
-                liveState.favorites.firstOrNull { it.code == "MXN" }?.let { MetricTile("MXN · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
-            }
-            SectionLabel(
-                "${ui("FAVORITES")} · ${visibleFavorites.size}",
-                right = if (subscriptionState.isPremium) ui("Edit") else ui("Pro"),
-                onRightClick = onEditFavorites,
-            )
-            BentoCard(padding = 0.dp) {
-                Column {
-                    visibleFavorites.forEach { rate ->
-                        CurrencyRow(localizedRate(rate), dense = true, onClick = { onOpenDetail(rate) })
+            if (userProfile == UserProfile.Traveler) {
+                TravelerHomeOverviewCard(
+                    watchedRate = visibleFavorites.firstOrNull() ?: liveState.favorites.firstOrNull(),
+                    onOpenTraveler = onOpenTraveler,
+                    onOpenConverter = onOpenConverter,
+                    onCreateSuggestedAlert = onCreateSuggestedAlert,
+                )
+                HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
+                SectionLabel(ui("TRAVEL RATES"), right = ui("Traveler"), onRightClick = onOpenTraveler)
+                BentoCard(padding = 0.dp) {
+                    Column {
+                        visibleFavorites.take(3).forEach { rate ->
+                            CurrencyRow(localizedRate(rate), dense = true, onClick = { onOpenDetail(rate) })
+                        }
                     }
                 }
-            }
-            if (!subscriptionState.isPremium) {
-                ProUpsellCard(
-                    title = ui("Unlock full watchlists"),
-                    subtitle = ui("Pro adds more favorites, extended history, alerts and complete fee comparison."),
-                    onClick = onOpenPaywall,
-                )
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp).testTag("dashboard_crypto_header"),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Eyebrow(ui("CRYPTO MARKET"))
-                Text(
-                    ui("See all"),
-                    style = FxTheme.typography.captionMono,
-                    color = FxTheme.colors.accent,
-                    modifier = Modifier.testTag("dashboard_crypto_see_all").clickable(onClick = onSeeAllCrypto),
-                )
-            }
-            if (visibleCrypto.isEmpty()) {
-                BentoCard(Modifier.testTag("dashboard_crypto_empty"), padding = 12.dp) {
-                    Text(ui("No crypto rates yet"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.textDim)
+                BentoCard(Modifier.testTag("dashboard_traveler_context"), padding = 12.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        KeyValueRow(ui("LOCAL ETIQUETTE"), ui("TIPPING"), ui("Country guide"))
+                        KeyValueRow(ui("PRICE SCANNER"), ui("OCR beta"), ui("Hidden-cost check"))
+                        KeyValueRow(ui("CHEAT SHEET"), ui("Offline snapshot"), ui("Cash/card decision"))
+                    }
                 }
             } else {
-                BentoCard(Modifier.testTag("dashboard_crypto_snapshot"), padding = 14.dp) {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            CryptoMetricTile(ui("Crypto"), "${visibleCrypto.size}", ui("major crypto assets"), Modifier.weight(1f).testTag("dashboard_crypto_count"))
-                            CryptoMetricTile(ui("24H avg"), formatChange(cryptoAverageMove), strongestCrypto?.code, Modifier.weight(1f).testTag("dashboard_crypto_avg"))
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            CryptoMetricTile(ui("Stablecoins"), "$stablecoinCount", "USDT / USDC", Modifier.weight(1f).testTag("dashboard_crypto_stablecoins"))
-                            CryptoMetricTile(ui("Strongest"), strongestCrypto?.code ?: "--", strongestCrypto?.let { formatChange(it.change24h) }, Modifier.weight(1f).testTag("dashboard_crypto_strongest"))
-                        }
-                        Text(ui("live crypto movers"), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
-                    }
+                BestNextActionCard(
+                    profile = userProfile,
+                    suggestedPair = preset.suggestedPair,
+                    suggestedAlertState = suggestedProfileAlertState,
+                    onOpenConverter = onOpenConverter,
+                    onCreateSuggestedAlert = onCreateSuggestedAlert,
+                    modifier = Modifier.testTag("dashboard_best_next_action"),
+                )
+                RetentionLoopCard(
+                    profile = userProfile,
+                    suggestedPair = preset.suggestedPair,
+                    suggestedAmount = preset.suggestedAmount,
+                    watchedRate = visibleFavorites.firstOrNull() ?: liveState.favorites.firstOrNull(),
+                    suggestedAlertState = suggestedProfileAlertState,
+                    onOpenConverter = onOpenConverter,
+                    onCreateSuggestedAlert = onCreateSuggestedAlert,
+                    onOpenTraveler = onOpenTraveler,
+                    onOpenWatchlist = onOpenWatchlist,
+                    modifier = Modifier.testTag("dashboard_retention_loop"),
+                )
+                ProfileInsightCard(
+                    profile = userProfile,
+                    isPremium = subscriptionState.isPremium,
+                    suggestedAlertState = suggestedProfileAlertState,
+                    modifier = Modifier.testTag("dashboard_profile_card"),
+                    onCreateSuggestedAlert = onCreateSuggestedAlert,
+                )
+                ProfileActionCard(
+                    profile = userProfile,
+                    onCreateSuggestedAlert = onCreateSuggestedAlert,
+                    onOpenConverter = onOpenConverter,
+                    onOpenTraveler = onOpenTraveler,
+                    onOpenWatchlist = onOpenWatchlist,
+                )
+                ProfileWorkflowCard(
+                    profile = userProfile,
+                    isPremium = subscriptionState.isPremium,
+                )
+                HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetricTile(ui("VOLATILITY · 24H"), "0.42%", null, Modifier.weight(1f).height(76.dp))
+                    liveState.favorites.firstOrNull { it.code == "GBP" }?.let { MetricTile("GBP · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
                 }
-                BentoCard(Modifier.testTag("dashboard_crypto_list"), padding = 0.dp) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    liveState.favorites.firstOrNull { it.code == "JPY" }?.let { MetricTile("JPY · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
+                    liveState.favorites.firstOrNull { it.code == "MXN" }?.let { MetricTile("MXN · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
+                }
+                SectionLabel(
+                    "${ui("FAVORITES")} · ${visibleFavorites.size}",
+                    right = if (subscriptionState.isPremium) ui("Edit") else ui("Pro"),
+                    onRightClick = onEditFavorites,
+                )
+                BentoCard(padding = 0.dp) {
                     Column {
-                        visibleCrypto.forEach { rate ->
-                            CryptoAssetRow(rate, liveState.baseCurrency, onClick = { onOpenDetail(rate) })
+                        visibleFavorites.forEach { rate ->
+                            CurrencyRow(localizedRate(rate), dense = true, onClick = { onOpenDetail(rate) })
                         }
                     }
                 }
-                if (!subscriptionState.isPremium && liveState.crypto.size > visibleCrypto.size) {
-                    Box(Modifier.testTag("dashboard_crypto_upsell")) {
-                        ProUpsellCard(
-                            title = ui("Unlock full watchlists"),
-                            subtitle = ui("Pro shows the full crypto board across compare, alerts and portfolio."),
-                            onClick = onOpenPaywall,
-                        )
+                if (!subscriptionState.isPremium) {
+                    ProUpsellCard(
+                        title = ui("Unlock full watchlists"),
+                        subtitle = ui("Pro adds more favorites, extended history, alerts and complete fee comparison."),
+                        onClick = onOpenPaywall,
+                    )
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp).testTag("dashboard_crypto_header"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Eyebrow(ui("CRYPTO MARKET"))
+                    Text(
+                        ui("See all"),
+                        style = FxTheme.typography.captionMono,
+                        color = FxTheme.colors.accent,
+                        modifier = Modifier.testTag("dashboard_crypto_see_all").clickable(onClick = onSeeAllCrypto),
+                    )
+                }
+                if (visibleCrypto.isEmpty()) {
+                    BentoCard(Modifier.testTag("dashboard_crypto_empty"), padding = 12.dp) {
+                        Text(ui("No crypto rates yet"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.textDim)
+                    }
+                } else {
+                    BentoCard(Modifier.testTag("dashboard_crypto_snapshot"), padding = 14.dp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                CryptoMetricTile(ui("Crypto"), "${visibleCrypto.size}", ui("major crypto assets"), Modifier.weight(1f).testTag("dashboard_crypto_count"))
+                                CryptoMetricTile(ui("24H avg"), formatChange(cryptoAverageMove), strongestCrypto?.code, Modifier.weight(1f).testTag("dashboard_crypto_avg"))
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                CryptoMetricTile(ui("Stablecoins"), "$stablecoinCount", "USDT / USDC", Modifier.weight(1f).testTag("dashboard_crypto_stablecoins"))
+                                CryptoMetricTile(ui("Strongest"), strongestCrypto?.code ?: "--", strongestCrypto?.let { formatChange(it.change24h) }, Modifier.weight(1f).testTag("dashboard_crypto_strongest"))
+                            }
+                            Text(ui("live crypto movers"), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                        }
+                    }
+                    BentoCard(Modifier.testTag("dashboard_crypto_list"), padding = 0.dp) {
+                        Column {
+                            visibleCrypto.forEach { rate ->
+                                CryptoAssetRow(rate, liveState.baseCurrency, onClick = { onOpenDetail(rate) })
+                            }
+                        }
+                    }
+                    if (!subscriptionState.isPremium && liveState.crypto.size > visibleCrypto.size) {
+                        Box(Modifier.testTag("dashboard_crypto_upsell")) {
+                            ProUpsellCard(
+                                title = ui("Unlock full watchlists"),
+                                subtitle = ui("Pro shows the full crypto board across compare, alerts and portfolio."),
+                                onClick = onOpenPaywall,
+                            )
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TravelerHomeOverviewCard(
+    watchedRate: FxRate?,
+    onOpenTraveler: () -> Unit,
+    onOpenConverter: () -> Unit,
+    onCreateSuggestedAlert: () -> Unit,
+) {
+    BentoCard(Modifier.testTag("dashboard_traveler_overview"), padding = 14.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(ui("TRAVEL READY"), color = FxTheme.colors.accent)
+                Pill(watchedRate?.code ?: ui("Traveler"), variant = PillVariant.Accent)
+            }
+            Text(ui("Check the local price before you pay."), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+            Text(ui("Tipping, cash/card guidance and price checks are one tap away."), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton(
+                    text = ui("Open traveler tools"),
+                    modifier = Modifier.weight(1f).testTag("dashboard_traveler_open"),
+                    onClick = onOpenTraveler,
+                )
+                GhostButton(
+                    text = ui("Convert now"),
+                    modifier = Modifier.weight(1f).testTag("dashboard_traveler_convert"),
+                    onClick = onOpenConverter,
+                )
+            }
+            GhostButton(
+                text = ui("Set travel alert"),
+                modifier = Modifier.fillMaxWidth().testTag("dashboard_traveler_alert"),
+                onClick = onCreateSuggestedAlert,
+            )
         }
     }
 }

@@ -71,7 +71,7 @@ fun AlertsScreen(
 ) {
     val access = subscriptionState.featureAccess()
     val canCreate = canCreateAlert(subscriptionState, alertsState.alerts.size)
-	    val limitLabel = if (access.hasUnlimitedAlerts) ui("Unlimited") else "${alertsState.alerts.size}/${access.alertLimit}"
+    val limitLabel = if (access.hasUnlimitedAlerts) ui("Unlimited") else "${alertsState.alerts.size}/${access.alertLimit}"
     val alertRates = remember(
         liveState.baseCurrency,
         liveState.favorites,
@@ -120,15 +120,15 @@ fun AlertsScreen(
         kind = selectedKind,
     )
     val canCreateOrUpdate = canCreate || matchingCustomAlert != null
-	    var customAlertFeedback by remember { mutableStateOf<String?>(null) }
+    var customAlertFeedback by remember { mutableStateOf<String?>(null) }
     var customAlertError by remember { mutableStateOf<String?>(null) }
-	    val existingAlertReactivatedCopy = ui("Existing alert reactivated")
-	    val alertCreatedCopy = ui("alert created")
+    val existingAlertReactivatedCopy = ui("Existing alert reactivated")
+    val alertCreatedCopy = ui("alert created")
     val invalidTargetCopy = ui("Enter a target above 0")
-	    LaunchedEffect(liveState.baseCurrency, selectedRate.code, selectedDirection, selectedKind, targetText) {
-	        customAlertFeedback = null
+    LaunchedEffect(liveState.baseCurrency, selectedRate.code, selectedDirection, selectedKind, targetText) {
+        customAlertFeedback = null
         customAlertError = null
-	    }
+    }
     if (showAlertCurrencyPicker) {
         CurrencyPickerSheet(
             title = ui("Choose alert pair"),
@@ -147,20 +147,20 @@ fun AlertsScreen(
     }
     ScreenScaffold {
         if (onBack != null) {
-	            BackNavButton(label = ui("More"), onClick = onBack)
+            BackNavButton(label = ui("More"), onClick = onBack)
         }
-	        ScreenHeader(ui("Alerts"), sub = ui("PRICE TARGETS"), subtitle = "$limitLabel ${ui("alerts")} · ${liveState.baseCurrency} ${ui("base")}")
+        ScreenHeader(ui("Alerts"), sub = ui("PRICE TARGETS"), subtitle = "$limitLabel ${ui("alerts")} · ${liveState.baseCurrency} ${ui("base")}")
 
         BentoCard(Modifier.fillMaxWidth().heightIn(min = 144.dp), padding = 14.dp) {
             GridBg(Modifier.matchParentSize().alpha(0.12f))
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-	                    Eyebrow(if (subscriptionState.isPremium) "FX/ PRO" else "FX/ FREE")
-	                    Pill("${alertsState.activeCount} ${ui("active")}", variant = if (alertsState.activeCount > 0) PillVariant.Up else PillVariant.Ghost)
+                    Eyebrow(if (subscriptionState.isPremium) "FX/ PRO" else "FX/ FREE")
+                    Pill("${alertsState.activeCount} ${ui("active")}", variant = if (alertsState.activeCount > 0) PillVariant.Up else PillVariant.Ghost)
                 }
-	                Text(ui("Watch breakouts without watching charts."), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                Text(ui("Know when a rate is worth acting on."), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 Text(
-	                    ui("Server push monitoring is active. Android keeps local 15 min checks as fallback when online."),
+                    ui("We monitor your saved pairs and notify you when your target is ready."),
                     style = FxTheme.typography.caption,
                     color = FxTheme.colors.textDim,
                     maxLines = 2,
