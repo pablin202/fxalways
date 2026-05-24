@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.fxalways.app.AppSettingsPrefs
 import com.fxalways.app.ThemeMode
+import com.fxalways.app.UserProfile
 import com.fxalways.app.UserBackupState
 import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.data.AlertsStore
@@ -27,8 +28,8 @@ import com.fxalways.observability.Observability
 fun FxAppShell() {
     val initialProfile = remember { AppSettingsPrefs.userProfile() }
     val initialPreset = remember(initialProfile) { initialProfile.preset() }
-    var selectedTab by remember { mutableStateOf(FxTab.Rates) }
-    var moreRoute by remember { mutableStateOf(MoreRoute.Menu) }
+    var selectedTab by remember { mutableStateOf(if (initialProfile == UserProfile.Traveler) FxTab.More else FxTab.Rates) }
+    var moreRoute by remember { mutableStateOf(if (initialProfile == UserProfile.Traveler) MoreRoute.Traveler else MoreRoute.Menu) }
     var detailRate by remember { mutableStateOf<FxRate?>(null) }
     var detailNewsStory by remember { mutableStateOf<NewsStory?>(null) }
     var showPaywall by remember { mutableStateOf(false) }

@@ -81,9 +81,11 @@ class CompareScreenTest {
         val harness = renderCompare(isPremium = true, selectedCodes = listOf("EUR", "GBP", "JPY"))
 
         compose.onNodeWithTag("compare_tile_GBP").performScrollTo().performClick()
+        compose.onNodeWithTag("compare_metric_weakest").performScrollTo().performClick()
+        compose.onNodeWithTag("compare_board").performScrollTo().performClick()
         compose.onNodeWithTag("compare_open_strongest").performScrollTo().performClick()
 
-        compose.runOnIdle { assertEquals(listOf("GBP", "JPY"), harness.openedDetailCodes) }
+        compose.runOnIdle { assertEquals(listOf("GBP", "CHF", "JPY", "JPY"), harness.openedDetailCodes) }
     }
 
     @Test

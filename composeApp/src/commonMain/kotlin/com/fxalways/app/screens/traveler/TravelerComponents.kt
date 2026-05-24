@@ -137,7 +137,14 @@ fun TravelerScreen(
                 modifier = Modifier.testTag("traveler_destination_loading_skeleton"),
             )
         } else {
-            BentoCard(Modifier.fillMaxWidth().height(156.dp).testTag("traveler_hero"), padding = 14.dp) {
+            BentoCard(
+                Modifier
+                    .fillMaxWidth()
+                    .height(156.dp)
+                    .testTag("traveler_hero")
+                    .clickable { showDestinationPicker = true },
+                padding = 14.dp,
+            ) {
                 GridBg(Modifier.matchParentSize().alpha(0.18f))
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -151,6 +158,8 @@ fun TravelerScreen(
                     Text("${formatChange(selectedRate.change24h)} ${ui("today")} · ${ui("mid-market")}", style = FxTheme.typography.captionMono, color = if (selectedRate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down)
                 }
             }
+
+            TravelerLocalEtiquetteSection(destination)
 
             SectionLabel(ui("DESTINATION"))
             BentoCard(padding = 12.dp) {
@@ -171,21 +180,12 @@ fun TravelerScreen(
                     }
                     SettingChoiceRow(
                         title = ui("More destinations"),
-                        subtitle = if (access.canUseAdvancedTraveler) {
-                            "${ui("Search")} ${travelRates.size} ${ui("supported live currencies")}"
-                        } else {
-                            "${ui("Free shows")} ${visibleDestinations.size}; ${ui("Pro unlocks every supported currency")}"
-                        },
+                        subtitle = "${ui("Search")} ${travelRates.size} ${ui("supported live currencies")}",
                         selected = false,
                         actionLabel = ui("more +"),
                         modifier = Modifier.testTag("traveler_more_destinations"),
-                        onClick = {
-                            if (access.canUseAdvancedTraveler) showDestinationPicker = true else onOpenPaywall()
-                        },
+                        onClick = { showDestinationPicker = true },
                     )
-                    if (!access.canUseAdvancedTraveler && travelRates.size > visibleDestinations.size) {
-                        Text(ui("Free keeps the destination picker focused on the most common travel currencies."), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
-                    }
                 }
             }
 
@@ -323,23 +323,6 @@ fun TravelerScreen(
                     onClick = onOpenPaywall,
                 )
             }
-            SectionLabel(ui("LOCAL ETIQUETTE"))
-            Row(Modifier.testTag("traveler_local_etiquette"), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricTile(ui("TIPPING"), destination.tipping, ui(destination.tippingNote), Modifier.weight(1f))
-                MetricTile(ui("TAX"), ui(destination.tax), ui(destination.taxNote), Modifier.weight(1f))
-            }
-            BentoTile(Modifier.fillMaxWidth().testTag("traveler_payment_rails")) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column {
-                        Eyebrow(ui("CARDS ACCEPTED"))
-                        Spacer(Modifier.height(10.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            destination.paymentRails.forEach { Pill(it) }
-                        }
-                    }
-                    Text(ui(destination.cashNote), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
-                }
-            }
             SectionLabel(ui("LOCAL PRICE GUIDE"), right = ui("Estimates"))
             BentoCard(Modifier.testTag("traveler_price_guide"), padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -349,6 +332,27 @@ fun TravelerScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TravelerLocalEtiquetteSection(destination: TravelerDestination) {
+    SectionLabel(ui("LOCAL ETIQUETTE"), right = destination.city)
+    Row(Modifier.testTag("traveler_local_etiquette"), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        MetricTile(ui("TIPPING"), destination.tipping, ui(destination.tippingNote), Modifier.weight(1f))
+        MetricTile(ui("TAX"), ui(destination.tax), ui(destination.taxNote), Modifier.weight(1f))
+    }
+    BentoTile(Modifier.fillMaxWidth().testTag("traveler_payment_rails")) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Eyebrow(ui("CARDS ACCEPTED"))
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    destination.paymentRails.forEach { Pill(it) }
+                }
+            }
+            Text(ui(destination.cashNote), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
         }
     }
 }

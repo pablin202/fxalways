@@ -77,8 +77,8 @@ fun SettingsScreen(
     }
     if (showBaseCurrencyPicker) {
         CurrencyPickerSheet(
-	            title = ui("Choose base currency"),
-	            subtitle = "${fullBaseCurrencies.size} ${ui("supported live currencies")}",
+            title = ui("Choose base currency"),
+            subtitle = "${fullBaseCurrencies.size} ${ui("supported live currencies")}",
             currencies = fullBaseCurrencies,
             selectedCode = baseCurrency,
             onDismiss = { showBaseCurrencyPicker = false },
@@ -180,12 +180,8 @@ fun SettingsScreen(
             baseCurrency = baseCurrency,
             baseCurrencies = baseCurrencies,
             fullBaseCurrencies = fullBaseCurrencies,
-            canUseAllBaseCurrencies = canUseAllBaseCurrencies,
             onBaseCurrencyChange = onBaseCurrencyChange,
-            onMoreCurrencies = {
-                if (canUseAllBaseCurrencies) showBaseCurrencyPicker = true else onOpenPaywall()
-            },
-            onOpenPaywall = onOpenPaywall,
+            onMoreCurrencies = { showBaseCurrencyPicker = true },
         )
 
         if (PlatformConfig.isDebug) {
@@ -203,7 +199,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(8.dp))
         Text(
-	            "${ui("Version")} ${PlatformConfig.versionName}",
+            "${ui("Version")} ${PlatformConfig.versionName}",
             style = FxTheme.typography.captionMono,
             color = FxTheme.colors.textFaint,
             modifier = Modifier.fillMaxWidth(),

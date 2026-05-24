@@ -128,16 +128,30 @@ fun CompareScreen(
                     ui("STRONGEST"),
                     bestRate?.code ?: "--",
                     bestRate?.let { formatChange(it.change24h) } ?: ui("No data"),
-                    Modifier.weight(1f).height(76.dp),
+                    Modifier
+                        .weight(1f)
+                        .height(76.dp)
+                        .testTag("compare_metric_strongest")
+                        .clickable(enabled = bestRate != null) { bestRate?.let(onOpenDetail) },
                 )
                 MetricTile(
                     ui("WEAKEST"),
                     weakestRate?.code ?: "--",
                     weakestRate?.let { formatChange(it.change24h) } ?: ui("No data"),
-                    Modifier.weight(1f).height(76.dp),
+                    Modifier
+                        .weight(1f)
+                        .height(76.dp)
+                        .testTag("compare_metric_weakest")
+                        .clickable(enabled = weakestRate != null) { weakestRate?.let(onOpenDetail) },
                 )
             }
-            BentoCard(Modifier.fillMaxWidth().testTag("compare_board"), padding = 12.dp) {
+            BentoCard(
+                Modifier
+                    .fillMaxWidth()
+                    .testTag("compare_board")
+                    .clickable(enabled = bestRate != null) { bestRate?.let(onOpenDetail) },
+                padding = 12.dp,
+            ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Eyebrow(ui("COMPARE BOARD"))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

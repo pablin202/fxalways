@@ -184,15 +184,17 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun freeBaseCurrencyMoreOpensPaywallInsteadOfFullPicker() {
+    fun freeBaseCurrencyMoreOpensFullPickerWithoutPaywall() {
         val harness = renderSettings(subscriptionState = SubscriptionState(isPremium = false))
 
         compose.onNodeWithTag("settings_base_EUR").performScrollTo().performClick()
         compose.onNodeWithTag("settings_more_base_currencies").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_picker_search").performTextReplacement("mex")
+        compose.onNodeWithTag("currency_picker_MXN").assertIsDisplayed().performClick()
 
         compose.runOnIdle {
-            assertEquals("EUR", harness.baseCurrency)
-            assertEquals(1, harness.paywallClicks)
+            assertEquals("MXN", harness.baseCurrency)
+            assertEquals(0, harness.paywallClicks)
         }
     }
 

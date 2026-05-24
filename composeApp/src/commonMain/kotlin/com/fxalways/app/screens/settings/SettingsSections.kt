@@ -16,7 +16,6 @@ import com.fxalways.app.ThemeMode
 import com.fxalways.app.UserBackupState
 import com.fxalways.app.UserProfile
 import com.fxalways.app.screens.profile.copy
-import com.fxalways.app.screens.shared.ProUpsellCard
 import com.fxalways.app.screens.shared.privacyPolicyUrl
 import com.fxalways.app.screens.shared.subscriptionManagementUrl
 import com.fxalways.app.screens.shared.termsOfUseUrl
@@ -221,10 +220,8 @@ internal fun BaseCurrencySettingsSection(
     baseCurrency: String,
     baseCurrencies: List<FxRate>,
     fullBaseCurrencies: List<FxRate>,
-    canUseAllBaseCurrencies: Boolean,
     onBaseCurrencyChange: (String) -> Unit,
     onMoreCurrencies: () -> Unit,
-    onOpenPaywall: () -> Unit,
 ) {
     SectionLabel(copy.baseCurrency)
     BentoCard(padding = 8.dp) {
@@ -240,24 +237,13 @@ internal fun BaseCurrencySettingsSection(
             }
             SettingChoiceRow(
                 title = copy.moreCurrencies,
-                subtitle = if (canUseAllBaseCurrencies) {
-                    "${copy.search} ${fullBaseCurrencies.size}"
-                } else {
-                    "${copy.freeIncludes} ${baseCurrencies.size}; Pro ${copy.unlocks} ${fullBaseCurrencies.size}"
-                },
+                subtitle = "${copy.search} ${fullBaseCurrencies.size}",
                 selected = false,
                 actionLabel = ui("more +"),
                 modifier = Modifier.testTag("settings_more_base_currencies"),
                 onClick = onMoreCurrencies,
             )
         }
-    }
-    if (!canUseAllBaseCurrencies && baseCurrencies.size < fullBaseCurrencies.size) {
-        ProUpsellCard(
-            title = copy.unlockAllBaseCurrencies,
-            subtitle = "${copy.freeIncludes} ${baseCurrencies.size}; Pro ${copy.unlocks} ${fullBaseCurrencies.size} ${copy.supportedBaseCurrencies}.",
-            onClick = onOpenPaywall,
-        )
     }
 }
 

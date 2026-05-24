@@ -39,6 +39,9 @@ class TravelerScreenTest {
 
         compose.onNodeWithText("TOKYO · JPY").assertIsDisplayed()
         compose.onNodeWithTag("traveler_hero").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_local_etiquette").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("TIPPING").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_payment_rails").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_destination_JPY").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_offline_pack").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("DCC rule").assertIsDisplayed()
@@ -56,14 +59,18 @@ class TravelerScreenTest {
         compose.onNodeWithText("Unlock full traveler mode").performScrollTo().assertIsDisplayed()
 
         compose.onNodeWithTag("traveler_more_destinations").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+        compose.onNodeWithTag("currency_picker_AUD").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals("AUD", harness.selectedCurrency)
+            assertEquals(0, harness.paywallClicks)
+        }
     }
 
     @Test
     fun proUserOpensDestinationPickerAndSelectsAnySupportedCurrency() {
         val harness = renderTraveler(isPremium = true, selectedCurrency = "JPY", budgetBase = 250.0)
 
-        compose.onNodeWithTag("traveler_more_destinations").performScrollTo().performClick()
+        compose.onNodeWithTag("traveler_hero").performScrollTo().performClick()
         compose.onNodeWithTag("currency_picker_AUD").performScrollTo().performClick()
 
         compose.onNodeWithText("SYDNEY · AUD").assertIsDisplayed()
