@@ -152,6 +152,29 @@ REVENUECAT_API_KEY=goog_...
 
 No commitear keystores ni passwords. El repo ignora `*.jks`, `*.keystore`, `release-key.properties`, `keystore.properties` y `local.properties`.
 
+### Release automatico en GitHub
+
+Cada push a `main` ejecuta:
+
+1. Build Android debug + APK de instrumented tests.
+2. Firebase Test Lab en SmallPhone, MediumPhone y MediumTablet.
+3. Si Test Lab pasa, build del AAB release firmado para Play.
+4. Publicacion del AAB y su `.sha256` en GitHub Releases.
+
+La version automatica usa:
+
+- `versionCode = github.run_number`
+- `versionName = 1.0.<github.run_number>`
+- tag `android-v1.0.<github.run_number>`
+
+Secrets requeridos en GitHub:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+- `REVENUECAT_API_KEY`
+
 ### VersionCode automatico
 
 `composeApp/build.gradle.kts` lee:
