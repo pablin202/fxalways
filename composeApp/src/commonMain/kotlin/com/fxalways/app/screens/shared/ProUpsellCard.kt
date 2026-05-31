@@ -2,10 +2,13 @@ package com.fxalways.app.screens.shared
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,18 +25,25 @@ internal fun ProUpsellCard(title: String, subtitle: String, modifier: Modifier =
     BentoCard(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card)
+            .border(1.dp, FxTheme.colors.crypto.copy(alpha = 0.42f), FxTheme.shapes.card)
             .clickable(onClick = onClick),
         padding = 12.dp,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             FlagDot("∞", CurrencyKind.Crypto, 34.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Eyebrow("FX/ PRO", color = FxTheme.colors.accent)
+                Eyebrow("FX/ PRO", color = FxTheme.colors.crypto)
                 Text(title, style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 Text(subtitle, style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
             }
-            Text("→", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+            Box(
+                modifier = Modifier
+                    .clip(FxTheme.shapes.pill)
+                    .border(1.dp, FxTheme.colors.crypto.copy(alpha = 0.48f), FxTheme.shapes.pill)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text("PRO →", style = FxTheme.typography.captionMono, color = FxTheme.colors.crypto)
+            }
         }
     }
 }

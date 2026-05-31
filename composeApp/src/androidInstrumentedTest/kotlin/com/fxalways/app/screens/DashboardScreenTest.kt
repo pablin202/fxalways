@@ -154,6 +154,7 @@ class DashboardScreenTest {
         compose.onNodeWithTag("dashboard_traveler_overview").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_traveler_context").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("LOCAL ETIQUETTE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_traveler_context").performScrollTo().performClick()
         compose.onNodeWithTag("dashboard_traveler_convert").performScrollTo().performClick()
         compose.onNodeWithTag("dashboard_traveler_alert").performScrollTo().performClick()
         compose.onAllNodesWithTag("dashboard_trust_details").assertCountEquals(0)
@@ -162,6 +163,7 @@ class DashboardScreenTest {
 
         compose.runOnIdle {
             assertEquals(1, harness.converterClicks)
+            assertEquals(1, harness.travelerClicks)
             assertEquals(1, harness.suggestedAlertClicks)
         }
     }

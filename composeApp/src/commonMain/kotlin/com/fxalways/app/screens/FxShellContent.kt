@@ -1,12 +1,22 @@
 package com.fxalways.app.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import com.fxalways.app.ExternalUrlOpener
 import com.fxalways.app.ThemeMode
 import com.fxalways.app.UserBackupState
@@ -178,6 +188,14 @@ internal fun FxShellContent(
                     onLastSyncedAtMillisChange = onLastSyncedAtMillisChange,
                 )
             }
+            if (startupReady && !subscriptionState.isPremium && !showPaywall && detailNewsStory == null && detailRate == null) {
+                FloatingProCta(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 12.dp),
+                    onClick = { onOpenPaywall("global_pro_cta") },
+                )
+            }
         }
         if (startupReady) {
             FxBottomBar(
@@ -187,5 +205,23 @@ internal fun FxShellContent(
                 iconKeys = FxTab.entries.map { it.label },
             )
         }
+    }
+}
+
+@Composable
+internal fun FloatingProCta(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(
+        modifier = modifier
+            .testTag("global_go_pro_cta")
+            .clip(FxTheme.shapes.pill)
+            .background(FxTheme.colors.crypto.copy(alpha = 0.18f))
+            .border(1.dp, FxTheme.colors.crypto.copy(alpha = 0.55f), FxTheme.shapes.pill)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("PRO", style = FxTheme.typography.captionMono, color = FxTheme.colors.crypto)
+        Text(ui("Upgrade to Pro"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
     }
 }

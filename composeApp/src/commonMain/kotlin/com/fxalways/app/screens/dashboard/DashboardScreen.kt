@@ -186,8 +186,17 @@ fun DashboardScreen(
                         }
                     }
                 }
-                BentoCard(Modifier.testTag("dashboard_traveler_context"), padding = 12.dp) {
+                BentoCard(
+                    Modifier
+                        .testTag("dashboard_traveler_context")
+                        .clickable(onClick = onOpenTraveler),
+                    padding = 12.dp,
+                ) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Eyebrow(ui("TOOLS"), color = FxTheme.colors.accent)
+                            Text("→", style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint)
+                        }
                         KeyValueRow(ui("LOCAL ETIQUETTE"), ui("TIPPING"), ui("Country guide"))
                         KeyValueRow(ui("PRICE SCANNER"), ui("OCR beta"), ui("Hidden-cost check"))
                         KeyValueRow(ui("CHEAT SHEET"), ui("Offline snapshot"), ui("Cash/card decision"))

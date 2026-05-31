@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
@@ -26,6 +27,7 @@ import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.theme.FxTheme
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import org.junit.Rule
 import org.junit.runner.RunWith
 
@@ -110,6 +112,21 @@ class LaunchSmokeScreenTest {
         compose.runOnIdle { route = SmokeRoute.Paywall }
         compose.onNodeWithTag("paywall_plan_Monthly").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("paywall_plan_Yearly").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun floatingProCtaIsVisibleAndClickableForFreeUsers() {
+        var clicks = 0
+        AndroidAppContext.init(compose.activity)
+        compose.setContent {
+            FxTheme {
+                FloatingProCta(onClick = { clicks += 1 })
+            }
+        }
+
+        compose.onNodeWithTag("global_go_pro_cta").assertIsDisplayed().performClick()
+
+        compose.runOnIdle { assertEquals(1, clicks) }
     }
 
     private enum class SmokeRoute {
