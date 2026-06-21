@@ -158,6 +158,7 @@ internal fun FxMoreRoute(
                 AppSettingsPrefs.setTravelerBudgetBase(amount)
             },
             onOpenPaywall = { onOpenPaywall("traveler") },
+            onOpenPaywallSource = onOpenPaywall,
         )
         MoreRoute.Settings -> FxSettingsRoute(
             themeMode = themeMode,

@@ -1,6 +1,6 @@
 # FX Always Product Benchmark And Roadmap
 
-Last updated: 2026-05-20
+Last updated: 2026-06-21
 
 ## Positioning
 
@@ -162,11 +162,329 @@ These items should move FX Always from a polished converter into a product that 
 - Watchlist groups now explain why each bucket exists, so tracked currencies feel intentional instead of arbitrary.
 - The loop strategy is: profile -> daily brief -> best action -> alert/watch/provider decision -> return trigger.
 
+## P9: Tester Feedback Product Reset
+
+Goal: align the in-app experience with the Play Store/onboarding promise for regular travelers while keeping advanced FX workflows available for users who explicitly choose them.
+
+Primary tester feedback driving this phase:
+- The app store and intro feel like a regular traveler product, but the app still shows too many numbers and advanced FX concepts too early.
+- Tipping culture and local travel guidance are promised, but not easy enough to find.
+- Some UI surfaces look clickable but do not perform an action.
+- Compare creates frustration when the user expects a simple travel workflow.
+- Free countries/destinations should be user-selected, not a fixed list that may exclude a tester's actual trip.
+- Upgrade prompts are visible, but the actual upgrade path must stay obvious and visually distinct.
+
+Closed-testing report summary, 14-day cycle ending 2026-06-20:
+- Overall rating: 4.6/5.
+- Stability: no crashes, freezes or major performance issues observed.
+- Strongest positives: multi-currency conversion, Traveler utilities, Compare, Watchlists, Alerts, News integration, Crypto monitoring and offline cached rates.
+- Repeated improvement themes: first-time guidance, information density, Pro banner frequency, historical chart ranges, favorite currency management, news personalization, richer travel planning, smaller secondary text and weak News empty state.
+- Production implication: no technical blocker was identified, but Android production should wait until the core clarity issues below are completed because they directly affect activation and retention.
+
+### Closed-Test Production Gate
+
+Android production is considered ready after:
+1. P9.0 Traveler Home Simple is implemented and UI-tested.
+2. P9.1 Tipping and Local Rules are one-tap visible from Traveler Home.
+3. P9.2 Clickability Contract audit is completed for Home, Traveler, Convert, Compare, More and Settings.
+4. P9.3 Free destination choice is implemented or explicitly deferred with product rationale.
+5. P9.5 upgrade surfaces are cleaned up so Pro remains easy to find without obstructing core information.
+6. News empty state and Conversion Decision visibility are improved.
+7. Small secondary text is reviewed on S25 and a small-phone viewport.
+8. Full Android instrumentation passes on S25.
+9. Firebase Test Lab passes on the configured phone/tablet matrix.
+10. Manual QA is completed for Free and Pro.
+
+### P9.0: Traveler Home Simple
+
+Problem: Traveler users should not land on a trader-style rates board.
+
+Implementation steps:
+1. Add a Traveler-specific home layout branch inside the existing dashboard route.
+2. Move four primary action tiles above market data:
+   - Check a price.
+   - Convert money.
+   - Tipping and local rules.
+   - Trip budget.
+3. Keep the main rate card, but move detailed market movement and compare-heavy content below the primary actions.
+4. Replace technical subtitles with task-based copy:
+   - "Will this cost more than expected?"
+   - "How much is this in my money?"
+   - "Should I pay in local currency?"
+5. Keep advanced charts and market detail available through Detail/Compare, not as the first Traveler impression.
+
+Free behavior:
+- 1 active trip.
+- 1 selected destination.
+- Basic local rules.
+- Manual price check.
+- Manual converter.
+
+Pro behavior:
+- Multiple trips.
+- Offline country packs.
+- OCR/live price scanner.
+- Full local rules and cost templates.
+- Unlimited destinations.
+
+Acceptance criteria:
+- A Traveler user can identify the three most relevant actions within 5 seconds of Home loading.
+- Tipping/local rules are visible above the fold on common phone sizes.
+- Home still exposes a clear rate, but not more than one dense market block before the first action tiles.
+- Free users see one clear Pro entry point without repeated upsell cards stacking above the first task.
+
+UI tests:
+- Traveler Home renders action tiles before market detail.
+- Each Traveler action tile is clickable and routes to the expected screen/section.
+- Free and Pro render different limits without changing tile order.
+- Small-phone screenshot/layout test verifies no clipped action copy.
+
+### P9.1: Tipping And Local Rules As A Core Feature
+
+Problem: local travel guidance is a promised feature but currently feels secondary.
+
+Implementation steps:
+1. Promote local rules to a first-class Traveler section and Home tile.
+2. Structure each destination guide into:
+   - Tipping.
+   - Card acceptance.
+   - Cash needed.
+   - ATM warning.
+   - Dynamic currency conversion warning.
+   - Local price norms.
+3. Add a compact "before you pay" card for the current destination:
+   - Pay in local currency.
+   - Avoid airport cash unless urgent.
+   - Check terminal rate against snapshot.
+4. Add data-source metadata: "guide estimate", "cached", "updated".
+5. Keep country-level rules in Free and richer city/offline detail in Pro.
+
+Acceptance criteria:
+- A user can reach tipping guidance from Home in one tap.
+- Guidance uses traveler language, not FX trader language.
+- Empty/missing guide states explain what is unavailable and keep the layout full width.
+- All copy goes through i18n.
+
+UI tests:
+- Traveler Home local rules tile opens Traveler/local rules content.
+- Missing destination data shows a full-width empty state.
+- Free shows country basics; Pro shows expanded offline/city/cost details.
+
+### P9.2: Clickability Contract
+
+Problem: visually rich cards create frustration if they look tappable but do nothing.
+
+Implementation steps:
+1. Audit every `BentoCard`, `BentoTile`, `MetricTile`, `Pill` and row in:
+   - Home.
+   - Traveler.
+   - Convert.
+   - Compare.
+   - More.
+   - Settings.
+2. Classify each component:
+   - Action: must be clickable, route or mutate state.
+   - Detail: must open a detail screen/sheet.
+   - Selection: must visibly toggle selected state.
+   - Static: must not look like a button and should not show arrows/hover affordance.
+3. Add arrows only when the surface navigates.
+4. Add disabled styling only when the surface is intentionally unavailable.
+5. Add test tags for newly actionable cards.
+
+Acceptance criteria:
+- No arrow appears on a non-clickable surface.
+- No highlighted chip/card is static unless it clearly reads as status.
+- Compare cards that look actionable either open detail or use static visual styling.
+- Free locked rows open paywall or show a disabled reason consistently.
+
+UI tests:
+- Action cards perform clicks and update route/counter.
+- Static informational cards have no click side effects.
+- Free locked items open paywall once, without duplicate events.
+
+### P9.3: Free Country/Destination Choice
+
+Problem: fixed free countries feel unfair when the user's real country is not included.
+
+Implementation steps:
+1. Replace fixed free destination assumptions with user-selected free destination slots.
+2. Let Free choose 1 or 2 destinations depending on final monetization policy.
+3. Persist selected free destinations in backup settings.
+4. Let Pro select unlimited supported destinations.
+5. Update destination picker copy from "Free shows 8" to "Free includes your selected destination".
+6. Add migration fallback for existing users:
+   - keep current traveler destination as the first free slot.
+   - if missing, default from locale/base currency.
+
+Free behavior:
+- User chooses destination slot(s).
+- Non-selected destinations show preview/paywall.
+- Existing selected destination stays available.
+
+Pro behavior:
+- All supported destinations unlocked.
+- Multiple trip/destination workflows available.
+
+Acceptance criteria:
+- A Free tester can pick their actual country if supported.
+- Changing selected destination does not break trip budget, widgets or offline snapshot.
+- Paywall copy frames Pro as "all destinations and trips", not "your country is blocked".
+
+UI tests:
+- Free destination slot can be selected and persists.
+- Free blocked destination opens paywall.
+- Pro destination picker shows all supported destinations.
+- Migration keeps previous traveler currency/destination.
+
+### P9.4: Profile-Based Information Density
+
+Problem: one UI density cannot serve travelers, remittance users, freelancers and savings users equally.
+
+Implementation steps:
+1. Define a density policy per profile:
+   - Traveler: task-first, low numbers.
+   - Remittances: recipient amount, provider route, alert.
+   - Freelancer: invoice amount, fee/spread, timing.
+   - Savings: long-term exposure, alert, watchlist.
+   - Crypto holder: market movement, portfolio, alerts.
+2. Apply the policy to Home ordering and copy.
+3. Keep tab structure stable; change what each profile sees first.
+4. Add profile-specific "why return" card text.
+5. Avoid showing Compare as a primary Traveler action unless the user explicitly opens it.
+
+Acceptance criteria:
+- Traveler first screen reads like a travel-money assistant.
+- Remittance first screen reads like a send-money decision assistant.
+- Freelancer first screen reads like invoice/payment protection.
+- No profile loses access to existing advanced tools.
+
+UI tests:
+- Home ordering differs by profile.
+- Each profile's first CTA routes to the intended workflow.
+- Profile switching in Settings updates Home ordering after returning.
+
+### P9.5: Upgrade Strategy After Feedback
+
+Problem: upgrade prompts exist, but the product needs a cleaner Free-vs-Pro story.
+
+Implementation steps:
+1. Keep the global floating Pro CTA for Free users.
+2. Reduce repeated inline upsells above primary task content.
+3. Make Free useful before asking for Pro:
+   - chosen destination.
+   - basic local rules.
+   - manual conversion.
+   - limited alert/check.
+4. Make Pro concrete:
+   - OCR/live scanner.
+   - all destinations.
+   - offline packs.
+   - provider comparison.
+   - unlimited alerts.
+   - multiple trips/watchlists.
+5. Add paywall entry analytics source labels:
+   - `global_pro_cta`
+   - `traveler_destination_lock`
+   - `ocr_lock`
+   - `provider_lock`
+   - `alert_limit`
+
+Acceptance criteria:
+- Paywall is reachable within one tap from any locked Pro feature.
+- First Traveler viewport has at most one upgrade surface.
+- Upgrade button color remains visually distinct from normal orange actions.
+- Paywall copy matches the user's selected profile.
+
+UI tests:
+- Global Pro CTA opens paywall for Free and is hidden for Pro.
+- Locked Traveler destination opens paywall with source label.
+- OCR lock opens paywall.
+- Pro user does not see Free upgrade CTA.
+
+### P9.6: Closed-Test Polish Items
+
+Problem: the 14-day closed test found no stability blockers, but it identified several small product issues that should be fixed before Android production because they affect perceived polish.
+
+Implementation steps:
+1. Improve News empty state:
+   - Explain that no stories are currently available.
+   - Add refresh guidance.
+   - Keep the empty-state card full width.
+   - Avoid sample/fake news in production unless clearly labelled as examples.
+2. Improve Conversion Decision visibility:
+   - Move the primary recommendation above supporting analysis.
+   - Use a compact action row for "Create alert" and "Compare route".
+   - Keep explanatory text visible without requiring deep scroll.
+3. Review secondary text sizes:
+   - Rate source details.
+   - Update timestamps.
+   - Market notes.
+   - Provider source labels.
+4. Add historical chart affordance planning:
+   - Keep current chart behavior if implementation is risky.
+   - Add documented P1 ranges: 7d, 30d, 6m, 1y.
+   - Do not block Android production on expanded charts unless existing charts are misleading.
+5. Confirm Favorite Currency Management scope:
+   - Reordering/custom groups are P1 unless current ordering blocks the Traveler Home Simple work.
+
+Acceptance criteria:
+- News empty state feels intentional and actionable.
+- Conversion recommendation is visible before secondary details on common phones.
+- Secondary metadata is readable on S25 and small-phone UI tests.
+- Historical chart ranges and favorite reordering are documented as post-production P1 unless implemented early.
+
+UI tests:
+- News empty state renders full-width with refresh guidance.
+- Converter first viewport includes the decision recommendation.
+- Small-phone layout renders source/timestamp copy without clipping.
+
+### P9.7: Manual QA Script
+
+Run this manually before release:
+1. Fresh install as Free.
+2. Choose Traveler in onboarding.
+3. Confirm Home shows actions before dense market data.
+4. Open Tipping/local rules in one tap.
+5. Change destination to the tester's real destination.
+6. Try a non-selected destination and confirm paywall path is clear.
+7. Tap every visible card in the first two Home viewports and confirm action/static behavior is coherent.
+8. Open Compare and confirm it does not feel like the required Traveler path.
+9. Open global Pro CTA and confirm paywall copy is clear.
+10. Grant Pro in RevenueCat or use a test purchase.
+11. Reopen app and confirm Pro removes Free limits without changing saved trip data.
+
+Definition of done:
+- Android S25 full instrumentation suite passes.
+- Firebase Test Lab passes on configured phone/tablet matrix.
+- Manual QA script is completed for Free and Pro.
+- No new hardcoded user-facing strings outside i18n.
+- Release notes describe the change as traveler clarity and easier Pro discovery.
+- Production-access questionnaire uses concrete completed changes, not planned-only wording.
+
+Release notes draft:
+- Traveler is now simpler to use first: quick actions for price check, conversion, tipping/local rules and trip budget appear before dense market data.
+- Free users can choose their own destination instead of being limited to a fixed country list.
+- Pro is easier to find and clearer: one global upgrade entry point, fewer repeated upsells and source-labelled locked features.
+- News and conversion screens now have clearer empty states, metadata labels and first-screen recommendations.
+- Local travel guidance now includes tipping, cards, cash needs, DCC warnings and local price estimates.
+
 ## Immediate Implementation Order
 
-1. Strengthen Convert with an explicit fee/spread reality check card.
-2. Expand smart alert suggestions and add alert history.
-3. Improve Traveler into an offline trip pack.
-4. Add grouped watchlists.
-5. Expand widgets after the core data model is stable.
-6. Add scanner/OCR, configurable widgets and stronger offline travel clarity as the next competitiveness layer.
+1. P9.0: implement Traveler Home Simple.
+2. P9.1: promote Tipping and Local Rules as a one-tap Traveler feature.
+3. P9.2: complete Clickability Contract audit and fixes.
+4. P9.6: fix News empty state, Conversion Decision visibility and secondary text readability.
+5. P9.3: let Free users choose their destination/country slots, or explicitly defer if it risks the production date.
+6. P9.4: apply profile-based information density.
+7. P9.5: clean up upgrade surfaces and source-labelled paywall entries.
+8. P9.7: run manual QA, S25 full UI suite and Firebase Test Lab before versioning.
+
+## Post-Android-Production P1
+
+These came from the closed test but should not block Android production after P9 is complete:
+- Historical chart ranges: 7d, 30d, 6m, 1y.
+- Drag-and-drop favorite currency reordering.
+- Custom favorite/watchlist groups beyond the current grouped watchlist behavior.
+- News personalization by followed currencies and crypto assets.
+- Richer Trip Workspace: cost-of-living comparisons, local transport estimates and emergency currency information.
+- First-time interactive tutorial/tooltips if P9's simpler Traveler Home still shows onboarding friction in analytics.

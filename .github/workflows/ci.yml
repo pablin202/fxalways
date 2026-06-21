@@ -189,6 +189,13 @@ jobs:
           cp "$AAB" "$RELEASE_AAB"
           sha256sum "$RELEASE_AAB" > "${RELEASE_AAB}.sha256"
           {
+            echo "Closed-test polish release"
+            echo
+            echo "- Traveler is simpler first: price check, conversion, tipping/local rules and trip budget are easier to reach before dense market data."
+            echo "- Free users can choose their own destination instead of being locked to a fixed country list."
+            echo "- Pro is easier to find with one global entry point, fewer repeated upsells and clearer locked-feature sources."
+            echo "- News, conversion and local travel guidance have clearer empty states, metadata and first-screen recommendations."
+            echo
             echo "AAB: $(basename "$RELEASE_AAB")"
             echo "versionName: $RELEASE_VERSION_NAME"
             echo "versionCode: $RELEASE_VERSION_CODE"

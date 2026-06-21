@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.fxalways.app.ExternalUrlOpener
 import com.fxalways.app.ThemeMode
@@ -191,8 +194,8 @@ internal fun FxShellContent(
             if (startupReady && !subscriptionState.isPremium && !showPaywall && detailNewsStory == null && detailRate == null) {
                 FloatingProCta(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 12.dp),
+                        .align(Alignment.TopEnd)
+                        .padding(top = 12.dp, end = 16.dp),
                     onClick = { onOpenPaywall("global_pro_cta") },
                 )
             }
@@ -210,18 +213,20 @@ internal fun FxShellContent(
 
 @Composable
 internal fun FloatingProCta(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val upgradeLabel = ui("Upgrade to Pro")
     Row(
         modifier = modifier
             .testTag("global_go_pro_cta")
+            .semantics { contentDescription = upgradeLabel }
             .clip(FxTheme.shapes.pill)
             .background(FxTheme.colors.crypto.copy(alpha = 0.18f))
             .border(1.dp, FxTheme.colors.crypto.copy(alpha = 0.55f), FxTheme.shapes.pill)
             .clickable(onClick = onClick)
+            .sizeIn(minWidth = 64.dp, minHeight = 44.dp)
             .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("PRO", style = FxTheme.typography.captionMono, color = FxTheme.colors.crypto)
-        Text(ui("Upgrade to Pro"), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
     }
 }

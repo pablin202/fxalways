@@ -34,7 +34,6 @@ import com.fxalways.app.screens.converter.PriceScannerCard
 import com.fxalways.app.screens.detail.LoadingSkeletonCard
 import com.fxalways.app.screens.detail.compactRuntimeLabel
 import com.fxalways.app.screens.detail.isInitialRateLoading
-import com.fxalways.app.screens.shared.ProUpsellCard
 import com.fxalways.designsystem.components.BentoCard
 import com.fxalways.designsystem.components.BentoTile
 import com.fxalways.designsystem.components.BigValueText
@@ -63,12 +62,13 @@ fun TravelerScreen(
     onCurrencySelected: (String) -> Unit = {},
     onBudgetChange: (Double) -> Unit = {},
     onOpenPaywall: () -> Unit = {},
+    onOpenPaywallSource: (String) -> Unit = { onOpenPaywall() },
 ) {
     val access = subscriptionState.featureAccess()
     val travelRates = remember(liveState.baseCurrency, liveState.favorites, liveState.compare, liveState.converter, liveState.allFiat) {
         liveState.portfolioRates().filterNot { it.code == liveState.baseCurrency }
     }
-    val destinationLimit = if (access.canUseAdvancedTraveler) 12 else 8
+    val destinationLimit = if (access.canUseAdvancedTraveler) travelRates.size else 8
     val visibleDestinations = remember(travelRates, selectedCurrency, destinationLimit) {
         compactCurrencyChoices(travelRates, selectedCurrency, destinationLimit)
     }
@@ -159,7 +159,7 @@ fun TravelerScreen(
                 }
             }
 
-            TravelerLocalEtiquetteSection(destination)
+            TravelerLocalEtiquetteSection(destination, budgetLocal)
 
             SectionLabel(ui("DESTINATION"))
             BentoCard(padding = 12.dp) {
@@ -179,8 +179,12 @@ fun TravelerScreen(
                         }
                     }
                     SettingChoiceRow(
-                        title = ui("More destinations"),
-                        subtitle = "${ui("Search")} ${travelRates.size} ${ui("supported live currencies")}",
+                        title = if (subscriptionState.isPremium) ui("More destinations") else ui("Selected destination"),
+                        subtitle = if (subscriptionState.isPremium) {
+                            "${ui("Search")} ${travelRates.size} ${ui("supported live currencies")}"
+                        } else {
+                            "${ui("Free includes")} ${selectedRate.code}; ${ui("Search supported live currencies")}"
+                        },
                         selected = false,
                         actionLabel = ui("more +"),
                         modifier = Modifier.testTag("traveler_more_destinations"),
@@ -254,7 +258,7 @@ fun TravelerScreen(
                 destination = destination,
                 dailyBudgetLocal = dailyBudgetLocal,
                 isPremium = subscriptionState.isPremium,
-                onOpenPaywall = onOpenPaywall,
+                onOpenPaywall = { onOpenPaywallSource("traveler_cost_template_lock") },
             )
 
             SectionLabel(ui("Scan traveler price"), right = if (subscriptionState.isPremium) ui("OCR beta") else ui("Preview"))
@@ -282,7 +286,7 @@ fun TravelerScreen(
                         ) + travelerPriceHistory).take(3)
                     },
                     history = travelerPriceHistory,
-                    onOpenPaywall = onOpenPaywall,
+                    onOpenPaywall = { onOpenPaywallSource("ocr_lock") },
                 )
             }
 
@@ -316,19 +320,16 @@ fun TravelerScreen(
                     }
                 }
             }
-            if (!access.canUseAdvancedTraveler) {
-                ProUpsellCard(
-                    title = ui("Unlock full traveler mode"),
-                    subtitle = ui("Pro adds complete cheat sheets, offline context and more local money tips."),
-                    onClick = onOpenPaywall,
-                )
-            }
-            SectionLabel(ui("LOCAL PRICE GUIDE"), right = ui("Estimates"))
+            SectionLabel(ui("LOCAL PRICE GUIDE"), right = ui("guide estimate"))
             BentoCard(Modifier.testTag("traveler_price_guide"), padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    destination.priceGuide.forEach { item ->
-                        val basePrice = item.localAmount / selectedRate.rate
-                        KeyValueRow(ui(item.label), "${destination.symbol}${formatMoneyValue(item.localAmount)} · ${liveState.baseCurrency} ${formatMoneyValue(basePrice)}")
+                    if (destination.priceGuide.isEmpty()) {
+                        KeyValueRow(ui("No data"), ui("guide estimate"))
+                    } else {
+                        destination.priceGuide.forEach { item ->
+                            val basePrice = item.localAmount / selectedRate.rate
+                            KeyValueRow(ui(item.label), "${destination.symbol}${formatMoneyValue(item.localAmount)} · ${liveState.baseCurrency} ${formatMoneyValue(basePrice)}")
+                        }
                     }
                 }
             }
@@ -337,11 +338,47 @@ fun TravelerScreen(
 }
 
 @Composable
-private fun TravelerLocalEtiquetteSection(destination: TravelerDestination) {
-    SectionLabel(ui("LOCAL ETIQUETTE"), right = destination.city)
+private fun TravelerLocalEtiquetteSection(destination: TravelerDestination, budgetLocal: Double) {
+    SectionLabel(ui("LOCAL ETIQUETTE"), right = "${ui("Source")} · ${destination.city}")
     Row(Modifier.testTag("traveler_local_etiquette"), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         MetricTile(ui("TIPPING"), destination.tipping, ui(destination.tippingNote), Modifier.weight(1f))
         MetricTile(ui("TAX"), ui(destination.tax), ui(destination.taxNote), Modifier.weight(1f))
+    }
+    BentoCard(Modifier.fillMaxWidth().testTag("traveler_before_pay"), padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            KeyValueRow(
+                ui("TIPPING"),
+                destination.tipping,
+                ui(destination.tippingNote),
+                modifier = Modifier.testTag("traveler_before_pay_tipping"),
+            )
+            KeyValueRow(
+                ui("CARDS ACCEPTED"),
+                destination.paymentRails.joinToString(" · "),
+                ui(destination.cashNote),
+                modifier = Modifier.testTag("traveler_before_pay_cards"),
+            )
+            KeyValueRow(
+                ui("ATM cash target"),
+                "${destination.symbol}${formatMoneyValue(budgetLocal * destination.cashBufferPct)}",
+                "${(destination.cashBufferPct * 100).toInt()}% ${ui("of local budget")}",
+                modifier = Modifier.testTag("traveler_before_pay_cash"),
+            )
+            KeyValueRow(
+                ui("DCC rule"),
+                ui("Decline conversion; pay in local currency."),
+                ui("Compare terminal rate against this mid-market snapshot."),
+                modifier = Modifier.testTag("traveler_before_pay_dcc"),
+            )
+            destination.priceGuide.firstOrNull()?.let { item ->
+                KeyValueRow(
+                    ui("LOCAL PRICE GUIDE"),
+                    "${ui(item.label)} · ${destination.symbol}${formatMoneyValue(item.localAmount)}",
+                    ui("guide estimate"),
+                    modifier = Modifier.testTag("traveler_before_pay_price_norm"),
+                )
+            }
+        }
     }
     BentoTile(Modifier.fillMaxWidth().testTag("traveler_payment_rails")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

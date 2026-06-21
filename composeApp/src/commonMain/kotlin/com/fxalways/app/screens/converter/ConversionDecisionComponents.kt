@@ -29,6 +29,7 @@ internal fun ConversionDecisionCard(
     bestRoute: EstimatedFeeQuote?,
     isPremium: Boolean,
     onCreateAlert: () -> Unit,
+    onCompareProviders: () -> Unit,
     onOpenPaywall: () -> Unit,
 ) {
     val primaryAction = when {
@@ -49,6 +50,24 @@ internal fun ConversionDecisionCard(
                 color = FxTheme.colors.text,
                 modifier = Modifier.testTag("converter_decision_amount"),
             )
+            KeyValueRow(
+                ui("Recommended next step"),
+                ui(primaryAction),
+                ui(timingInsight.action),
+                modifier = Modifier.testTag("converter_decision_recommendation"),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton(
+                    text = ui("Set better-rate alert"),
+                    modifier = Modifier.weight(1f).testTag("converter_decision_alert"),
+                    onClick = onCreateAlert,
+                )
+                GhostButton(
+                    text = if (isPremium) ui("Compare providers") else ui("Unlock full comparison"),
+                    modifier = Modifier.weight(1f).testTag("converter_decision_compare"),
+                    onClick = if (isPremium) onCompareProviders else onOpenPaywall,
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetricTile(
                     ui("Timing"),
@@ -70,18 +89,6 @@ internal fun ConversionDecisionCard(
                     ?: ui("Enter an amount to compare real routes."),
                 modifier = Modifier.testTag("converter_decision_reason"),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GhostButton(
-                    text = ui("Set better-rate alert"),
-                    modifier = Modifier.weight(1f).testTag("converter_decision_alert"),
-                    onClick = onCreateAlert,
-                )
-                GhostButton(
-                    text = if (isPremium) ui("Compare providers") else ui("Unlock full comparison"),
-                    modifier = Modifier.weight(1f).testTag("converter_decision_compare"),
-                    onClick = if (isPremium) ({}) else onOpenPaywall,
-                )
-            }
         }
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.BentoCard
@@ -49,30 +50,35 @@ fun MoreScreen(
                     icon = MoreFeatureIcon.Traveler,
                     title = ui("Traveler"),
                     subtitle = ui("Tipping, cash/card and local prices"),
+                    tag = "more_traveler",
                     onClick = onOpenTraveler,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.News,
                     title = ui("News"),
                     subtitle = ui("Market context when you need it"),
+                    tag = "more_news",
                     onClick = onOpenNews,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Alerts,
                     title = ui("Alerts"),
                     subtitle = "$alertsCount ${ui("active")} · ${ui("know when a rate is worth acting on")}",
+                    tag = "more_alerts",
                     onClick = onOpenAlerts,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Watchlist,
                     title = ui("Watchlist"),
                     subtitle = "$watchlistCount ${ui("currencies")} · ${ui("track the currencies you care about")}",
+                    tag = "more_watchlist",
                     onClick = onOpenWatchlist,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Settings,
                     title = ui("Settings"),
                     subtitle = ui("Account, language, providers and widgets"),
+                    tag = "more_settings",
                     onClick = onOpenSettings,
                 )
                 MoreRow(
@@ -83,6 +89,7 @@ fun MoreScreen(
                     } else {
                         ui("Unlock OCR, alerts and full provider comparison")
                     },
+                    tag = "more_pro",
                     onClick = onOpenPaywall,
                 )
             }
@@ -95,12 +102,14 @@ internal fun MoreRow(
     icon: MoreFeatureIcon,
     title: String,
     subtitle: String,
+    tag: String,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(FxTheme.shapes.field)
+            .testTag(tag)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

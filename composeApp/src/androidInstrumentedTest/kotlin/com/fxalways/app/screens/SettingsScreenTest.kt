@@ -6,7 +6,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,6 +20,8 @@ import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.ThemeMode
 import com.fxalways.app.UserBackupState
 import com.fxalways.app.UserProfile
+import com.fxalways.app.data.LiveRatesState
+import com.fxalways.app.screens.dashboard.DashboardScreen
 import com.fxalways.app.screens.settings.SettingsScreen
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.components.CurrencyKind
@@ -237,6 +242,62 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun profileChangeFromSettingsUpdatesHomeAfterReturning() {
+        AndroidAppContext.init(compose.activity)
+        compose.setContent {
+            var route by remember { mutableStateOf("settings") }
+            var userProfile by remember { mutableStateOf(UserProfile.Traveler) }
+
+            FxTheme {
+                if (route == "settings") {
+                    SettingsScreen(
+                        themeMode = ThemeMode.System,
+                        appLanguage = "en",
+                        baseCurrency = "USD",
+                        userProfile = userProfile,
+                        availableBaseCurrencies = testBaseCurrencies(),
+                        backupState = UserBackupState(uid = "anon", isAnonymous = true, isAvailable = true),
+                        backupSyncing = false,
+                        lastSyncedAtMillis = null,
+                        subscriptionState = SubscriptionState(isPremium = true),
+                        providerPreferenceCodes = listOf("wise", "revolut"),
+                        onBack = { route = "home" },
+                        onOpenPaywall = {},
+                        onOpenUrl = {},
+                        onRestorePurchase = {},
+                        onSyncNow = {},
+                        onLinkGoogle = {},
+                        onSignOut = {},
+                        onDevPremiumChange = {},
+                        onThemeModeChange = {},
+                        onLanguageChange = {},
+                        onBaseCurrencyChange = {},
+                        onProviderPreferenceCodesChange = {},
+                        onUserProfileChange = { userProfile = it },
+                    )
+                } else {
+                    DashboardScreen(
+                        liveState = testSettingsLiveRatesState(),
+                        subscriptionState = SubscriptionState(isPremium = true),
+                        userProfile = userProfile,
+                        onRefresh = {},
+                        onOpenPaywall = {},
+                        onOpenDetail = {},
+                        onEditFavorites = {},
+                        onSeeAllCrypto = {},
+                    )
+                }
+            }
+        }
+
+        compose.onNodeWithTag("settings_profile_Remittances").performScrollTo().performClick()
+        compose.onNodeWithText("More").performScrollTo().performClick()
+
+        compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_priority_title").assertTextContains("Review transfer cost")
+    }
+
+    @Test
     fun userCanChooseLocalAndLatinAmericaProviderPreferences() {
         val harness = renderSettings(
             subscriptionState = SubscriptionState(isPremium = true),
@@ -276,18 +337,31 @@ class SettingsScreenTest {
         }
     }
 
+    @Test
+    fun spanishProviderCatalogCopyIsLocalized() {
+        renderSettings(
+            subscriptionState = SubscriptionState(isPremium = true),
+            initialAppLanguage = "es",
+            initialProviderCodes = listOf("wise", "revolut"),
+        )
+
+        compose.onNodeWithTag("settings_provider_preferences").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Proveedor de envio", substring = true).onFirst().performScrollTo().assertIsDisplayed()
+    }
+
     private fun renderSettings(
         subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
         backupState: UserBackupState = UserBackupState(uid = "anon", isAnonymous = true, isAvailable = true),
         lastSyncedAtMillis: Long? = null,
         initialUserProfile: UserProfile = UserProfile.Traveler,
         initialProviderCodes: List<String> = listOf("wise", "revolut"),
+        initialAppLanguage: String = "en",
     ): SettingsHarness {
         val harness = SettingsHarness()
         AndroidAppContext.init(compose.activity)
         compose.setContent {
             var themeMode by remember { mutableStateOf(ThemeMode.System) }
-            var appLanguage by remember { mutableStateOf("en") }
+            var appLanguage by remember { mutableStateOf(initialAppLanguage) }
             var baseCurrency by remember { mutableStateOf("USD") }
             var userProfile by remember { mutableStateOf(initialUserProfile) }
 
@@ -348,6 +422,27 @@ class SettingsScreenTest {
             FxRate("CNY", "Chinese Yuan", "¥", CurrencyKind.Fiat, 7.2, 0.0, listOf(7.1f, 7.2f), "1 USD = 7.2000 CNY"),
             FxRate("MXN", "Mexican Peso", "$", CurrencyKind.Fiat, 18.72, 0.2, listOf(18.6f, 18.72f), "1 USD = 18.7200 MXN"),
         )
+
+    private fun testSettingsLiveRatesState(): LiveRatesState {
+        val rates = testBaseCurrencies()
+        val crypto = listOf(
+            FxRate("BTC", "Bitcoin", "₿", CurrencyKind.Crypto, 0.000015, 2.4, listOf(0.000014f, 0.000015f), "1 USD = 0.000015 BTC"),
+            FxRate("ETH", "Ethereum", "Ξ", CurrencyKind.Crypto, 0.00024, 1.2, listOf(0.00023f, 0.00024f), "1 USD = 0.000240 ETH"),
+            FxRate("USDT", "Tether", "₮", CurrencyKind.Crypto, 1.0002, 0.01, listOf(1f, 1.0002f), "1 USD = 1.0002 USDT"),
+            FxRate("USDC", "USD Coin", "$", CurrencyKind.Crypto, 0.9999, -0.01, listOf(1f, 0.9999f), "1 USD = 0.9999 USDC"),
+        )
+        return LiveRatesState(
+            isLoading = false,
+            isLive = true,
+            baseCurrency = "USD",
+            updatedLabel = "2026-05-14 · test · refreshed 12:00",
+            favorites = rates.filterNot { it.code == "USD" },
+            converter = rates,
+            compare = rates.filterNot { it.code == "USD" },
+            crypto = crypto,
+            allFiat = rates,
+        )
+    }
 
     private class SettingsHarness {
         var syncClicks = 0

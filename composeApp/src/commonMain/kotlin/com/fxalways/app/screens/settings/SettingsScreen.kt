@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,11 +89,12 @@ fun SettingsScreen(
             },
         )
     }
-    ScreenScaffold {
-        if (onBack != null) {
-            BackNavButton(label = copy.more, onClick = onBack)
-        }
-        ScreenHeader(copy.title, sub = copy.sub, subtitle = "${copy.activeLanguage}: ${activeLanguage.label} · ${copy.deviceLanguage}: ${DeviceLocale.language.uppercase()}")
+    CompositionLocalProvider(LocalAppLanguage provides appLanguage) {
+        ScreenScaffold {
+            if (onBack != null) {
+                BackNavButton(label = copy.more, onClick = onBack)
+            }
+            ScreenHeader(copy.title, sub = copy.sub, subtitle = "${copy.activeLanguage}: ${activeLanguage.label} · ${copy.deviceLanguage}: ${DeviceLocale.language.uppercase()}")
 
         BackupSettingsSection(
             copy = copy,
@@ -197,13 +199,14 @@ fun SettingsScreen(
             onOpenUrl = onOpenUrl,
         )
 
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "${ui("Version")} ${PlatformConfig.versionName}",
-            style = FxTheme.typography.captionMono,
-            color = FxTheme.colors.textFaint,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-        )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "${ui("Version")} ${PlatformConfig.versionName}",
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.textFaint,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }

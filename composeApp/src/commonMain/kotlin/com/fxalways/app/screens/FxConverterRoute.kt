@@ -40,6 +40,7 @@ internal fun FxConverterRoute(
             AppSettingsPrefs.setConverterCurrencyCodes(codes)
         },
         onOpenPaywall = { onOpenPaywall("converter") },
+        onOpenPaywallSource = onOpenPaywall,
         onCreateTransferAlert = { source, target, alertTarget ->
             val existing = alertsState.alerts.findMatchingAlert(
                 baseCurrency = source.code,

@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.data.LiveRatesState
@@ -29,6 +30,7 @@ import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.theme.FxTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.Rule
 import org.junit.runner.RunWith
@@ -82,10 +84,12 @@ class CompareScreenTest {
 
         compose.onNodeWithTag("compare_tile_GBP").performScrollTo().performClick()
         compose.onNodeWithTag("compare_metric_weakest").performScrollTo().performClick()
-        compose.onNodeWithTag("compare_board").performScrollTo().performClick()
+        compose.onNodeWithTag("compare_board").performScrollTo().assertIsDisplayed()
+        val boardNode = compose.onNodeWithTag("compare_board").fetchSemanticsNode()
+        assertFalse(boardNode.config.contains(SemanticsActions.OnClick))
         compose.onNodeWithTag("compare_open_strongest").performScrollTo().performClick()
 
-        compose.runOnIdle { assertEquals(listOf("GBP", "CHF", "JPY", "JPY"), harness.openedDetailCodes) }
+        compose.runOnIdle { assertEquals(listOf("GBP", "CHF", "JPY"), harness.openedDetailCodes) }
     }
 
     @Test

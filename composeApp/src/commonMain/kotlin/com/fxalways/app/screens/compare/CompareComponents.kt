@@ -148,8 +148,7 @@ fun CompareScreen(
             BentoCard(
                 Modifier
                     .fillMaxWidth()
-                    .testTag("compare_board")
-                    .clickable(enabled = bestRate != null) { bestRate?.let(onOpenDetail) },
+                    .testTag("compare_board"),
                 padding = 12.dp,
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

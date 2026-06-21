@@ -3,6 +3,7 @@ package com.fxalways.app.screens
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertCountEquals
@@ -127,6 +128,37 @@ class LaunchSmokeScreenTest {
         compose.onNodeWithTag("global_go_pro_cta").assertIsDisplayed().performClick()
 
         compose.runOnIdle { assertEquals(1, clicks) }
+    }
+
+    @Test
+    fun globalProCtaOpensPaywallForFreeAndIsHiddenForPremium() {
+        AndroidAppContext.init(compose.activity)
+        var setPremium: ((Boolean) -> Unit)? = null
+        var closePaywall: (() -> Unit)? = null
+        compose.setContent {
+            var isPremium by remember { mutableStateOf(false) }
+            var showPaywall by remember { mutableStateOf(false) }
+            setPremium = { isPremium = it }
+            closePaywall = { showPaywall = false }
+
+            FxTheme {
+                if (showPaywall) {
+                    PaywallScreen(subscriptionState = SubscriptionState(isPremium = false))
+                } else if (!isPremium) {
+                    FloatingProCta(onClick = { showPaywall = true })
+                }
+            }
+        }
+
+        compose.onNodeWithTag("global_go_pro_cta").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("paywall_plan_Monthly").performScrollTo().assertIsDisplayed()
+
+        compose.runOnIdle {
+            closePaywall?.invoke()
+            setPremium?.invoke(true)
+        }
+
+        compose.onAllNodesWithText("Upgrade to Pro").assertCountEquals(0)
     }
 
     private enum class SmokeRoute {

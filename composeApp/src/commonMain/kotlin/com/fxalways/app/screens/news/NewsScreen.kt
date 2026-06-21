@@ -80,6 +80,8 @@ fun NewsScreen(
         hasQuery = normalizedQuery.isNotBlank(),
         topic = selectedTopic,
     )
+    val providerLabel = compactProviderLabel(newsState.provider)
+    val updatedLabel = compactRuntimeLabel(newsState.refreshedLabel)
     ScreenScaffold {
         ScreenHeader(
             ui("News"),
@@ -87,7 +89,7 @@ fun NewsScreen(
             subtitle = if (newsState.isLoading && newsState.stories.isEmpty()) {
                 "${ui("Loading market stream")} · ${newsState.selectedCurrency} ${ui("focus")}"
             } else {
-                "${compactProviderLabel(newsState.provider)} · ${newsState.region} · ${newsState.selectedCurrency} ${ui("focus")} · ${compactRuntimeLabel(newsState.refreshedLabel)}"
+                "${newsState.region} · ${newsState.selectedCurrency} ${ui("focus")} · $updatedLabel"
             },
             right = {
                 Text(
@@ -115,8 +117,23 @@ fun NewsScreen(
                         LegendDot("${ui("NEUTRAL")} ${newsState.neutral}%", FxTheme.colors.textGhost)
                         LegendDot("${ui("BEARISH")} ${newsState.bearish}%", FxTheme.colors.down)
                     }
-                    KeyValueRow(ui("Feed"), "${newsState.language.uppercase()} · ${newsState.trackedCurrencies.joinToString(", ")}")
-                    KeyValueRow(ui("Updated"), "${compactProviderLabel(newsState.provider)} · ${compactRuntimeLabel(newsState.refreshedLabel)}")
+                    KeyValueRow(
+                        ui("Feed"),
+                        "${newsState.language.uppercase()} · ${compactTrackedCurrencies(newsState.trackedCurrencies)}",
+                        modifier = Modifier.testTag("news_metadata_feed"),
+                    )
+                    KeyValueRow(
+                        ui("Source"),
+                        providerLabel,
+                        newsState.region,
+                        modifier = Modifier.testTag("news_metadata_source"),
+                    )
+                    KeyValueRow(
+                        ui("Updated"),
+                        updatedLabel,
+                        "${newsState.selectedCurrency} ${ui("focus")}",
+                        modifier = Modifier.testTag("news_metadata_updated"),
+                    )
                 }
             }
         }
@@ -172,10 +189,16 @@ fun NewsScreen(
                 }
             }
         } else if (visibleStories.isEmpty() && !(newsState.isLoading && newsState.stories.isEmpty())) {
-            BentoCard(modifier = Modifier.fillMaxWidth(), padding = 12.dp) {
+            BentoCard(modifier = Modifier.fillMaxWidth().testTag("news_empty_state"), padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(ui(emptyCopy.first), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                     Text(ui(emptyCopy.second), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                    Text(
+                        ui("Try a broader filter or refresh the feed."),
+                        style = FxTheme.typography.captionMono,
+                        color = FxTheme.colors.textGhost,
+                        modifier = Modifier.testTag("news_empty_refresh_guidance"),
+                    )
                     if (newsState.isLoading) {
                         Text(ui("Refreshing market stream…"), style = FxTheme.typography.captionMono, color = FxTheme.colors.accent)
                     }
@@ -210,3 +233,13 @@ internal fun newsEmptyCopy(
         topic != "ALL" -> "No topic stories" to "Try a broader filter or refresh the feed."
         else -> "No currency stories" to "Try a broader filter or refresh the feed."
     }
+
+private fun compactTrackedCurrencies(codes: List<String>): String {
+    val visible = codes.filter { it.isNotBlank() }.distinct().take(4)
+    val extra = (codes.distinct().size - visible.size).coerceAtLeast(0)
+    return if (extra > 0) {
+        "${visible.joinToString(", ")} +$extra"
+    } else {
+        visible.joinToString(", ")
+    }
+}

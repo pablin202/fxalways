@@ -177,7 +177,7 @@ private fun ProviderPreferenceRow(
 ) {
     SettingChoiceRow(
         title = ui(provider.label),
-        subtitle = "${ui(provider.category)} · ${ui(provider.quoteMode)} · ${ui(provider.subtitle)}",
+        subtitle = "${ui(provider.category)} · ${ui(provider.quoteMode)}",
         selected = selected,
         actionLabel = if (selected) ui("active") else ui("add"),
         modifier = modifier,

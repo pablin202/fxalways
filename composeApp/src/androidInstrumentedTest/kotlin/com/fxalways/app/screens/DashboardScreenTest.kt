@@ -3,6 +3,7 @@ package com.fxalways.app.screens
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -122,6 +123,8 @@ class DashboardScreenTest {
         val harness = renderDashboard(isPremium = false, userProfile = UserProfile.Remittances)
 
         compose.onNodeWithText("Send money smarter").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_priority_title").assertTextContains("Review transfer cost")
         compose.onNodeWithTag("dashboard_profile_free_focus").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_pro_focus").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_pair").performScrollTo().assertIsDisplayed()
@@ -132,9 +135,11 @@ class DashboardScreenTest {
         compose.onNodeWithTag("dashboard_profile_alert_action").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Mid-market + custom cost").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Full provider comparison + alerts").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText("USD → MXN").assertCountEquals(3)
+        compose.onAllNodesWithText("USD → MXN").assertCountEquals(4)
         compose.onNodeWithText("Target rate above last 7d average").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Create suggested alert").assertIsDisplayed()
+        compose.onAllNodesWithTag("dashboard_crypto_header").assertCountEquals(0)
+        compose.onAllNodesWithTag("dashboard_crypto_snapshot").assertCountEquals(0)
         compose.onNodeWithTag("dashboard_profile_alert_action").performClick()
 
         compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
@@ -143,7 +148,7 @@ class DashboardScreenTest {
     @Test
     fun travelerProfileActionRoutesToTravelerWorkflow() {
         val travelerHarness = renderDashboard(isPremium = true, userProfile = UserProfile.Traveler)
-        compose.onNodeWithTag("dashboard_traveler_open").performScrollTo().performClick()
+        compose.onNodeWithTag("dashboard_traveler_scan_price").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(1, travelerHarness.travelerClicks) }
     }
 
@@ -151,20 +156,25 @@ class DashboardScreenTest {
     fun travelerDashboardPrioritizesTripToolsOverMarketDashboard() {
         val harness = renderDashboard(isPremium = false, userProfile = UserProfile.Traveler)
 
-        compose.onNodeWithTag("dashboard_traveler_overview").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_traveler_actions").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_traveler_scan_price").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_traveler_local_rules").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_traveler_trip_budget").assertIsDisplayed()
+        compose.onNodeWithText("Travel with fewer money surprises.").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_traveler_context").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("LOCAL ETIQUETTE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_traveler_scan_price").performScrollTo().performClick()
+        compose.onNodeWithTag("dashboard_traveler_local_rules").performScrollTo().performClick()
+        compose.onNodeWithTag("dashboard_traveler_trip_budget").performScrollTo().performClick()
         compose.onNodeWithTag("dashboard_traveler_context").performScrollTo().performClick()
         compose.onNodeWithTag("dashboard_traveler_convert").performScrollTo().performClick()
-        compose.onNodeWithTag("dashboard_traveler_alert").performScrollTo().performClick()
         compose.onAllNodesWithTag("dashboard_trust_details").assertCountEquals(0)
         compose.onAllNodesWithTag("dashboard_crypto_snapshot").assertCountEquals(0)
         compose.onAllNodesWithTag("dashboard_profile_workflow").assertCountEquals(0)
 
         compose.runOnIdle {
             assertEquals(1, harness.converterClicks)
-            assertEquals(1, harness.travelerClicks)
-            assertEquals(1, harness.suggestedAlertClicks)
+            assertEquals(4, harness.travelerClicks)
+            assertEquals(0, harness.suggestedAlertClicks)
         }
     }
 
@@ -179,17 +189,65 @@ class DashboardScreenTest {
     }
 
     @Test
+    fun remittancePriorityPrimaryCtaRoutesToConverter() {
+        val harness = renderDashboard(isPremium = true, userProfile = UserProfile.Remittances)
+        compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_primary_cta").performClick()
+        compose.runOnIdle {
+            assertEquals(1, harness.converterClicks)
+            assertEquals(0, harness.watchlistClicks)
+        }
+    }
+
+    @Test
+    fun savingsPriorityPrimaryCtaRoutesToWatchlist() {
+        val harness = renderDashboard(isPremium = true, userProfile = UserProfile.Savings)
+        compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_priority_title").assertTextContains("Review allocation drift")
+        compose.onNodeWithTag("dashboard_profile_primary_cta").performClick()
+        compose.runOnIdle {
+            assertEquals(0, harness.converterClicks)
+            assertEquals(1, harness.watchlistClicks)
+        }
+    }
+
+    @Test
+    fun nonCryptoProfilesDoNotShowCryptoMarketBlock() {
+        renderDashboard(isPremium = false, userProfile = UserProfile.Freelancer)
+
+        compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_priority_title").assertTextContains("Check invoice currency")
+        compose.onAllNodesWithTag("dashboard_crypto_header").assertCountEquals(0)
+        compose.onAllNodesWithTag("dashboard_crypto_snapshot").assertCountEquals(0)
+        compose.onAllNodesWithTag("dashboard_crypto_list").assertCountEquals(0)
+    }
+
+    @Test
+    fun savingsProfileActionButtonRoutesToWatchlist() {
+        val harness = renderDashboard(isPremium = true, userProfile = UserProfile.Savings)
+
+        compose.onNodeWithTag("dashboard_profile_action_button").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(0, harness.converterClicks)
+            assertEquals(1, harness.watchlistClicks)
+        }
+    }
+
+    @Test
     fun proDashboardShowsProProfileState() {
         val harness = renderDashboard(isPremium = true, userProfile = UserProfile.CryptoHolder, suggestedProfileAlertState = QuickAlertState.Active)
 
         compose.onNodeWithText("Crypto portfolio focus").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_profile_priority_title").assertTextContains("Create a movement alert")
         compose.onNodeWithTag("dashboard_profile_free_focus").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_pro_focus").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_pair").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("BTC, ETH, USDT, USDC").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Expanded crypto catalog + holdings").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithText("USD → BTC").assertCountEquals(2)
+        compose.onAllNodesWithText("USD → BTC").assertCountEquals(3)
         compose.onNodeWithText("BTC/ETH daily move above 3%").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Suggested alert active").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_alert_action").performScrollTo().performClick()

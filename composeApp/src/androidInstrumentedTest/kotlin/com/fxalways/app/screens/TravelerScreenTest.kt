@@ -40,11 +40,16 @@ class TravelerScreenTest {
         compose.onNodeWithText("TOKYO · JPY").assertIsDisplayed()
         compose.onNodeWithTag("traveler_hero").assertIsDisplayed()
         compose.onNodeWithTag("traveler_local_etiquette").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("TIPPING").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay_tipping").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay_cards").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay_cash").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay_dcc").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay_price_norm").assertIsDisplayed()
         compose.onNodeWithTag("traveler_payment_rails").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_destination_JPY").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_offline_pack").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("DCC rule").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay_dcc").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_cost_templates").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_cost_template_0").assertIsDisplayed()
         compose.onNodeWithTag("traveler_cost_template_1").assertIsDisplayed()
@@ -56,12 +61,13 @@ class TravelerScreenTest {
         compose.onNodeWithTag("traveler_cheat_1").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_cheat_20").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("traveler_cheat_50").assertCountEquals(0)
-        compose.onNodeWithText("Unlock full traveler mode").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Unlock full traveler mode").assertCountEquals(0)
 
         compose.onNodeWithTag("traveler_more_destinations").performScrollTo().performClick()
-        compose.onNodeWithTag("currency_picker_AUD").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_picker_search").performTextReplacement("sgd")
+        compose.onNodeWithTag("currency_picker_SGD").performScrollTo().performClick()
         compose.runOnIdle {
-            assertEquals("AUD", harness.selectedCurrency)
+            assertEquals("SGD", harness.selectedCurrency)
             assertEquals(0, harness.paywallClicks)
         }
     }
@@ -71,10 +77,28 @@ class TravelerScreenTest {
         val harness = renderTraveler(isPremium = true, selectedCurrency = "JPY", budgetBase = 250.0)
 
         compose.onNodeWithTag("traveler_hero").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_picker_search").performTextReplacement("sgd")
+        compose.onNodeWithTag("currency_picker_SGD").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("currency_picker_search").performTextReplacement("aud")
         compose.onNodeWithTag("currency_picker_AUD").performScrollTo().performClick()
 
         compose.onNodeWithText("SYDNEY · AUD").assertIsDisplayed()
         compose.runOnIdle { assertEquals("AUD", harness.selectedCurrency) }
+    }
+
+    @Test
+    fun freeTravelerLockedFeaturesReportPaywallSources() {
+        val harness = renderTraveler(isPremium = false, selectedCurrency = "JPY", budgetBase = 100.0)
+
+        compose.onNodeWithTag("traveler_cost_template_upsell").performScrollTo().performClick()
+        compose.onNodeWithTag("price_scanner_upsell").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(
+                listOf("traveler_cost_template_lock", "ocr_lock"),
+                harness.paywallSources,
+            )
+        }
     }
 
     @Test
@@ -99,7 +123,7 @@ class TravelerScreenTest {
 
         compose.onNodeWithTag("traveler_destination_GBP").performScrollTo().performClick()
 
-        compose.onNodeWithText("LONDON · GBP").assertIsDisplayed()
+        compose.onNodeWithText("LONDON · GBP").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_spend_plan").performScrollTo().assertIsDisplayed()
         compose.runOnIdle {
             assertEquals("GBP", harness.selectedCurrency)
@@ -114,7 +138,7 @@ class TravelerScreenTest {
         compose.onNodeWithTag("traveler_cheat_500").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_spend_plan").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_offline_pack").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Decline conversion; pay in local currency.").assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay_dcc").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Local meals").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_cost_templates").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_cost_template_2").assertIsDisplayed()
@@ -124,6 +148,7 @@ class TravelerScreenTest {
         compose.onNodeWithText("Business").assertIsDisplayed()
         compose.onAllNodesWithTag("traveler_cost_template_upsell").assertCountEquals(0)
         compose.onNodeWithTag("traveler_local_etiquette").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("traveler_before_pay").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_payment_rails").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("traveler_price_guide").performScrollTo().assertIsDisplayed()
     }
@@ -175,6 +200,10 @@ class TravelerScreenTest {
                         harness.budgetBase = it
                     },
                     onOpenPaywall = { harness.paywallClicks += 1 },
+                    onOpenPaywallSource = {
+                        harness.paywallClicks += 1
+                        harness.paywallSources += it
+                    },
                 )
             }
         }
@@ -211,5 +240,6 @@ class TravelerScreenTest {
         var budgetBase: Double,
     ) {
         var paywallClicks = 0
+        val paywallSources = mutableListOf<String>()
     }
 }

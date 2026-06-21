@@ -50,6 +50,7 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_trust_details").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_decision_card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_decision_recommendation").assertIsDisplayed()
         compose.onNodeWithTag("converter_decision_timing").assertIsDisplayed()
         compose.onNodeWithTag("converter_decision_route").assertIsDisplayed()
         compose.onNodeWithText("Indicative mid-market rates.", substring = true).performScrollTo().assertIsDisplayed()
@@ -94,6 +95,22 @@ class ConverterScreenTest {
     }
 
     @Test
+    fun freeProviderLocksReportPaywallSources() {
+        val harness = renderConverter(isPremium = false)
+
+        compose.onNodeWithTag("remittance_upsell").performScrollTo().performClick()
+        compose.onNodeWithTag("provider_matrix_upsell").performScrollTo().performClick()
+        compose.onNodeWithTag("converter_fee_upsell").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(
+                listOf("remittance_plan_lock", "provider_lock", "provider_lock"),
+                harness.paywallSources,
+            )
+        }
+    }
+
+    @Test
     fun proUserSeesCompleteProviderComparison() {
         renderConverter(isPremium = true)
 
@@ -107,6 +124,8 @@ class ConverterScreenTest {
         compose.onNodeWithTag("converter_fee_reality_check").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_reality_provider").assertIsDisplayed()
         compose.onNodeWithTag("converter_decision_card").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("converter_decision_compare").performScrollTo().performClick()
+        compose.onNodeWithTag("provider_matrix_focus_feedback").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_remittance_planner").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("converter_transfer_intent").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("transfer_purpose_invoice").performScrollTo().assertIsDisplayed().performClick()
@@ -480,6 +499,10 @@ class ConverterScreenTest {
                         harness.selectedCodes = it
                     },
                     onOpenPaywall = { harness.paywallClicks += 1 },
+                    onOpenPaywallSource = {
+                        harness.paywallClicks += 1
+                        harness.paywallSources += it
+                    },
                     onCreateTransferAlert = { source, target, _ ->
                         harness.transferAlertRequests += 1
                         harness.lastTransferAlertPair = "${source.code}/${target.code}"
@@ -543,6 +566,7 @@ class ConverterScreenTest {
         var selectedCodes: List<String>,
     ) {
         var paywallClicks = 0
+        val paywallSources = mutableListOf<String>()
         var transferAlertRequests = 0
         var lastTransferAlertPair: String? = null
         val providerUrls = mutableListOf<String>()

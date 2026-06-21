@@ -278,8 +278,8 @@ internal fun ProfileActionCard(
                         UserProfile.Traveler -> onOpenTraveler()
                         UserProfile.CryptoHolder -> onCreateSuggestedAlert()
                         UserProfile.Remittances,
-                        UserProfile.Freelancer,
-                        UserProfile.Savings -> onOpenConverter()
+                        UserProfile.Freelancer -> onOpenConverter()
+                        UserProfile.Savings -> onOpenWatchlist()
                     }
                 },
             )

@@ -135,7 +135,7 @@ internal fun NotificationSettingsSection(copy: SettingsCopy) {
             selected = false,
             actionLabel = ui(NotificationPermissionStatus.actionLabel),
             modifier = Modifier.testTag("settings_notifications"),
-            onClick = {},
+            onClick = { NotificationPermissionStatus.requestIfNeeded() },
         )
     }
 }

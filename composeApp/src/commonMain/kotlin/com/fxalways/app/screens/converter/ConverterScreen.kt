@@ -55,6 +55,7 @@ fun ConverterScreen(
     selectedProviderCodes: List<String> = emptyList(),
     onCurrencyCodesChange: (List<String>) -> Unit = {},
     onOpenPaywall: () -> Unit,
+    onOpenPaywallSource: (String) -> Unit = { onOpenPaywall() },
     onCreateTransferAlert: (FxRate, FxRate, Double) -> Unit = { _, _, _ -> },
     onOpenProviderUrl: (String) -> Unit = {},
     enableLiveProviderQuotes: Boolean = false,
@@ -94,6 +95,7 @@ fun ConverterScreen(
     var transferDecisionHistory by remember { mutableStateOf(emptyList<TransferDecision>()) }
     var scannedPriceText by remember { mutableStateOf("25") }
     var priceScannerHistory by remember { mutableStateOf(emptyList<PriceScannerHistoryEntry>()) }
+    var providerComparisonFocused by remember { mutableStateOf(false) }
     val sourceRate = rates.firstOrNull { it.code == sourceCode }
         ?: rates.firstOrNull { it.code == liveState.baseCurrency }
         ?: rates.first()
@@ -177,7 +179,7 @@ fun ConverterScreen(
             onDismiss = { showCurrencyPicker = false },
             onOpenPaywall = {
                 showCurrencyPicker = false
-                onOpenPaywall()
+                onOpenPaywallSource("converter_currency_limit")
             },
             onApply = { codes ->
                 showCurrencyPicker = false
@@ -273,13 +275,17 @@ fun ConverterScreen(
             bestRoute = bestRealWorldQuote ?: bestQuote,
             isPremium = subscriptionState.isPremium,
             onCreateAlert = { onCreateTransferAlert(sourceRate, targetRate, transferAlertTarget(sourceRate, targetRate)) },
-            onOpenPaywall = onOpenPaywall,
+            onCompareProviders = {
+                providerComparisonFocused = true
+                Observability.event("provider_matrix_focused")
+            },
+            onOpenPaywall = { onOpenPaywallSource("provider_lock") },
         )
         SectionLabel("${ui("SMART TIMING")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
         SmartTimingCard(
             insight = timingInsight,
             isPremium = subscriptionState.isPremium,
-            onOpenPaywall = onOpenPaywall,
+            onOpenPaywall = { onOpenPaywallSource("timing_lock") },
         )
         SectionLabel("${ui("LOCAL RATE NOTEBOOK")} · ${sourceRate.code} → ${targetRate.code}")
         LocalRateNotebookCard(
@@ -319,7 +325,7 @@ fun ConverterScreen(
                 ) + priceScannerHistory).take(4)
             },
             history = priceScannerHistory,
-            onOpenPaywall = onOpenPaywall,
+            onOpenPaywall = { onOpenPaywallSource("ocr_lock") },
         )
         SectionLabel("${ui("FEES")} · ${sourceRate.code} → ${targetRate.code}", right = if (access.canUseFullFeeComparison) ui("Estimated") else ui("Preview"))
         FeeRealityCheckCard(
@@ -336,7 +342,7 @@ fun ConverterScreen(
             isPremium = subscriptionState.isPremium,
             onCadenceChange = { remittanceCadence = it },
             onRecipientProfileChange = { recipientProfile = it },
-            onOpenPaywall = onOpenPaywall,
+            onOpenPaywall = { onOpenPaywallSource("remittance_plan_lock") },
         )
         SectionLabel("${ui("TRANSFER INTENT")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
         TransferIntentCard(
@@ -360,7 +366,7 @@ fun ConverterScreen(
             },
             onCreateAlert = { onCreateTransferAlert(sourceRate, targetRate, transferAlertTarget(sourceRate, targetRate)) },
             onOpenProviderUrl = onOpenProviderUrl,
-            onOpenPaywall = onOpenPaywall,
+            onOpenPaywall = { onOpenPaywallSource("transfer_intent_lock") },
         )
         SectionLabel(
             ui("PROVIDER MATRIX"),
@@ -372,20 +378,28 @@ fun ConverterScreen(
                 else -> ui("Preview")
             },
         )
+        if (providerComparisonFocused) {
+            Text(
+                "${ui("PROVIDER MATRIX")} · ${ui("Ready")}",
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.accent,
+                modifier = Modifier.testTag("provider_matrix_focus_feedback"),
+            )
+        }
         ProviderRecommendationCard(
             quote = bestRealWorldQuote ?: bestQuote,
             potentialSavings = potentialSavings,
             isPremium = subscriptionState.isPremium,
             isLoading = providerQuotesLoading,
             modifier = Modifier.testTag("converter_provider_recommendation"),
-            onOpenPaywall = onOpenPaywall,
+            onOpenPaywall = { onOpenPaywallSource("provider_lock") },
         )
         ProviderMatrixCard(
             quotes = feeQuotes.filterNot { it.provider == "Mid-market" },
             isLoading = providerQuotesLoading,
             errorMessage = providerQuotesError,
             isPremium = subscriptionState.isPremium,
-            onOpenPaywall = onOpenPaywall,
+            onOpenPaywall = { onOpenPaywallSource("provider_lock") },
         )
         ProviderSummaryCard(
             targetRate = targetRate,
@@ -401,7 +415,7 @@ fun ConverterScreen(
             customFee = customFee,
             selectedProviderCodes = providerCodes,
             isPremium = subscriptionState.isPremium,
-            onOpenPaywall = onOpenPaywall,
+            onOpenPaywall = { onOpenPaywallSource("provider_history_lock") },
         )
         CustomCostCard(
             sourceCode = sourceRate.code,
@@ -418,7 +432,7 @@ fun ConverterScreen(
                 title = ui("See the real transfer cost"),
                 subtitle = ui("Pro unlocks the complete provider list; estimates update with your amount."),
                 modifier = Modifier.testTag("converter_fee_upsell"),
-                onClick = onOpenPaywall,
+                onClick = { onOpenPaywallSource("provider_lock") },
             )
         }
         }

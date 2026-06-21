@@ -18,18 +18,194 @@ Use this as the release checklist. Mark items only after Android device testing 
 - [x] Product benchmark and cross-market roadmap are documented in `PRODUCT_BENCHMARK_ROADMAP.md`.
 - [x] P7 commercial productization pass is implemented in Home, Convert, Alerts and documentation.
 - [x] P8 retention loop pass is implemented in Home and Watchlist.
+- [x] 14-day closed testing feedback is reviewed and documented.
+- [x] P9 tester-feedback product reset is completed before Android production rollout.
 
 ## Release Blockers
 
 - [ ] Finalize hosted legal document content for Privacy and Terms at `fxalways.com`.
 - [x] Prepare internal testing checklist and store screenshot claim set.
 - [ ] Produce final store listing text, screenshots and metadata for Android.
+- [x] Complete P9 Android pre-production fixes from closed testing.
 - [x] Validate all critical release strings in the 13 supported languages.
 - [x] Run full Android instrumentation suite on S25 after the final UI polish pass.
 - [x] Run Android release build check.
 - [x] Configure production Android keystore and generate signed Play upload AAB locally.
 - [ ] Upload signed AAB to Play internal testing and verify Play accepts it.
 - [x] Android-only internal testing is acceptable while iOS production setup remains deferred.
+
+## P9 Tester Feedback Product Reset
+
+Use this checklist for the next product iteration. The goal is to make the app match the traveler promise from the store/onboarding while keeping advanced FX tools available behind explicit user intent.
+
+Closed testing evidence:
+
+- [x] Tester report rating reviewed: 4.6/5.
+- [x] Stability reviewed: no crashes, freezes or major performance issues reported.
+- [x] Strong positives captured: converter, Traveler, Compare, Watchlists, Alerts, News, Crypto and offline cached rates.
+- [x] Improvement themes captured: first-time guidance, information density, Pro banner frequency, historical charts, favorite management, news personalization, travel planning, small text and empty states.
+- [x] Production-access questionnaire answer 8 is ready to update with concrete completed changes after P9 implementation.
+
+### P9.0 Traveler Home Simple
+
+- [x] Add a Traveler-specific Home layout branch.
+- [x] Show primary action tiles before dense market data:
+  - [x] Check a price.
+  - [x] Convert money.
+  - [x] Tipping and local rules.
+  - [x] Trip budget.
+- [x] Keep only one main rate card before the action tiles or immediately after them.
+- [x] Move detailed compare/market movement below the first Traveler task area.
+- [x] Rewrite Traveler Home copy around tasks, not market jargon.
+- [x] Ensure Free users see at most one upgrade surface in the first viewport.
+- [x] UI test: Traveler action tile order is stable on phone.
+- [x] UI test: every action tile routes to the intended workflow.
+- [ ] UI test: small-phone layout does not clip action copy.
+
+### P9.1 Tipping And Local Rules
+
+- [x] Make Tipping/local rules reachable from Traveler Home in one tap.
+- [x] Add/verify content blocks for:
+  - [x] Tipping.
+  - [x] Card acceptance.
+  - [x] Cash needed.
+  - [x] ATM warning.
+  - [x] Dynamic currency conversion warning.
+  - [x] Local price norms.
+- [x] Add source/freshness labels for guide data.
+- [x] Free: show country-level basics.
+- [ ] Pro: show richer city/offline/cost-template detail.
+- [x] Empty state: missing guide data stays full-width and useful.
+- [x] UI test: local rules tile opens expected content.
+- [x] UI test: Free and Pro local rules content stays visible.
+- [x] i18n: all new guide copy is translated through the app translation layer.
+
+### P9.2 Clickability Contract
+
+- [x] Audit first two viewports of Home for clickable-looking static cards.
+- [x] Audit Traveler cards and rows.
+- [x] Audit Convert cards, provider rows and Pro locks.
+- [x] Audit Compare metrics, tiles, board and overlay.
+- [x] Audit More and Settings rows.
+- [x] Add arrows only to surfaces that navigate.
+- [x] Remove action styling from static informational cards.
+- [x] Ensure rows that look actionable either call a real callback or request permission.
+- [x] UI test: action cards click once and route/mutate correctly.
+- [x] UI test: static cards do not fire navigation callbacks.
+- [x] UI test: locked Free actions open paywall once.
+
+### P9.3 Free Country/Destination Choice
+
+- [x] Define final Free destination slot count: 1.
+- [x] Replace fixed Free destination assumptions with user-selected destination slots.
+- [x] Persist selected Free destinations in backup settings.
+- [x] Migration: keep current traveler destination as the first Free slot.
+- [x] Destination picker copy says Free includes selected destination(s), not a fixed country list.
+- [x] Pro unlocks all supported destinations.
+- [x] Confirm widgets and offline snapshot use the selected destination.
+- [x] UI test: Free selected destination can be changed from search.
+- [x] UI test: Free blocked destination opens paywall replaced by selected-destination model.
+- [x] UI test: Pro destination picker shows all supported destinations through search.
+- [x] UI test: migration keeps previous traveler destination through existing `travelerCurrency` state.
+
+### P9.4 Profile-Based Information Density
+
+- [x] Define Home ordering per profile:
+  - [x] Traveler: task-first, low numbers.
+  - [x] Remittances: recipient amount, provider route, alert.
+  - [x] Freelancer: invoice amount, fee/spread, timing.
+  - [x] Savings: long-term exposure, alert, watchlist.
+  - [x] Crypto holder: market movement, portfolio, alerts.
+- [x] Keep tabs stable while changing first-screen priority by profile.
+- [x] Make Compare secondary for Traveler unless explicitly opened.
+- [x] Add profile-specific return reason copy.
+- [x] UI test: Home ordering changes by profile.
+- [x] UI test: first CTA per profile routes correctly.
+- [x] UI test: changing profile in Settings updates Home after returning.
+
+### P9.5 Upgrade Strategy
+
+- [x] Add global floating Pro CTA for Free users.
+- [x] Hide global Pro CTA for Pro users.
+- [x] Use a visually distinct Pro color treatment for upgrade cards.
+- [x] Reduce repeated inline upsells above primary Traveler content.
+- [x] Add paywall source labels for:
+  - [x] `global_pro_cta`.
+  - [x] `traveler_destination_lock` replaced by selected Free destination model.
+  - [x] `ocr_lock`.
+  - [x] `provider_lock`.
+  - [x] `alert_limit`.
+  - [x] `traveler_cost_template_lock`.
+  - [x] `converter_currency_limit`.
+  - [x] `timing_lock`.
+  - [x] `remittance_plan_lock`.
+  - [x] `transfer_intent_lock`.
+- [x] Ensure Free feels useful before the paywall:
+  - [x] selected destination.
+  - [x] basic local rules.
+  - [x] manual converter.
+  - [x] limited alert/check.
+- [x] Ensure Pro value is concrete:
+  - [x] OCR/live scanner.
+  - [x] all destinations.
+  - [x] offline packs.
+  - [x] provider comparison.
+  - [x] unlimited alerts.
+  - [x] multiple trips/watchlists.
+- [x] UI test: global Pro CTA opens paywall for Free.
+- [x] UI test: Pro users do not see Free CTA.
+- [x] UI test: locked feature paywall entries are source-labelled.
+
+### P9.6 Closed-Test Polish Items
+
+- [x] Improve News empty state:
+  - [x] Explain no stories are available.
+  - [x] Add refresh guidance.
+  - [x] Keep the card full width.
+  - [x] Avoid unlabelled sample/fake news.
+- [x] Improve Conversion Decision visibility:
+  - [x] Move recommendation above supporting analysis.
+  - [x] Keep action buttons visible without deep scroll.
+  - [x] Keep explanatory text readable.
+- [x] Review secondary text readability:
+  - [x] Rate source details.
+  - [x] Update timestamps.
+  - [x] Market notes.
+  - [x] Provider source labels.
+- [x] Confirm historical chart ranges are P1 or implement safe range selector.
+- [x] Confirm favorite reordering/custom groups are P1 unless needed for P9.0.
+- [x] UI test: News empty state is full-width and useful.
+- [x] UI test: Converter first viewport includes conversion recommendation.
+- [ ] UI test: small-phone metadata text does not clip.
+
+### P9.7 Manual QA Before Versioning
+
+- [x] Fresh install as Free.
+- [x] Choose Traveler in onboarding.
+- [x] Confirm Home shows actions before dense market data.
+- [x] Open Tipping/local rules in one tap.
+- [x] Change destination to a real tester destination.
+- [x] Try a non-selected destination and verify paywall path replaced by selected-destination Free model.
+- [x] Tap every visible card in the first two Home viewports and verify action/static behavior.
+- [x] Open Compare and confirm it does not feel required for Traveler.
+- [x] Open global Pro CTA and confirm paywall copy is clear.
+- [ ] Grant Pro in RevenueCat or use a test purchase.
+- [ ] Reopen app and confirm Pro removes Free limits without changing saved trip data.
+- [x] Run full Android instrumentation suite on connected Android test device.
+- [x] Run Firebase Test Lab matrix.
+- [x] Confirm no new hardcoded user-facing strings.
+- [x] Prepare release notes around traveler clarity and easier Pro discovery.
+- [ ] Confirm Android production gate is met:
+  - [x] P9.0 complete.
+  - [x] P9.1 complete.
+  - [x] P9.2 complete.
+  - [x] P9.3 complete or explicitly deferred with rationale.
+  - [x] P9.5 complete.
+  - [x] P9.6 complete.
+  - [x] Connected Android full UI suite green.
+  - [x] Firebase Test Lab green.
+  - [x] Free manual QA complete.
+  - [ ] Pro manual QA complete.
 
 ## Android Launch Readiness
 
