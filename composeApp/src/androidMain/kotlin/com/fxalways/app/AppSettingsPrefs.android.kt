@@ -14,6 +14,8 @@ actual object AppSettingsPrefs {
     private const val KEY_USER_PROFILE = "user_profile"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
     private const val KEY_FIRST_CONVERSION_TRACKED = "first_conversion_tracked"
+    private const val KEY_SESSION_COUNT = "session_count"
+    private const val KEY_REVIEW_PROMPT_SHOWN = "review_prompt_shown"
 
     actual fun themeMode(): ThemeMode {
         val raw = prefs().getString(KEY_THEME_MODE, ThemeMode.System.name)
@@ -105,6 +107,20 @@ actual object AppSettingsPrefs {
 
     actual fun setFirstConversionTracked() {
         prefs().edit().putBoolean(KEY_FIRST_CONVERSION_TRACKED, true).apply()
+    }
+
+    actual fun sessionCount(): Int = prefs().getInt(KEY_SESSION_COUNT, 0)
+
+    actual fun incrementSessionCount(): Int {
+        val next = sessionCount() + 1
+        prefs().edit().putInt(KEY_SESSION_COUNT, next).apply()
+        return next
+    }
+
+    actual fun reviewPromptShown(): Boolean = prefs().getBoolean(KEY_REVIEW_PROMPT_SHOWN, false)
+
+    actual fun setReviewPromptShown() {
+        prefs().edit().putBoolean(KEY_REVIEW_PROMPT_SHOWN, true).apply()
     }
 
     actual fun cachedPremium(): Boolean? =

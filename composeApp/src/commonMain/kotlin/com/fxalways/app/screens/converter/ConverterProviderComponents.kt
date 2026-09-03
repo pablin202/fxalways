@@ -150,6 +150,7 @@ import com.fxalways.designsystem.components.SparkLine
 import com.fxalways.designsystem.components.formatChange
 import com.fxalways.designsystem.components.formatRate
 import com.fxalways.designsystem.theme.FxTheme
+import com.fxalways.app.ReviewPrompter
 import com.fxalways.observability.Observability
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -305,6 +306,7 @@ internal fun ProviderMatrixCard(
                 "provider_compare_viewed",
                 mapOf("base" to base, "target" to target, "amount_bucket" to amountBucket(amountValue), "plan" to if (isPremium) "pro" else "free"),
             )
+            ReviewPrompter.onValueMoment("provider_compare_viewed")
         }
     }
     BentoCard(Modifier.testTag("converter_provider_matrix"), padding = 12.dp) {

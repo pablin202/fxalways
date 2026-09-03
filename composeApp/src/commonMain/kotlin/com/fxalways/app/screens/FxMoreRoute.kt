@@ -25,6 +25,7 @@ import com.fxalways.app.screens.settings.FxSettingsRoute
 import com.fxalways.app.screens.traveler.TravelerScreen
 import com.fxalways.app.screens.watchlist.WatchlistScreen
 import com.fxalways.designsystem.components.FxRate
+import com.fxalways.app.ReviewPrompter
 import com.fxalways.observability.Observability
 
 @Composable
@@ -96,6 +97,7 @@ internal fun FxMoreRoute(
                     alertsState.alerts.findQuickAlert(liveState.baseCurrency, rate) != null
                 ) {
                     Observability.event("alert_created", mapOf("type" to "quick", "currency" to rate.code))
+                    ReviewPrompter.onValueMoment("alert_created")
                     alertsStore.addQuickAlert(liveState.baseCurrency, rate)
                 } else {
                     onOpenPaywall("alert_limit")
@@ -107,6 +109,7 @@ internal fun FxMoreRoute(
                     alertsState.alerts.findMatchingAlert(liveState.baseCurrency, rate.code, target, direction, kind) != null
                 ) {
                     Observability.event("alert_created", mapOf("type" to "manual", "currency" to rate.code))
+                    ReviewPrompter.onValueMoment("alert_created")
                     alertsStore.addAlert(liveState.baseCurrency, rate.code, target, direction, kind)
                 } else {
                     onOpenPaywall("alert_limit")
