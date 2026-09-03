@@ -45,7 +45,7 @@ internal fun RateTrustCard(
     val status = when {
         loading -> ui("Loading")
         liveState.isOfflineCache -> ui("Cached")
-        liveState.isLive -> ui("Live")
+        liveState.isLive -> ui("Daily reference")
         else -> ui("Preview")
     }
     BentoCard(modifier, padding = 12.dp) {
@@ -130,7 +130,7 @@ internal fun RateTrustDetailsCard(
     val loading = liveState.isInitialRateLoading()
     val decisionGrade = when {
         loading -> "Loading"
-        liveState.isLive -> "Live"
+        liveState.isLive -> "Daily reference"
         else -> "Cached"
     }
     BentoCard(modifier, padding = 12.dp) {

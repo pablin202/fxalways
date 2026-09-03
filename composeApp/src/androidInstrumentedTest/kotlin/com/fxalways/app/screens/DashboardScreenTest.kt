@@ -271,6 +271,53 @@ class DashboardScreenTest {
         compose.runOnIdle { assertEquals(1, harness.suggestedAlertClicks) }
     }
 
+    @Test
+    fun dashboardNeverClaimsIntradayGranularity() {
+        renderDashboard(
+            isPremium = true,
+            userProfile = UserProfile.CryptoHolder,
+            liveState = testLiveRatesState().copy(
+                rateDate = "2026-09-03",
+                providerLabel = "Frankfurter / European Central Bank",
+                refreshedAtMillis = 1_756_900_000_000L,
+            ),
+        )
+
+        compose.onNodeWithTag("dashboard_freshness").assertIsDisplayed()
+        compose.onNodeWithText("DAILY REFERENCE").assertIsDisplayed()
+        compose.onNodeWithText("Rate of 3 Sep", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("daily reference", substring = true).assertIsDisplayed()
+
+        compose.onAllNodesWithText("LIVE").assertCountEquals(0)
+        compose.onAllNodesWithText("VOLATILITY", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("24H RANGE").assertCountEquals(0)
+        compose.onAllNodesWithText("· 1H", substring = true).assertCountEquals(0)
+
+        compose.onNodeWithTag("dashboard_top_mover").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("TOP MOVE · VS YESTERDAY").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_pinned_range").assertIsDisplayed()
+        compose.onNodeWithText("30D RANGE").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("VS YESTERDAY").assertIsDisplayed()
+    }
+
+    @Test
+    fun offlineDashboardSaysLastRateDateInsteadOfLive() {
+        renderDashboard(
+            isPremium = false,
+            userProfile = UserProfile.Remittances,
+            liveState = testLiveRatesState().copy(
+                isLive = false,
+                isOfflineCache = true,
+                rateDate = "2026-09-02",
+                cachedAtMillis = 0L,
+            ),
+        )
+
+        compose.onNodeWithText("OFFLINE").assertIsDisplayed()
+        compose.onNodeWithText("last rate 2 Sep", substring = true).assertIsDisplayed()
+        compose.onAllNodesWithText("LIVE").assertCountEquals(0)
+    }
+
     private fun renderDashboard(
         isPremium: Boolean,
         trackedCurrencyCodes: List<String> = emptyList(),

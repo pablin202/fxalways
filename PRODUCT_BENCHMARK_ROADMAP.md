@@ -97,6 +97,28 @@ These items should move FX Always from a polished converter into a product that 
    - Add separate widget intents for Rates, Convert and Watchlist entry points.
    - Later: iOS widget extension.
 
+## Rate Freshness Policy (issue #3, 2026-09-03)
+
+What the app shows and how it is labelled, so the UI never implies more granularity than the data has.
+
+| Data | Source | Real cadence | Label in the app |
+|---|---|---|---|
+| FX mid-market | Frankfurter (ECB reference rates) | One fixing per business day (~16:00 CET); backend cache refreshes hourly | `DAILY REFERENCE · Rate of 3 Sep · synced 14:05`. Changes are "vs yesterday". Ranges and sparklines are "30D". |
+| Crypto | CoinPaprika | Backend cache every 10 minutes | "24H" labels are legitimate here (CoinPaprika reports a rolling 24h change). |
+| Provider quotes | Wise live quote, Wise Comparison, estimates | Live on request, cached 15 min | Status per provider: live / comparison / estimated / partner setup (unchanged). |
+| Offline | Local cache | Whatever was last synced | `OFFLINE · last rate 2 Sep · saved 3h ago`. |
+
+Rules:
+- No `LIVE`, `1H`, `24H` or `VOLATILITY` copy on FX surfaces. The pulsing live dot is gone from Home.
+- Every FX number carries a reference date; the sync time says when *this device* fetched it, never when the market moved.
+- The hero range and sparkline use the same 30-calendar-day window (`SPARKLINE_WINDOW_DAYS`).
+- Home tiles are computed from data (top mover vs yesterday, pinned 30D range). No hardcoded values.
+
+Intraday spike (timeboxed, decision):
+- Candidates: exchangerate.host (free tier, 1h refresh, unreliable uptime), Open Exchange Rates (US$12/mo for 1h, hourly not tick), Wise quote endpoint (already integrated in `providerQuotes`, true live mid-market per corridor, rate-limited).
+- Decision: keep the ECB daily reference as the free, universal baseline and **use the Wise live quote as the "live" number only inside the send/convert decision for the user's corridor** (Phase 2, "Decision of the day"). That is where freshness changes a decision; a dashboard of 150 currencies ticking hourly does not.
+- Revisit if Phase 2 analytics show users bouncing on the reference date, or if a corridor needs sub-daily alerts.
+
 ## P1
 
 - Remittance planner with recurring amount, family route, reminder cadence, recipient estimate, next-send window, route confidence and annual fee drag. Hardened in Convert and UI-tested.

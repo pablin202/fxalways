@@ -1,6 +1,7 @@
 package com.fxalways.app.screens.dashboard
 
 import com.fxalways.app.screens.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -33,7 +35,6 @@ import com.fxalways.app.screens.alerts.findMatchingAlert
 import com.fxalways.app.screens.detail.LoadingSkeletonCard
 import com.fxalways.app.screens.detail.RateTrustCard
 import com.fxalways.app.screens.detail.RateTrustDetailsCard
-import com.fxalways.app.screens.detail.compactRuntimeLabel
 import com.fxalways.app.screens.detail.isInitialRateLoading
 import com.fxalways.app.screens.profile.ProfileActionCard
 import com.fxalways.app.screens.profile.ProfileInsightCard
@@ -47,7 +48,6 @@ import com.fxalways.designsystem.components.CurrencyRow
 import com.fxalways.designsystem.components.Eyebrow
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.components.KeyValueRow
-import com.fxalways.designsystem.components.LiveDot
 import com.fxalways.designsystem.components.MetricTile
 import com.fxalways.designsystem.components.Pill
 import com.fxalways.designsystem.components.PillVariant
@@ -56,6 +56,7 @@ import com.fxalways.designsystem.components.SectionLabel
 import com.fxalways.designsystem.components.formatChange
 import com.fxalways.designsystem.components.formatRate
 import com.fxalways.designsystem.theme.FxTheme
+import kotlin.math.abs
 
 internal data class ProfileAlertSuggestion(
     val rate: FxRate,
@@ -133,17 +134,30 @@ fun DashboardScreen(
     val cryptoAverageMove = visibleCrypto.takeIf { it.isNotEmpty() }?.map { it.change24h }?.average() ?: 0.0
     val strongestCrypto = visibleCrypto.maxByOrNull { it.change24h }
     val stablecoinCount = visibleCrypto.count { it.code in StablecoinCodes }
+    val freshness = rateFreshness(liveState)
+    val freshnessColor = if (freshness.isStale) FxTheme.colors.down else FxTheme.colors.accent
     ScreenScaffold {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+        // FX rates are a daily reference (ECB), so this header names the data and its date
+        // instead of a pulsing "LIVE" dot that would imply intraday ticks.
+        // Stacked on the left so the detail never runs under the floating Pro button on the right.
+        Column(
+            Modifier.fillMaxWidth(0.78f).testTag("dashboard_freshness"),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                LiveDot(Modifier.size(9.dp))
-                Eyebrow(if (liveState.isLive) ui("LIVE") else ui("CACHED"), color = FxTheme.colors.accent)
+                Box(Modifier.size(8.dp).background(freshnessColor, CircleShape))
+                Eyebrow(freshness.badge, color = freshnessColor)
             }
-            Text(compactRuntimeLabel(liveState.updatedLabel), style = FxTheme.typography.captionMono, color = FxTheme.colors.textFaint, textAlign = TextAlign.End)
+            Text(
+                freshness.detail,
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.textFaint,
+                modifier = Modifier.testTag("dashboard_freshness_detail"),
+            )
         }
         ScreenHeader(
             title = ui("Rates"),
-            subtitle = "${ui("base")} · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} ${ui("favorites")} · ${localizedRuntimeLabel(liveState.autoRefreshLabel)}",
+            subtitle = "${ui("base")} · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} ${ui("favorites")} · ${ui("daily reference")}",
             right = { Text("↻", style = FxTheme.typography.numberL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onRefresh)) },
         )
         if (userProfile == UserProfile.Traveler && !liveState.isInitialRateLoading()) {
@@ -254,13 +268,17 @@ fun DashboardScreen(
                 )
                 HeroRateCard(visibleFavorites.firstOrNull() ?: FavoriteRates.first(), liveState.baseCurrency)
                 if (userProfile == UserProfile.CryptoHolder) {
+                    // Both tiles are derived from real daily data: the day-over-day change and the
+                    // 30-day history behind the sparkline. No hardcoded numbers, no "1H" claims.
+                    val topMover = liveState.favorites.filter { it.code != liveState.baseCurrency }.maxByOrNull { abs(it.change24h) }
+                    val pinned = visibleFavorites.firstOrNull() ?: liveState.favorites.firstOrNull()
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        MetricTile(ui("VOLATILITY · 24H"), "0.42%", null, Modifier.weight(1f).height(76.dp))
-                        liveState.favorites.firstOrNull { it.code == "GBP" }?.let { MetricTile("GBP · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        liveState.favorites.firstOrNull { it.code == "JPY" }?.let { MetricTile("JPY · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
-                        liveState.favorites.firstOrNull { it.code == "MXN" }?.let { MetricTile("MXN · 1H", formatRate(it.rate), formatChange(it.change24h), Modifier.weight(1f).height(76.dp)) }
+                        topMover?.let {
+                            MetricTile(ui("TOP MOVE · VS YESTERDAY"), formatChange(it.change24h), it.code, Modifier.weight(1f).testTag("dashboard_top_mover"))
+                        }
+                        pinned?.let {
+                            MetricTile(ui("PINNED · 30D RANGE"), it.code, sparklineRangeLabel(it), Modifier.weight(1f).testTag("dashboard_pinned_range"))
+                        }
                     }
                 }
                 SectionLabel(

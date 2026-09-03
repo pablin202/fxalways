@@ -106,7 +106,7 @@ object FxTravelerWidgetSnapshotParser {
             val dailyBudget = localBudget / TripDays
             val cashBuffer = localBudget * destination.cashBufferPct
             FxTravelerWidgetSnapshot(
-                status = if (updated.contains("cached", ignoreCase = true)) "CACHE" else "LIVE",
+                status = if (updated.contains("cached", ignoreCase = true)) "CACHE" else "DAILY",
                 destinationLabel = "${destination.city.uppercase()} · ${rate.code}",
                 localBudget = "${destination.symbol}${formatWidgetAmount(localBudget)}",
                 dailyBudget = "${destination.symbol}${formatWidgetAmount(dailyBudget)} / day",

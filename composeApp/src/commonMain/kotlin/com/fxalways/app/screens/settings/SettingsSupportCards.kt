@@ -43,7 +43,7 @@ internal fun StoreListingKitCard(
     var copied by remember(appLanguage, subscriptionState.isPremium) { mutableStateOf(false) }
     val planLabel = if (subscriptionState.isPremium) "Pro" else "Free"
     val listingTitle = "FX Always"
-    val shortDescription = ui("Live currency converter, alerts, travel tools and portfolio tracking.")
+    val shortDescription = ui("Currency converter, real transfer costs, rate alerts and travel tools.")
     val keywords = ui("currency converter, exchange rates, travel money, rate alerts")
     val disclaimer = ui("Rates are indicative and may differ from provider, card or cash exchange rates.")
     val listingText = remember(appLanguage, planLabel, shortDescription, keywords, disclaimer) {

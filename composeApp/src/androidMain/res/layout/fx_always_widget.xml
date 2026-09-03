@@ -34,7 +34,7 @@
             android:background="@drawable/fx_widget_status_pill"
             android:includeFontPadding="false"
             android:maxLines="1"
-            android:text="LIVE"
+            android:text="DAILY"
             android:textColor="#5EEAD4"
             android:textSize="9sp"
             android:textStyle="bold" />
