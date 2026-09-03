@@ -25,8 +25,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -46,6 +50,13 @@ data class LiveRatesState(
     val compare: List<FxRate> = CompareRates,
     val allFiat: List<FxRate> = SettingsBaseCurrencies,
     val detailSeries: List<Float> = DetailSeries,
+    /** Reference date of the FX rates as reported by the provider (ECB publishes once per business day). */
+    val rateDate: String? = null,
+    val providerLabel: String? = null,
+    /** When this device last fetched the backend successfully. */
+    val refreshedAtMillis: Long? = null,
+    /** When the payload currently on screen was saved to the offline cache, if it came from cache. */
+    val cachedAtMillis: Long? = null,
 )
 
 class LiveRatesStore(
@@ -152,6 +163,9 @@ class LiveRatesStore(
                     compare = (basePriority(base, compareCodes, liveRates) + coreCryptoRates(cryptoRates)).take(12),
                     allFiat = allFiatRates,
                     detailSeries = histories.values.firstOrNull()?.toSparkline(DetailSeries) ?: DetailSeries,
+                    rateDate = latest.date,
+                    providerLabel = latest.provider,
+                    refreshedAtMillis = Clock.System.now().toEpochMilliseconds(),
                 )
                 LiveRatesCachePrefs.setCacheJson(base, json.encodeToString(nextState.toCachePayload()))
                 refreshFxWidgets()
@@ -191,6 +205,9 @@ private data class CachedLiveRatesPayload(
     val compare: List<CachedFxRate>,
     val allFiat: List<CachedFxRate>,
     val detailSeries: List<Float>,
+    val rateDate: String? = null,
+    val providerLabel: String? = null,
+    val refreshedAtMillis: Long? = null,
 )
 
 @Serializable
@@ -216,6 +233,9 @@ private fun LiveRatesState.toCachePayload(): CachedLiveRatesPayload =
         compare = compare.map { it.toCache() },
         allFiat = allFiat.map { it.toCache() },
         detailSeries = detailSeries,
+        rateDate = rateDate,
+        providerLabel = providerLabel,
+        refreshedAtMillis = refreshedAtMillis,
     )
 
 private fun CachedLiveRatesPayload.toState(errorMessage: String?): LiveRatesState =
@@ -233,6 +253,10 @@ private fun CachedLiveRatesPayload.toState(errorMessage: String?): LiveRatesStat
         compare = compare.map { it.toFxRate() },
         allFiat = allFiat.map { it.toFxRate() },
         detailSeries = detailSeries,
+        rateDate = rateDate,
+        providerLabel = providerLabel,
+        refreshedAtMillis = refreshedAtMillis,
+        cachedAtMillis = cachedAtMillis,
     )
 
 private fun FxRate.toCache(): CachedFxRate =
@@ -366,11 +390,19 @@ private fun List<HistoricalPoint>.dailyChangePct(): Double? {
     return ((last().value - previous) / previous) * 100.0
 }
 
-private fun List<HistoricalPoint>.toSparkline(fallback: List<Float>): List<Float> =
-    takeLast(18)
+/**
+ * Sparklines and ranges on the Home screen are labelled "30 days", so the series must
+ * cover exactly that window of daily reference points, never an arbitrary tail.
+ */
+internal const val SPARKLINE_WINDOW_DAYS = 30
+
+private fun List<HistoricalPoint>.toSparkline(fallback: List<Float>): List<Float> {
+    val cutoff = Clock.System.todayIn(TimeZone.currentSystemDefault()).minus(SPARKLINE_WINDOW_DAYS, DateTimeUnit.DAY)
+    return filter { point -> runCatching { LocalDate.parse(point.date) >= cutoff }.getOrDefault(true) }
         .map { it.value.toFloat() }
         .takeIf { it.size >= 2 }
         ?: fallback
+}
 
 private fun refreshTimeLabel(): String {
     val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())

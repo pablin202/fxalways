@@ -6,6 +6,7 @@ import com.fxalways.app.screens.i18n.localizedProviderCatalogText
 import com.fxalways.app.screens.i18n.uiProviderPreferenceTranslations
 import com.fxalways.app.screens.i18n.uiProviderQuoteTranslations
 import com.fxalways.app.screens.i18n.uiP9ClosedTestTranslations
+import com.fxalways.app.screens.i18n.uiRateFreshnessTranslations
 import com.fxalways.app.screens.i18n.uiSupplementalTranslations
 import com.fxalways.app.screens.i18n.uiTranslations
 
@@ -18,6 +19,7 @@ internal fun localizedUiText(language: String, text: String): String {
     val normalized = language.lowercase().substringBefore("-").substringBefore("_")
     return uiTranslations[normalized]?.get(text)
         ?: uiSupplementalTranslations[normalized]?.get(text)
+        ?: uiRateFreshnessTranslations[normalized]?.get(text)
         ?: uiP9ClosedTestTranslations[normalized]?.get(text)
         ?: uiProviderPreferenceTranslations[normalized]?.get(text)
         ?: localizedProviderCatalogText(normalized, text)

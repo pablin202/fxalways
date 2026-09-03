@@ -64,7 +64,7 @@ internal fun AlertCard(
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 MetricTile(
-                    if (alert.kind == AlertKind.Target) ui("CURRENT") else ui("24H MOVE"),
+                    if (alert.kind == AlertKind.Target) ui("CURRENT") else ui("DAILY MOVE"),
                     if (alert.kind == AlertKind.Target) currentRate?.let(::formatRate) ?: "--" else currentChangePct?.let(::formatSignedPercent) ?: "--",
                     localizedAlertDistanceLabel(alert, currentRate, currentChangePct),
                     Modifier.weight(1f).height(72.dp),

@@ -108,7 +108,7 @@ internal fun CryptoAssetRow(rate: FxRate, baseCurrency: String, onClick: () -> U
 
 @Composable
 internal fun HeroRateCard(rate: FxRate, baseCurrency: String) {
-    BentoCard(Modifier.fillMaxWidth().height(158.dp), padding = 14.dp) {
+    BentoCard(Modifier.fillMaxWidth().height(168.dp), padding = 14.dp) {
         GridBg(Modifier.matchParentSize().alpha(0.22f))
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -120,12 +120,15 @@ internal fun HeroRateCard(rate: FxRate, baseCurrency: String) {
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                 Text(formatRate(rate.rate), style = FxTheme.typography.numberXL.copy(fontSize = 44.sp, lineHeight = 44.sp), color = FxTheme.colors.text)
-                Text(formatChange(rate.change24h), style = FxTheme.typography.numberBody, color = if (rate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down)
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(formatChange(rate.change24h), style = FxTheme.typography.numberBody, color = if (rate.change24h >= 0) FxTheme.colors.up else FxTheme.colors.down)
+                    com.fxalways.designsystem.components.Eyebrow(ui("VS YESTERDAY"))
+                }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    com.fxalways.designsystem.components.Eyebrow(ui("24H RANGE"))
-                    Text("${formatRate(rate.sparkline.minOrNull()?.toDouble() ?: rate.rate)} — ${formatRate(rate.sparkline.maxOrNull()?.toDouble() ?: rate.rate)}", style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
+                    com.fxalways.designsystem.components.Eyebrow(ui("30D RANGE"))
+                    Text(sparklineRangeLabel(rate), style = FxTheme.typography.captionMono, color = FxTheme.colors.textDim)
                 }
                 SparkLine(rate.sparkline, Modifier.size(108.dp, 38.dp), color = FxTheme.colors.accent, showLastDot = true)
             }

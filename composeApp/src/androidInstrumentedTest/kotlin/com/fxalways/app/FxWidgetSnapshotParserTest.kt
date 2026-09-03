@@ -28,7 +28,7 @@ class FxWidgetSnapshotParserTest {
         )
 
         assertNotNull(snapshot)
-        assertEquals("LIVE", snapshot.status)
+        assertEquals("DAILY", snapshot.status)
         assertEquals("USD / EUR", snapshot.primaryPair)
         assertEquals("0.920000", snapshot.primaryValue)
         assertTrue(snapshot.tileOneLabel.startsWith("BTC"))

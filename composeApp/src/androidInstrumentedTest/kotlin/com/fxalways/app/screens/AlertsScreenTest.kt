@@ -100,7 +100,7 @@ class AlertsScreenTest {
         compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
 
         compose.onNodeWithTag("alert_card_manual_1").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("24H MOVE").assertIsDisplayed()
+        compose.onNodeWithText("DAILY MOVE").assertIsDisplayed()
         compose.onNodeWithText("Create unlimited alerts").assertDoesNotExist()
     }
 
@@ -421,7 +421,7 @@ class AlertsScreenTest {
         compose.onAllNodesWithText("target reached").assertCountEquals(1)
 
         compose.onAllNodesWithTag("alert_card_gbp_move").assertCountEquals(1)
-        compose.onAllNodesWithText("24H MOVE").assertCountEquals(1)
+        compose.onAllNodesWithText("DAILY MOVE").assertCountEquals(1)
         compose.onAllNodesWithText("0.4 pts away", substring = true).assertCountEquals(1)
         compose.onAllNodesWithText("0.4 pts to move").assertCountEquals(3)
         compose.onNodeWithTag("alert_trigger_history").performScrollTo().assertIsDisplayed()

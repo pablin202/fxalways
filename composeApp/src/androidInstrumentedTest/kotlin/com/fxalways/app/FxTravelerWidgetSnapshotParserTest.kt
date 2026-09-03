@@ -25,7 +25,7 @@ class FxTravelerWidgetSnapshotParserTest {
         )
 
         assertNotNull(snapshot)
-        assertEquals("LIVE", snapshot.status)
+        assertEquals("DAILY", snapshot.status)
         assertEquals("TOKYO · JPY", snapshot.destinationLabel)
         assertEquals("¥15,600", snapshot.localBudget)
         assertEquals("¥5,200 / day", snapshot.dailyBudget)

@@ -132,7 +132,7 @@ object FxWidgetSnapshotParser {
                 .filter { it.code != base }
                 .maxByOrNull { abs(it.change24h) }
             FxWidgetSnapshot(
-                status = if (updated.contains("cached", ignoreCase = true)) "CACHE ${updated.cacheAgeLabel()}" else "LIVE",
+                status = if (updated.contains("cached", ignoreCase = true)) "CACHE ${updated.cacheAgeLabel()}" else "DAILY",
                 primaryPair = "$base / ${primary.code}",
                 primaryValue = formatWidgetRate(primary.rate),
                 tileOneLabel = btc?.let { "BTC ${formatWidgetRate(it.rate)}" } ?: "BTC",

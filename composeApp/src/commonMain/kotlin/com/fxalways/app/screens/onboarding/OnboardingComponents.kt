@@ -70,9 +70,9 @@ fun OnboardingScreen(onComplete: (UserProfile) -> Unit = {}) {
     var selectedProfile by remember { mutableStateOf(UserProfile.Traveler) }
     val steps = listOf(
         OnboardingStep(
-            tag = ui("STEP 01 · LIVE RATES"),
-            title = ui("Fresh rates.\nAlways ready."),
-            body = ui("The app starts with your local base currency and keeps rates refreshed from the backend."),
+            tag = ui("STEP 01 · DAILY REFERENCE"),
+            title = ui("Reference rates.\nUpdated daily."),
+            body = ui("ECB mid-market reference, updated every business day, plus live crypto. Every number shows its date."),
             glyph = "⌖",
         ),
         OnboardingStep(
