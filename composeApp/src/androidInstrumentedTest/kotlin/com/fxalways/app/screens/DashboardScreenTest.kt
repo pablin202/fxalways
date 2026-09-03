@@ -13,6 +13,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
+import com.fxalways.app.Corridor
+import com.fxalways.app.SendCadence
 import com.fxalways.app.UserProfile
 import com.fxalways.app.data.LiveRatesState
 import com.fxalways.app.screens.alerts.QuickAlertState
@@ -121,6 +123,7 @@ class DashboardScreenTest {
     @Test
     fun freeDashboardShowsPersonalizedProfileCard() {
         val harness = renderDashboard(isPremium = false, userProfile = UserProfile.Remittances)
+        compose.onNodeWithTag("dashboard_more_toggle").performScrollTo().performClick()
 
         compose.onNodeWithText("Send money smarter").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
@@ -181,6 +184,7 @@ class DashboardScreenTest {
     @Test
     fun providerProfileActionRoutesToConverterWorkflow() {
         val harness = renderDashboard(isPremium = true, userProfile = UserProfile.Remittances)
+        compose.onNodeWithTag("dashboard_more_toggle").performScrollTo().performClick()
         compose.onNodeWithTag("dashboard_profile_action_button").performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(1, harness.converterClicks)
@@ -191,6 +195,7 @@ class DashboardScreenTest {
     @Test
     fun remittancePriorityPrimaryCtaRoutesToConverter() {
         val harness = renderDashboard(isPremium = true, userProfile = UserProfile.Remittances)
+        compose.onNodeWithTag("dashboard_more_toggle").performScrollTo().performClick()
         compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_primary_cta").performClick()
         compose.runOnIdle {
@@ -318,12 +323,62 @@ class DashboardScreenTest {
         compose.onAllNodesWithText("LIVE").assertCountEquals(0)
     }
 
+    @Test
+    fun remittancesHomeLeadsWithTodayDecisionAndCollapsesTheRest() {
+        val harness = renderDashboard(isPremium = false, userProfile = UserProfile.Remittances, corridor = Corridor("USD", "MXN", 500.0, SendCadence.Monthly))
+
+        // First viewport, no scrolling: the decision card is the first thing after the header.
+        compose.onNodeWithTag("dashboard_today_decision").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_today_amount").assertTextContains("USD 500 → MXN 9,360.00")
+        compose.onNodeWithTag("dashboard_today_route").assertTextContains("with", substring = true)
+        compose.onNodeWithTag("dashboard_today_signal").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_today_alert").assertIsDisplayed()
+        compose.onAllNodesWithTag("dashboard_profile_priority").assertCountEquals(0)
+
+        compose.onNodeWithTag("dashboard_today_providers").performClick()
+        compose.onNodeWithTag("dashboard_today_alert").performClick()
+        compose.runOnIdle {
+            assertEquals(1, harness.converterClicks)
+            assertEquals(1, harness.corridorAlertClicks)
+            assertEquals(0, harness.suggestedAlertClicks)
+        }
+
+        compose.onNodeWithTag("dashboard_more_toggle").performScrollTo().performClick()
+        compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun freelancerSeesCashOutDecisionWithHomeExpanded() {
+        renderDashboard(isPremium = true, userProfile = UserProfile.Freelancer, corridor = Corridor("USD", "EUR", 2_500.0, SendCadence.Monthly))
+
+        compose.onNodeWithTag("dashboard_today_amount").assertTextContains("USD 2,500 → EUR 2,300.00")
+        compose.onNodeWithTag("dashboard_today_reason").assertTextContains("If you cash out today", substring = true)
+        compose.onAllNodesWithTag("dashboard_more_toggle").assertCountEquals(0)
+        compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun travelerKeepsQuickActionsWithoutDecisionCard() {
+        renderDashboard(isPremium = false, userProfile = UserProfile.Traveler, corridor = Corridor("USD", "JPY", 2_000.0, SendCadence.Once))
+
+        compose.onAllNodesWithTag("dashboard_today_decision").assertCountEquals(0)
+        compose.onNodeWithTag("dashboard_traveler_actions").assertIsDisplayed()
+    }
+
+    @Test
+    fun remittancesWithoutCorridorFallsBackToProfilePair() {
+        renderDashboard(isPremium = false, userProfile = UserProfile.Remittances)
+
+        compose.onNodeWithTag("dashboard_today_amount").assertTextContains("USD 500 → MXN 9,360.00")
+    }
+
     private fun renderDashboard(
         isPremium: Boolean,
         trackedCurrencyCodes: List<String> = emptyList(),
         userProfile: UserProfile = UserProfile.CryptoHolder,
         suggestedProfileAlertState: QuickAlertState? = QuickAlertState.Create,
         liveState: LiveRatesState = testLiveRatesState(),
+        corridor: Corridor? = null,
     ): DashboardHarness {
         val harness = DashboardHarness()
         AndroidAppContext.init(compose.activity)
@@ -344,6 +399,8 @@ class DashboardScreenTest {
                     onOpenConverter = { harness.converterClicks += 1 },
                     onOpenTraveler = { harness.travelerClicks += 1 },
                     onOpenWatchlist = { harness.watchlistClicks += 1 },
+                    corridor = corridor,
+                    onCreateCorridorAlert = { harness.corridorAlertClicks += 1 },
                 )
             }
         }
@@ -391,6 +448,7 @@ class DashboardScreenTest {
         var converterClicks = 0
         var travelerClicks = 0
         var watchlistClicks = 0
+        var corridorAlertClicks = 0
         val openedDetailCodes = mutableListOf<String>()
     }
 }

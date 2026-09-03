@@ -73,4 +73,30 @@ class FxWidgetSnapshotParserTest {
         assertNull(FxWidgetSnapshotParser.fromCacheJson(""))
         assertNull(FxWidgetSnapshotParser.fromCacheJson("{"))
     }
+    @Test
+    fun parserShowsCorridorAmountWhenCorridorIsSet() {
+        val snapshot = FxWidgetSnapshotParser.fromCacheJson(
+            """
+            {"baseCurrency":"AUD","updatedLabel":"2026-09-03 · live","favorites":[{"code":"ARS","rate":1080.71,"change24h":0.4}],"converter":[],"crypto":[]}
+            """.trimIndent(),
+            corridor = "AUD,ARS,500.0,Monthly",
+        )
+
+        assertNotNull(snapshot)
+        assertEquals("AUD 500 → ARS", snapshot.primaryPair)
+        assertEquals("540,355", snapshot.primaryValue)
+    }
+
+    @Test
+    fun parserIgnoresCorridorWithoutRateForTarget() {
+        val snapshot = FxWidgetSnapshotParser.fromCacheJson(
+            """
+            {"baseCurrency":"AUD","updatedLabel":"2026-09-03 · live","favorites":[{"code":"USD","rate":0.65,"change24h":0.1}],"converter":[],"crypto":[]}
+            """.trimIndent(),
+            corridor = "AUD,ARS,500.0,Monthly",
+        )
+
+        assertNotNull(snapshot)
+        assertEquals("AUD / USD", snapshot.primaryPair)
+    }
 }

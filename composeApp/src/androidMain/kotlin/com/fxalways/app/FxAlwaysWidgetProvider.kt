@@ -29,7 +29,7 @@ class FxAlwaysWidgetProvider : AppWidgetProvider() {
         }
 
         private fun buildWidgetViews(context: Context): RemoteViews {
-            val snapshot = FxWidgetSnapshotParser.fromCacheJson(widgetCacheJson(context)) ?: FxWidgetSnapshot.empty()
+            val snapshot = FxWidgetSnapshotParser.fromCacheJson(widgetCacheJson(context), widgetCorridor(context)) ?: FxWidgetSnapshot.empty()
             return RemoteViews(context.packageName, R.layout.fx_always_widget).apply {
                 setTextViewText(R.id.widget_status, snapshot.status)
                 setTextViewText(R.id.widget_primary_pair, snapshot.primaryPair)
@@ -64,6 +64,9 @@ class FxAlwaysWidgetProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
         }
+
+        private fun widgetCorridor(context: Context): String? =
+            context.applicationContext.getSharedPreferences("fx_always_prefs", 0).getString("corridor", null)
 
         private fun widgetCacheJson(context: Context): String? {
             val prefs = context.applicationContext.getSharedPreferences("fx_always_prefs", 0)
@@ -116,7 +119,7 @@ data class FxWidgetSnapshot(
 }
 
 object FxWidgetSnapshotParser {
-    fun fromCacheJson(raw: String?): FxWidgetSnapshot? {
+    fun fromCacheJson(raw: String?, corridor: String? = null): FxWidgetSnapshot? {
         if (raw.isNullOrBlank()) return null
         return runCatching {
             val json = JSONObject(raw)
@@ -126,6 +129,9 @@ object FxWidgetSnapshotParser {
                 listOfRates(json.optJSONArray("converter")) +
                 listOfRates(json.optJSONArray("crypto"))
             val primary = rates.firstOrNull { it.code != base } ?: return@runCatching FxWidgetSnapshot.empty()
+            // Today's decision variant (issue #11): the user's corridor amount converted at today's rate.
+            val corridorInfo = Corridor.decode(corridor)?.takeIf { it.target != base }
+            val corridorRate = corridorInfo?.let { info -> rates.firstOrNull { it.code == info.target } }
             val btc = rates.firstOrNull { it.code == "BTC" }
             val eth = rates.firstOrNull { it.code == "ETH" }
             val bestMover = rates
@@ -133,8 +139,8 @@ object FxWidgetSnapshotParser {
                 .maxByOrNull { abs(it.change24h) }
             FxWidgetSnapshot(
                 status = if (updated.contains("cached", ignoreCase = true)) "CACHE ${updated.cacheAgeLabel()}" else "DAILY",
-                primaryPair = "$base / ${primary.code}",
-                primaryValue = formatWidgetRate(primary.rate),
+                primaryPair = if (corridorInfo != null && corridorRate != null) "$base ${formatWidgetAmount(corridorInfo.amount)} → ${corridorInfo.target}" else "$base / ${primary.code}",
+                primaryValue = if (corridorInfo != null && corridorRate != null) formatWidgetAmount(corridorInfo.amount * corridorRate.rate) else formatWidgetRate(primary.rate),
                 tileOneLabel = btc?.let { "BTC ${formatWidgetRate(it.rate)}" } ?: "BTC",
                 tileOneValue = btc?.changeLabel() ?: "Waiting",
                 tileOneColor = btc?.changeColor() ?: WidgetTextDim,
@@ -182,6 +188,9 @@ private fun formatWidgetRate(value: Double): String =
         value >= 0.0001 -> formatWidgetNumber(value, decimals = 6)
         else -> "<0.0001"
     }
+
+private fun formatWidgetAmount(value: Double): String =
+    if (value >= 1_000.0) "%,.0f".format(value) else formatWidgetNumber(value, decimals = if (value >= 100.0) 0 else 2)
 
 private fun formatWidgetNumber(value: Double, decimals: Int = 2): String =
     "%.${decimals}f".format(value)
