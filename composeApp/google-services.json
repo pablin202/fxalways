@@ -14,6 +14,30 @@
       },
       "oauth_client": [
         {
+          "client_id": "75079929673-4rji7hmn016b9kkt6jl796o7958aleqa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fxalways.app",
+            "certificate_hash": "1e3fa15fb537ca5080b584ef9ca1566d82f7dedf"
+          }
+        },
+        {
+          "client_id": "75079929673-k9qhdflk0smrfefsj4sbebg4nmv1i2m8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fxalways.app",
+            "certificate_hash": "1076d382c95b1aeaccb157ff628600204f08abb8"
+          }
+        },
+        {
+          "client_id": "75079929673-oag2t70k3brgeic75pbks0lufclj1trj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fxalways.app",
+            "certificate_hash": "3bae0f562e92b3d736ed23dfe97907d02c7e2fe4"
+          }
+        },
+        {
           "client_id": "75079929673-5l8oubf1n9jdetn9s86qhc81c3l47nrr.apps.googleusercontent.com",
           "client_type": 3
         }
