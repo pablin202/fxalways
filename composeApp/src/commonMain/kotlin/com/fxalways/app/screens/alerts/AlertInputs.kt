@@ -132,12 +132,13 @@ internal fun AlertQuickRow(
     onCreate: () -> Unit,
     onLocked: () -> Unit,
 ) {
+    val chipFocusManager = LocalFocusManager.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("alert_quick_${rate.code}")
             .clip(FxTheme.shapes.field)
-            .clickable(onClick = if (enabled) onCreate else onLocked)
+            .clickable(onClick = { chipFocusManager.clearFocus(); if (enabled) onCreate() else onLocked() })
             .padding(horizontal = 12.dp, vertical = 11.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
