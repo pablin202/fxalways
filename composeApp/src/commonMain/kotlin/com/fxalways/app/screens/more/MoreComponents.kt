@@ -41,9 +41,11 @@ fun MoreScreen(
     onOpenSettings: () -> Unit,
     onOpenNews: () -> Unit,
     onOpenPaywall: () -> Unit,
+    onOpenCompare: () -> Unit = {},
+    onOpenCrypto: () -> Unit = {},
 ) {
     ScreenScaffold {
-        ScreenHeader(ui("More"), sub = ui("TOOLS"), subtitle = ui("Traveler tools, alerts and account"))
+        ScreenHeader(ui("More"), sub = ui("TOOLS"), subtitle = ui("Traveler, markets, watchlist and account"))
         BentoCard(padding = 8.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 MoreRow(
@@ -59,6 +61,20 @@ fun MoreScreen(
                     subtitle = ui("Market context when you need it"),
                     tag = "more_news",
                     onClick = onOpenNews,
+                )
+                MoreRow(
+                    icon = MoreFeatureIcon.Watchlist,
+                    title = ui("Compare currencies"),
+                    subtitle = ui("Multi-currency board and 30-day ranges"),
+                    tag = "more_compare",
+                    onClick = onOpenCompare,
+                )
+                MoreRow(
+                    icon = MoreFeatureIcon.Watchlist,
+                    title = ui("Crypto"),
+                    subtitle = ui("BTC, ETH and stablecoins board"),
+                    tag = "more_crypto",
+                    onClick = onOpenCrypto,
                 )
                 MoreRow(
                     icon = MoreFeatureIcon.Alerts,

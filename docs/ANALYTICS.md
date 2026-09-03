@@ -22,7 +22,7 @@ Firebase Analytics on Android and is a no-op on iOS until the SDK is wired. User
 
 `review_prompt_shown{trigger, shown}` fires when the store review flow is requested (once per install, session ≥ 2, after `alert_created` or `provider_compare_viewed`; see `ReviewPromptPolicy`).
 
-Retention proxies: `rates_refresh`, `tab_selected`, `widget_used{source}`, `news_story_opened`.
+Retention proxies: `rates_refresh`, `tab_selected{tab}` (Today / Convert / Send / Alerts / More since #12), `widget_used{source}` (now also deep-links: rates→Today, convert, send, alerts, watchlist, traveler), `news_story_opened`, `more_route_opened{route}` (compare / news / crypto moved under More).
 
 ## User properties
 

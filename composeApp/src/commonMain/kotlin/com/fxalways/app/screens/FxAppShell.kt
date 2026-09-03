@@ -23,14 +23,15 @@ import com.fxalways.app.screens.profile.preset
 import com.fxalways.app.screens.providers.defaultProviderPreferenceCodes
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.app.ui.supportedLanguageOrDefault
+import com.fxalways.app.PendingNavigation
 import com.fxalways.observability.Observability
 
 @Composable
 fun FxAppShell() {
     val initialProfile = remember { AppSettingsPrefs.userProfile() }
     val initialPreset = remember(initialProfile) { initialProfile.preset() }
-    var selectedTab by remember { mutableStateOf(if (initialProfile == UserProfile.Traveler) FxTab.More else FxTab.Rates) }
-    var moreRoute by remember { mutableStateOf(if (initialProfile == UserProfile.Traveler) MoreRoute.Traveler else MoreRoute.Menu) }
+    var selectedTab by remember { mutableStateOf(initialPreset.initialTab) }
+    var moreRoute by remember { mutableStateOf(initialPreset.moreRoute) }
     var detailRate by remember { mutableStateOf<FxRate?>(null) }
     var detailNewsStory by remember { mutableStateOf<NewsStory?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
@@ -99,7 +100,21 @@ fun FxAppShell() {
     }
     fun openMoreRoute(route: MoreRoute) {
         Observability.event("more_route_opened", mapOf("route" to route.analyticsName))
-        moreRoute = route
+        if (route == MoreRoute.Alerts) {
+            // Alerts is a main tab now; keep old call sites working.
+            selectedTab = FxTab.Alerts
+            moreRoute = MoreRoute.Menu
+        } else {
+            moreRoute = route
+        }
+    }
+    val pendingNavigation by PendingNavigation.source.collectAsState()
+    LaunchedEffect(pendingNavigation) {
+        val source = pendingNavigation ?: return@LaunchedEffect
+        val (tab, route) = widgetSourceDestination(source)
+        selectTab(tab)
+        if (route != MoreRoute.Menu) openMoreRoute(route)
+        PendingNavigation.consume()
     }
     FxAppScreenTrackingEffect(
         selectedTab = selectedTab,

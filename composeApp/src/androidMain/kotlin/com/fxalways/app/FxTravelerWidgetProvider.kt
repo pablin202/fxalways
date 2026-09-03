@@ -51,7 +51,7 @@ class FxTravelerWidgetProvider : AppWidgetProvider() {
 
         private fun launchPendingIntent(context: Context): PendingIntent {
             val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 putExtra(MainActivity.EXTRA_WIDGET_SOURCE, "traveler")
             }
             return PendingIntent.getActivity(

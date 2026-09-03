@@ -513,7 +513,27 @@ private fun BottomTabIcon(label: String, color: Color) {
         val stroke = 1.8.dp.toPx()
         val dot = 2.2.dp.toPx()
         when (label.lowercase()) {
-            "rates" -> {
+            "send" -> {
+                // Paper plane: money leaving.
+                val tip = Offset(size.width * 0.84f, size.height * 0.22f)
+                val tail = Offset(size.width * 0.16f, size.height * 0.50f)
+                val bottom = Offset(size.width * 0.46f, size.height * 0.82f)
+                val fold = Offset(size.width * 0.50f, size.height * 0.56f)
+                drawLine(color, tail, tip, strokeWidth = stroke, cap = StrokeCap.Round)
+                drawLine(color, tip, bottom, strokeWidth = stroke, cap = StrokeCap.Round)
+                drawLine(color, bottom, fold, strokeWidth = stroke, cap = StrokeCap.Round)
+                drawLine(color, fold, tail, strokeWidth = stroke, cap = StrokeCap.Round)
+                drawLine(color, fold, tip, strokeWidth = stroke, cap = StrokeCap.Round)
+            }
+            "alerts" -> {
+                // Bell.
+                drawArc(color, startAngle = 180f, sweepAngle = 180f, useCenter = false, topLeft = Offset(size.width * 0.26f, size.height * 0.22f), size = Size(size.width * 0.48f, size.height * 0.48f), style = Stroke(width = stroke))
+                drawLine(color, Offset(size.width * 0.26f, size.height * 0.46f), Offset(size.width * 0.22f, size.height * 0.68f), strokeWidth = stroke, cap = StrokeCap.Round)
+                drawLine(color, Offset(size.width * 0.74f, size.height * 0.46f), Offset(size.width * 0.78f, size.height * 0.68f), strokeWidth = stroke, cap = StrokeCap.Round)
+                drawLine(color, Offset(size.width * 0.22f, size.height * 0.68f), Offset(size.width * 0.78f, size.height * 0.68f), strokeWidth = stroke, cap = StrokeCap.Round)
+                drawCircle(color, dot, Offset(size.width * 0.50f, size.height * 0.80f))
+            }
+            "today", "rates" -> {
                 val points = listOf(
                     Offset(size.width * 0.12f, size.height * 0.68f),
                     Offset(size.width * 0.34f, size.height * 0.50f),

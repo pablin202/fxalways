@@ -59,6 +59,7 @@ fun ConverterScreen(
     onCreateTransferAlert: (FxRate, FxRate, Double) -> Unit = { _, _, _ -> },
     onOpenProviderUrl: (String) -> Unit = {},
     enableLiveProviderQuotes: Boolean = false,
+    sendMode: Boolean = false,
 ) {
     val access = subscriptionState.featureAccess()
     val focusManager = LocalFocusManager.current
@@ -95,7 +96,7 @@ fun ConverterScreen(
     var transferDecisionHistory by remember { mutableStateOf(emptyList<TransferDecision>()) }
     var scannedPriceText by remember { mutableStateOf("25") }
     var priceScannerHistory by remember { mutableStateOf(emptyList<PriceScannerHistoryEntry>()) }
-    var providerComparisonFocused by remember { mutableStateOf(false) }
+    var providerComparisonFocused by remember { mutableStateOf(sendMode) }
     val sourceRate = rates.firstOrNull { it.code == sourceCode }
         ?: rates.firstOrNull { it.code == liveState.baseCurrency }
         ?: rates.first()
@@ -202,15 +203,21 @@ fun ConverterScreen(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        ScreenHeader(ui("Convert"), subtitle = ui("Multi-currency · live to 4 decimals"))
+        if (sendMode) {
+            ScreenHeader(ui("Send"), subtitle = ui("Real transfer cost by provider · what actually arrives"))
+        } else {
+            ScreenHeader(ui("Convert"), subtitle = ui("Multi-currency · live to 4 decimals"))
+        }
         RateTrustCard(
             liveState = liveState,
             modifier = Modifier.testTag("converter_rate_trust"),
         )
-        RateTrustDetailsCard(
-            liveState = liveState,
-            modifier = Modifier.testTag("converter_trust_details"),
-        )
+        if (!sendMode) {
+            RateTrustDetailsCard(
+                liveState = liveState,
+                modifier = Modifier.testTag("converter_trust_details"),
+            )
+        }
         if (liveState.isInitialRateLoading()) {
             LoadingSkeletonCard(
                 title = ui("Preparing converter rates"),
@@ -267,6 +274,79 @@ fun ConverterScreen(
             },
             onEditList = { showCurrencyPicker = true },
         )
+        // Send tab (issue #12): the provider comparison is the point, so it renders right after the decision.
+        val providerSections: @Composable () -> Unit = {
+        SectionLabel(
+            ui("PROVIDER MATRIX"),
+            right = when {
+                providerQuotesLoading -> ui("Refreshing")
+                backendProviderQuotes.any { it.status == "live" } -> ui("Live")
+                backendProviderQuotes.isNotEmpty() -> ui("Backend")
+                access.canUseFullFeeComparison -> ui("Estimated")
+                else -> ui("Preview")
+            },
+        )
+        if (providerComparisonFocused) {
+            Text(
+                "${ui("PROVIDER MATRIX")} · ${ui("Ready")}",
+                style = FxTheme.typography.captionMono,
+                color = FxTheme.colors.accent,
+                modifier = Modifier.testTag("provider_matrix_focus_feedback"),
+            )
+        }
+        ProviderRecommendationCard(
+            quote = bestRealWorldQuote ?: bestQuote,
+            potentialSavings = potentialSavings,
+            isPremium = subscriptionState.isPremium,
+            isLoading = providerQuotesLoading,
+            modifier = Modifier.testTag("converter_provider_recommendation"),
+            onOpenPaywall = { onOpenPaywallSource("provider_lock") },
+        )
+        ProviderMatrixCard(
+            base = sourceRate.code,
+            target = targetRate.code,
+            amountValue = amountValue,
+            quotes = feeQuotes.filterNot { it.provider == "Mid-market" },
+            isLoading = providerQuotesLoading,
+            errorMessage = providerQuotesError,
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = { onOpenPaywallSource("provider_lock") },
+        )
+        ProviderSummaryCard(
+            targetRate = targetRate,
+            bestQuote = bestQuote,
+            customQuote = customQuote,
+            midMarketValue = convertedAmount(amountValue, sourceRate, targetRate),
+            potentialSavings = potentialSavings,
+        )
+        ProviderComparisonHistoryCard(
+            sourceRate = sourceRate,
+            targetRate = targetRate,
+            amountValue = amountValue,
+            customFee = customFee,
+            selectedProviderCodes = providerCodes,
+            isPremium = subscriptionState.isPremium,
+            onOpenPaywall = { onOpenPaywallSource("provider_history_lock") },
+        )
+        CustomCostCard(
+            sourceCode = sourceRate.code,
+            fixedFeeText = customFixedFeeText,
+            feePercentText = customFeePercentText,
+            markupPercentText = customMarkupPercentText,
+            onFixedFeeChange = { customFixedFeeText = sanitizeAmountInput(it) },
+            onFeePercentChange = { customFeePercentText = sanitizeAmountInput(it) },
+            onMarkupPercentChange = { customMarkupPercentText = sanitizeAmountInput(it) },
+        )
+        FeeQuotesListCard(feeQuotes)
+        if (!access.canUseFullFeeComparison) {
+            ProUpsellCard(
+                title = ui("See the real transfer cost"),
+                subtitle = ui("Pro unlocks the complete provider list; estimates update with your amount."),
+                modifier = Modifier.testTag("converter_fee_upsell"),
+                onClick = { onOpenPaywallSource("provider_lock") },
+            )
+        }
+        }
         ConversionDecisionCard(
             sourceRate = sourceRate,
             targetRate = targetRate,
@@ -282,6 +362,7 @@ fun ConverterScreen(
             },
             onOpenPaywall = { onOpenPaywallSource("provider_lock") },
         )
+        if (sendMode) providerSections()
         SectionLabel("${ui("SMART TIMING")} · ${sourceRate.code} → ${targetRate.code}", right = if (subscriptionState.isPremium) ui("Pro") else ui("Preview"))
         SmartTimingCard(
             insight = timingInsight,
@@ -369,76 +450,7 @@ fun ConverterScreen(
             onOpenProviderUrl = onOpenProviderUrl,
             onOpenPaywall = { onOpenPaywallSource("transfer_intent_lock") },
         )
-        SectionLabel(
-            ui("PROVIDER MATRIX"),
-            right = when {
-                providerQuotesLoading -> ui("Refreshing")
-                backendProviderQuotes.any { it.status == "live" } -> ui("Live")
-                backendProviderQuotes.isNotEmpty() -> ui("Backend")
-                access.canUseFullFeeComparison -> ui("Estimated")
-                else -> ui("Preview")
-            },
-        )
-        if (providerComparisonFocused) {
-            Text(
-                "${ui("PROVIDER MATRIX")} · ${ui("Ready")}",
-                style = FxTheme.typography.captionMono,
-                color = FxTheme.colors.accent,
-                modifier = Modifier.testTag("provider_matrix_focus_feedback"),
-            )
-        }
-        ProviderRecommendationCard(
-            quote = bestRealWorldQuote ?: bestQuote,
-            potentialSavings = potentialSavings,
-            isPremium = subscriptionState.isPremium,
-            isLoading = providerQuotesLoading,
-            modifier = Modifier.testTag("converter_provider_recommendation"),
-            onOpenPaywall = { onOpenPaywallSource("provider_lock") },
-        )
-        ProviderMatrixCard(
-            base = sourceRate.code,
-            target = targetRate.code,
-            amountValue = amountValue,
-            quotes = feeQuotes.filterNot { it.provider == "Mid-market" },
-            isLoading = providerQuotesLoading,
-            errorMessage = providerQuotesError,
-            isPremium = subscriptionState.isPremium,
-            onOpenPaywall = { onOpenPaywallSource("provider_lock") },
-        )
-        ProviderSummaryCard(
-            targetRate = targetRate,
-            bestQuote = bestQuote,
-            customQuote = customQuote,
-            midMarketValue = convertedAmount(amountValue, sourceRate, targetRate),
-            potentialSavings = potentialSavings,
-        )
-        ProviderComparisonHistoryCard(
-            sourceRate = sourceRate,
-            targetRate = targetRate,
-            amountValue = amountValue,
-            customFee = customFee,
-            selectedProviderCodes = providerCodes,
-            isPremium = subscriptionState.isPremium,
-            onOpenPaywall = { onOpenPaywallSource("provider_history_lock") },
-        )
-        CustomCostCard(
-            sourceCode = sourceRate.code,
-            fixedFeeText = customFixedFeeText,
-            feePercentText = customFeePercentText,
-            markupPercentText = customMarkupPercentText,
-            onFixedFeeChange = { customFixedFeeText = sanitizeAmountInput(it) },
-            onFeePercentChange = { customFeePercentText = sanitizeAmountInput(it) },
-            onMarkupPercentChange = { customMarkupPercentText = sanitizeAmountInput(it) },
-        )
-        FeeQuotesListCard(feeQuotes)
-        if (!access.canUseFullFeeComparison) {
-            ProUpsellCard(
-                title = ui("See the real transfer cost"),
-                subtitle = ui("Pro unlocks the complete provider list; estimates update with your amount."),
-                modifier = Modifier.testTag("converter_fee_upsell"),
-                onClick = { onOpenPaywallSource("provider_lock") },
-            )
-        }
+        if (!sendMode) providerSections()
         }
     }
 }

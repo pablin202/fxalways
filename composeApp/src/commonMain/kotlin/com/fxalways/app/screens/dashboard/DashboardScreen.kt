@@ -175,7 +175,7 @@ fun DashboardScreen(
             )
         }
         ScreenHeader(
-            title = ui("Rates"),
+            title = ui("Today"),
             subtitle = "${ui("base")} · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} ${ui("favorites")} · ${ui("daily reference")}",
             right = { Text("↻", style = FxTheme.typography.numberL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onRefresh)) },
         )

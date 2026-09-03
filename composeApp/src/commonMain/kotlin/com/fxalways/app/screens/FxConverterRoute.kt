@@ -22,10 +22,12 @@ internal fun FxConverterRoute(
     converterCurrencyCodes: List<String>,
     providerPreferenceCodes: List<String>,
     alertsStore: AlertsStore,
+    sendMode: Boolean = false,
     onOpenPaywall: (String) -> Unit,
     onConverterCurrencyCodesChange: (List<String>) -> Unit,
 ) {
     ConverterScreen(
+        sendMode = sendMode,
         liveState = liveState,
         alertsState = alertsState,
         subscriptionState = subscriptionState,

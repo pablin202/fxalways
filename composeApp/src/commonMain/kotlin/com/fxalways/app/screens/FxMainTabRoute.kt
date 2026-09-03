@@ -16,8 +16,6 @@ import com.fxalways.app.data.WatchlistStore
 import com.fxalways.app.data.mock.NewsStory
 import com.fxalways.app.subscription.SubscriptionGateway
 import com.fxalways.app.subscription.SubscriptionState
-import com.fxalways.app.screens.compare.CompareScreen
-import com.fxalways.app.screens.news.NewsScreen
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.observability.Observability
 
@@ -71,7 +69,7 @@ internal fun FxMainTabRoute(
     onLastSyncedAtMillisChange: (Long?) -> Unit,
 ) {
     when (selectedTab) {
-        FxTab.Rates -> FxRatesRoute(
+        FxTab.Today -> FxRatesRoute(
             liveState = liveState,
             alertsState = alertsState,
             subscriptionState = subscriptionState,
@@ -96,35 +94,21 @@ internal fun FxMainTabRoute(
             onOpenPaywall = onOpenPaywall,
             onConverterCurrencyCodesChange = onConverterCurrencyCodesChange,
         )
-        FxTab.Compare -> CompareScreen(
+        FxTab.Send -> FxConverterRoute(
+            sendMode = true,
             liveState = liveState,
+            alertsState = alertsState,
             subscriptionState = subscriptionState,
-            selectedCurrencyCodes = compareCurrencyCodes,
-            onCurrencyCodesChange = { codes ->
-                Observability.event("compare_currencies_changed", mapOf("count" to codes.size.toString()))
-                (codes - compareCurrencyCodes.toSet()).forEach { code ->
-                    Observability.event("currency_added", mapOf("surface" to "compare", "currency" to code))
-                }
-                onCompareCurrencyCodesChange(codes)
-                AppSettingsPrefs.setCompareCurrencyCodes(codes)
-            },
-            onOpenPaywall = { onOpenPaywall("compare") },
-            onOpenDetail = { onOpenDetail(it, "compare") },
+            converterCurrencyCodes = converterCurrencyCodes,
+            providerPreferenceCodes = providerPreferenceCodes,
+            alertsStore = alertsStore,
+            onOpenPaywall = onOpenPaywall,
+            onConverterCurrencyCodesChange = onConverterCurrencyCodesChange,
         )
-        FxTab.News -> NewsScreen(
+        FxTab.Alerts -> FxMoreRoute(
+            moreRoute = MoreRoute.Alerts,
+            alertsAsTab = true,
             newsState = newsState,
-            subscriptionState = subscriptionState,
-            onRefresh = {
-                Observability.event("news_refresh")
-                newsStore.refresh()
-            },
-            onRegionSelected = newsStore::setRegion,
-            onCurrencySelected = newsStore::setCurrency,
-            onOpenStory = { onOpenStory(it, "news") },
-            onOpenPaywall = { onOpenPaywall("news") },
-        )
-        FxTab.More -> FxMoreRoute(
-            moreRoute = moreRoute,
             liveState = liveState,
             alertsState = alertsState,
             watchlistState = watchlistState,
@@ -150,6 +134,53 @@ internal fun FxMainTabRoute(
             onOpenMoreRoute = onOpenMoreRoute,
             onOpenPaywall = onOpenPaywall,
             onOpenDetail = onOpenDetail,
+            onOpenStory = onOpenStory,
+            onMoreRouteChange = onMoreRouteChange,
+            onCompareCurrencyCodesChange = onCompareCurrencyCodesChange,
+            onConverterCurrencyCodesChange = onConverterCurrencyCodesChange,
+            onProviderPreferenceCodesChange = onProviderPreferenceCodesChange,
+            onTravelerCurrencyChange = onTravelerCurrencyChange,
+            onTravelerBudgetBaseChange = onTravelerBudgetBaseChange,
+            onThemeModeChange = onThemeModeChange,
+            onLanguageChange = onLanguageChange,
+            onBaseCurrencyChange = onBaseCurrencyChange,
+            onUserProfileChange = onUserProfileChange,
+            onSubscriptionStateChange = onSubscriptionStateChange,
+            onSubscriptionReadyChange = onSubscriptionReadyChange,
+            onBackupStateChange = onBackupStateChange,
+            onBackupReadyChange = onBackupReadyChange,
+            onBackupSyncingChange = onBackupSyncingChange,
+            onLastSyncedAtMillisChange = onLastSyncedAtMillisChange,
+        )
+        FxTab.More -> FxMoreRoute(
+            moreRoute = moreRoute,
+            newsState = newsState,
+            liveState = liveState,
+            alertsState = alertsState,
+            watchlistState = watchlistState,
+            subscriptionState = subscriptionState,
+            userProfile = userProfile,
+            converterCurrencyCodes = converterCurrencyCodes,
+            compareCurrencyCodes = compareCurrencyCodes,
+            providerPreferenceCodes = providerPreferenceCodes,
+            travelerCurrency = travelerCurrency,
+            travelerBudgetBase = travelerBudgetBase,
+            themeMode = themeMode,
+            appLanguage = appLanguage,
+            baseCurrency = baseCurrency,
+            backupState = backupState,
+            backupSyncing = backupSyncing,
+            lastSyncedAtMillis = lastSyncedAtMillis,
+            subscriptionGateway = subscriptionGateway,
+            liveStore = liveStore,
+            newsStore = newsStore,
+            alertsStore = alertsStore,
+            watchlistStore = watchlistStore,
+            onSelectTab = onSelectTab,
+            onOpenMoreRoute = onOpenMoreRoute,
+            onOpenPaywall = onOpenPaywall,
+            onOpenDetail = onOpenDetail,
+            onOpenStory = onOpenStory,
             onMoreRouteChange = onMoreRouteChange,
             onCompareCurrencyCodesChange = onCompareCurrencyCodesChange,
             onConverterCurrencyCodesChange = onConverterCurrencyCodesChange,

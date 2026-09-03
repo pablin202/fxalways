@@ -71,8 +71,7 @@ internal fun FxRatesRoute(
                     corridor = corridor,
                 )
                 if (suggestion == null) {
-                    onOpenMoreRoute(MoreRoute.Alerts)
-                    onSelectTab(FxTab.More)
+                    onSelectTab(FxTab.Alerts)
                 } else {
                     val existing = alertsState.alerts.findMatchingAlert(
                         baseCurrency = liveState.baseCurrency,
@@ -85,14 +84,12 @@ internal fun FxRatesRoute(
                         existing != null -> {
                             Observability.event("profile_alert_reactivated", mapOf("profile" to userProfile.name, "currency" to suggestion.rate.code))
                             alertsStore.resumeAlert(existing.id)
-                            onSelectTab(FxTab.More)
-                            onOpenMoreRoute(MoreRoute.Alerts)
+                            onSelectTab(FxTab.Alerts)
                         }
                         canCreateAlert(subscriptionState, alertsState.alerts.size) -> {
                             Observability.event("profile_alert_created", mapOf("profile" to userProfile.name, "currency" to suggestion.rate.code, "kind" to suggestion.kind.name))
                             alertsStore.addAlert(liveState.baseCurrency, suggestion.rate.code, suggestion.target, suggestion.direction, suggestion.kind)
-                            onSelectTab(FxTab.More)
-                            onOpenMoreRoute(MoreRoute.Alerts)
+                            onSelectTab(FxTab.Alerts)
                         }
                         else -> onOpenPaywall("dashboard_profile_alert_limit")
                     }
@@ -130,7 +127,8 @@ internal fun FxRatesRoute(
                     Observability.event("dashboard_crypto_see_all", mapOf("count" to cryptoCodes.size.toString()))
                     onCompareCurrencyCodesChange(cryptoCodes)
                     AppSettingsPrefs.setCompareCurrencyCodes(cryptoCodes)
-                    onSelectTab(FxTab.Compare)
+                    onSelectTab(FxTab.More)
+                    onOpenMoreRoute(MoreRoute.Crypto)
                 }
             },
             onCreateSuggestedAlert = createSuggestedAlert,
