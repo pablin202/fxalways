@@ -34,12 +34,22 @@ data class LanguageOption(
     val label: String,
 )
 
-val SupportedLanguages = listOf(
+/**
+ * Languages offered in the in-app selector. Only the launch set (en/es/pt/hi) is maintained; the
+ * extended dictionaries stay in the repo behind [EXTENDED_LANGUAGES] until they are worth the upkeep
+ * (issue #7). Any other stored/device language resolves to English via [supportedLanguageOrDefault].
+ */
+const val EXTENDED_LANGUAGES = false
+
+val LaunchLanguages = listOf(
     LanguageOption("en", "English"),
     LanguageOption("es", "Español"),
     LanguageOption("pt", "Português"),
-    LanguageOption("zh", "中文"),
     LanguageOption("hi", "हिन्दी"),
+)
+
+val ExtendedLanguages = listOf(
+    LanguageOption("zh", "中文"),
     LanguageOption("fr", "Français"),
     LanguageOption("ar", "العربية"),
     LanguageOption("bn", "বাংলা"),
@@ -49,6 +59,15 @@ val SupportedLanguages = listOf(
     LanguageOption("de", "Deutsch"),
     LanguageOption("ja", "日本語"),
 )
+
+val SupportedLanguages: List<LanguageOption> =
+    if (EXTENDED_LANGUAGES) LaunchLanguages + ExtendedLanguages else LaunchLanguages
+
+/** Maps a stored or device language code (`pt-BR`, `fr`, …) to a code in [SupportedLanguages], defaulting to English. */
+fun supportedLanguageOrDefault(code: String?): String {
+    val normalized = code.orEmpty().lowercase().substringBefore("-").substringBefore("_")
+    return SupportedLanguages.firstOrNull { it.code == normalized }?.code ?: "en"
+}
 
 @Composable
 fun rememberFxStrings(languageOverride: String? = null): FxStrings {
