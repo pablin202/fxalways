@@ -19,6 +19,8 @@ Firebase Analytics on Android and is a no-op on iOS until the SDK is wired. User
 
 `amount_bucket` values: `lt_100`, `100_1k`, `1k_10k`, `gte_10k`.
 
+`review_prompt_shown{trigger, shown}` fires when the store review flow is requested (once per install, session ≥ 2, after `alert_created` or `provider_compare_viewed`; see `ReviewPromptPolicy`).
+
 Retention proxies: `rates_refresh`, `tab_selected`, `widget_used{source}`, `news_story_opened`.
 
 ## User properties

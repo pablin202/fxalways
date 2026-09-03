@@ -78,6 +78,7 @@ kotlin {
             implementation(libs.androidx.concurrent.futures)
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.work.runtime.ktx)
+            implementation(libs.play.review.ktx)
             implementation(libs.kotlinx.coroutines.play.services)
             implementation(libs.ktor.client.okhttp)
             implementation(project.dependencies.platform(libs.firebase.bom))

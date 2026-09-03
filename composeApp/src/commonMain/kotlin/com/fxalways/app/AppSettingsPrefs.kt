@@ -37,6 +37,10 @@ expect object AppSettingsPrefs {
     fun setUserProfile(profile: UserProfile)
     fun firstConversionTracked(): Boolean
     fun setFirstConversionTracked()
+    fun sessionCount(): Int
+    fun incrementSessionCount(): Int
+    fun reviewPromptShown(): Boolean
+    fun setReviewPromptShown()
     fun cachedPremium(): Boolean?
     fun setCachedPremium(enabled: Boolean)
 }

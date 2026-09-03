@@ -17,6 +17,7 @@ import com.fxalways.observability.Observability
 fun App() {
     var onboardingComplete by remember { mutableStateOf(OnboardingPrefs.hasSeenOnboarding()) }
     val resetGeneration by AccountLifecycle.resetGeneration.collectAsState()
+    LaunchedEffect(Unit) { ReviewPrompter.onAppStart() }
     LaunchedEffect(resetGeneration) {
         if (resetGeneration > 0) onboardingComplete = OnboardingPrefs.hasSeenOnboarding()
     }
