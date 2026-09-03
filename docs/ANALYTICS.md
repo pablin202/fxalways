@@ -11,7 +11,8 @@ Firebase Analytics on Android and is a no-op on iOS until the SDK is wired. User
 |---|---|---|---|
 | 1 | `onboarding_corridor_set` → `onboarding_complete` | `base`, `target`, `amount_bucket`, `cadence` / `profile`, `profile_inferred`, `notifications` | Two-step corridor onboarding (#10) |
 | 2 | `first_conversion` (once per install) | `base`, `target` | Converter, first non-zero amount typed (`trackFirstConversion`) |
-| 3 | `send_decision_viewed` | `base`, `target`, `signal` (`strong_rate` / `good_time` / `wait`), `plan` | `ConversionDecisionCard` shown or pair/signal changes |
+| 3 | `send_decision_viewed` | `surface` (`home` when fired by the Today's decision card), `base`, `target`, `signal` (`strong_rate` / `good_time` / `wait`), `plan` | Home `TodayDecisionCard` (#11) and Convert `ConversionDecisionCard` |
+| 3b | `send_decision_alert_created` | `base`, `target` | "Alert me when it improves" on the Home card |
 | 4 | `provider_compare_viewed` | `base`, `target`, `amount_bucket`, `plan` | `ProviderMatrixCard` with at least one quote |
 | 5 | `alert_created` | pair / type | Alert saved |
 | 6 | `alert_triggered_opened` | `source` (`push` / `local`) | `MainActivity` when opened from an alert notification |

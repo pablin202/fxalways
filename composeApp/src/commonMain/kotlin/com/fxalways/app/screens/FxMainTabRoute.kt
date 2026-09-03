@@ -84,6 +84,7 @@ internal fun FxMainTabRoute(
             onOpenPaywall = onOpenPaywall,
             onOpenDetail = onOpenDetail,
             onCompareCurrencyCodesChange = onCompareCurrencyCodesChange,
+            providerPreferenceCodes = providerPreferenceCodes,
         )
         FxTab.Convert -> FxConverterRoute(
             liveState = liveState,

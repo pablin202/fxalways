@@ -21,6 +21,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fxalways.app.UserProfile
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.fxalways.app.domain.ProviderQuoteDto
+import com.fxalways.app.Corridor
 import com.fxalways.app.data.mock.FavoriteRates
 import com.fxalways.app.data.AlertDirection
 import com.fxalways.app.data.AlertKind
@@ -69,8 +74,10 @@ internal fun suggestedProfileAlert(
     profile: UserProfile,
     liveState: LiveRatesState,
     isPremium: Boolean,
+    corridor: Corridor? = null,
 ): ProfileAlertSuggestion? {
-    val quote = profile.preset().suggestedPair.substringAfter("->", "").trim()
+    val quote = corridor?.target?.takeIf { it != liveState.baseCurrency }
+        ?: profile.preset().suggestedPair.substringAfter("->", "").trim()
     val rate = liveState.alertRates(isPremium).firstOrNull { it.code == quote } ?: return null
     return when (profile) {
         UserProfile.Traveler -> ProfileAlertSuggestion(rate, rate.rate * 1.005, AlertDirection.Above, AlertKind.Target)
@@ -86,8 +93,9 @@ internal fun suggestedProfileAlertState(
     liveState: LiveRatesState,
     isPremium: Boolean,
     alerts: List<PriceAlert>,
+    corridor: Corridor? = null,
 ): QuickAlertState? {
-    val suggestion = suggestedProfileAlert(profile, liveState, isPremium) ?: return null
+    val suggestion = suggestedProfileAlert(profile, liveState, isPremium, corridor) ?: return null
     val existing = alerts.findMatchingAlert(
         baseCurrency = liveState.baseCurrency,
         quote = suggestion.rate.code,
@@ -119,9 +127,20 @@ fun DashboardScreen(
     onOpenConverter: () -> Unit = {},
     onOpenTraveler: () -> Unit = {},
     onOpenWatchlist: () -> Unit = {},
+    corridor: Corridor? = null,
+    providerPreferenceCodes: List<String> = emptyList(),
+    backendProviderQuotes: List<ProviderQuoteDto> = emptyList(),
+    onCreateCorridorAlert: () -> Unit = onCreateSuggestedAlert,
 ) {
     val access = subscriptionState.featureAccess()
     val preset = userProfile.preset()
+    val showsTodayDecision = userProfile == UserProfile.Remittances || userProfile == UserProfile.Freelancer
+    val decisionCorridor = if (showsTodayDecision) corridor ?: userProfile.defaultCorridor(liveState.baseCurrency) else null
+    val todayDecision = remember(liveState, decisionCorridor, subscriptionState.isPremium, providerPreferenceCodes, backendProviderQuotes) {
+        decisionCorridor?.let { todayDecision(liveState, it, subscriptionState.isPremium, providerPreferenceCodes, backendProviderQuotes) }
+    }
+    // Remittances users get the decision first; the rest of Home stays one tap away.
+    var showMoreHome by remember(userProfile) { mutableStateOf(userProfile != UserProfile.Remittances) }
     val profileFavorites = remember(liveState.favorites, userProfile, access.favoriteLimit) {
         val ordered = liveState.favorites.sortedWith(compareBy<FxRate> {
             val index = preset.watchlistCodes.indexOf(it.code)
@@ -160,6 +179,20 @@ fun DashboardScreen(
             subtitle = "${ui("base")} · ${liveState.baseCurrency}  ·  ${visibleFavorites.size}/${liveState.favorites.size} ${ui("favorites")} · ${ui("daily reference")}",
             right = { Text("↻", style = FxTheme.typography.numberL, color = FxTheme.colors.textDim, modifier = Modifier.clickable(onClick = onRefresh)) },
         )
+        if (decisionCorridor != null) {
+            if (liveState.isInitialRateLoading()) {
+                LoadingSkeletonCard(title = ui("TODAY'S DECISION"), rows = 3, modifier = Modifier.testTag("dashboard_today_loading"))
+            } else if (todayDecision != null) {
+                TodayDecisionCard(
+                    decision = todayDecision,
+                    profile = userProfile,
+                    isPremium = subscriptionState.isPremium,
+                    alertState = suggestedProfileAlertState,
+                    onCreateAlert = onCreateCorridorAlert,
+                    onSeeProviders = onOpenConverter,
+                )
+            }
+        }
         if (userProfile == UserProfile.Traveler && !liveState.isInitialRateLoading()) {
             TravelerQuickActionsCard(
                 watchedRate = visibleFavorites.firstOrNull() ?: liveState.favorites.firstOrNull(),
@@ -219,6 +252,10 @@ fun DashboardScreen(
                     }
                 }
             } else {
+                if (userProfile == UserProfile.Remittances) {
+                    HomeMoreToggle(expanded = showMoreHome, onToggle = { showMoreHome = !showMoreHome })
+                }
+                if (showMoreHome) {
                 ProfilePriorityCard(
                     profile = userProfile,
                     suggestedPair = preset.suggestedPair,
@@ -355,6 +392,7 @@ fun DashboardScreen(
                             }
                         }
                     }
+                }
                 }
             }
         }
