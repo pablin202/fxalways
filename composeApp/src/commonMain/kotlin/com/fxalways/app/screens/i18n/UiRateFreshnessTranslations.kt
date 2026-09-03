@@ -8,6 +8,8 @@ package com.fxalways.app.screens.i18n
  */
 internal val uiRateFreshnessTranslations: Map<String, Map<String, String>> = mapOf(
     "es" to mapOf(
+        "currencies" to "monedas",
+        "Currency converter, real transfer costs, rate alerts and travel tools." to "Conversor de monedas, costo real de transferencias, alertas de tipo de cambio y herramientas de viaje.",
         "DAILY REFERENCE" to "REFERENCIA DIARIA",
         "Daily reference" to "Referencia diaria",
         "daily reference" to "referencia diaria",
@@ -30,6 +32,8 @@ internal val uiRateFreshnessTranslations: Map<String, Map<String, String>> = map
         "Jul" to "jul", "Aug" to "ago", "Sep" to "sep", "Oct" to "oct", "Nov" to "nov", "Dec" to "dic",
     ),
     "pt" to mapOf(
+        "currencies" to "moedas",
+        "Currency converter, real transfer costs, rate alerts and travel tools." to "Conversor de moedas, custo real de transferências, alertas de câmbio e ferramentas de viagem.",
         "DAILY REFERENCE" to "REFERÊNCIA DIÁRIA",
         "Daily reference" to "Referência diária",
         "daily reference" to "referência diária",
@@ -52,6 +56,8 @@ internal val uiRateFreshnessTranslations: Map<String, Map<String, String>> = map
         "Jul" to "jul", "Aug" to "ago", "Sep" to "set", "Oct" to "out", "Nov" to "nov", "Dec" to "dez",
     ),
     "hi" to mapOf(
+        "currencies" to "मुद्राएँ",
+        "Currency converter, real transfer costs, rate alerts and travel tools." to "मुद्रा कन्वर्टर, ट्रांसफ़र की असली लागत, दर अलर्ट और यात्रा टूल।",
         "DAILY REFERENCE" to "दैनिक संदर्भ",
         "Daily reference" to "दैनिक संदर्भ",
         "daily reference" to "दैनिक संदर्भ",

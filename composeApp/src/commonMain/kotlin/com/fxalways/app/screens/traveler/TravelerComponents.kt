@@ -106,7 +106,7 @@ fun TravelerScreen(
     if (showDestinationPicker) {
         CurrencyPickerSheet(
             title = ui("Choose destination"),
-            subtitle = "${travelRates.size} ${ui("live currencies")} · ${liveState.baseCurrency} ${ui("base")}",
+            subtitle = "${travelRates.size} ${ui("currencies")} · ${liveState.baseCurrency} ${ui("base")} · ${ui("daily reference")}",
             currencies = travelRates,
             selectedCode = selectedRate.code,
             onDismiss = { showDestinationPicker = false },
@@ -123,7 +123,7 @@ fun TravelerScreen(
         ScreenHeader(
             ui("Traveler"),
             sub = "${destination.city.uppercase()} · ${selectedRate.code}",
-            subtitle = if (liveState.isLive) "${ui("Live")} ${liveState.baseCurrency} ${ui("rates")} · ${compactRuntimeLabel(liveState.updatedLabel)}" else "${ui("Offline snapshot")} · ${liveState.baseCurrency} ${ui("base")}",
+            subtitle = if (liveState.isLive) "${ui("Daily reference")} · ${liveState.baseCurrency} ${ui("base")} · ${compactRuntimeLabel(liveState.updatedLabel)}" else "${ui("Offline snapshot")} · ${liveState.baseCurrency} ${ui("base")}",
         )
         if (liveState.isInitialRateLoading()) {
             LoadingSkeletonCard(
@@ -290,7 +290,7 @@ fun TravelerScreen(
                 )
             }
 
-            SectionLabel(ui("OFFLINE PACK"), right = if (liveState.isLive) ui("Live") else ui("CACHED"))
+            SectionLabel(ui("OFFLINE PACK"), right = if (liveState.isLive) ui("Daily reference") else ui("CACHED"))
             BentoCard(Modifier.testTag("traveler_offline_pack"), padding = 12.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     KeyValueRow(

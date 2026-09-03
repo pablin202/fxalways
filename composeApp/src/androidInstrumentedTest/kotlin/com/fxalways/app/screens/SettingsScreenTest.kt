@@ -170,7 +170,7 @@ class SettingsScreenTest {
         compose.onNodeWithTag("store_listing_short_description").assertIsDisplayed()
         compose.onNodeWithTag("store_listing_keywords").assertIsDisplayed()
         compose.onNodeWithTag("store_listing_disclaimer").assertIsDisplayed()
-        compose.onNodeWithText("Live currency converter, alerts, travel tools and portfolio tracking.").assertIsDisplayed()
+        compose.onNodeWithText("Currency converter, real transfer costs, rate alerts and travel tools.").assertIsDisplayed()
         compose.onNodeWithTag("store_listing_copy").performScrollTo().performClick()
         compose.onNodeWithText("Copied store listing").assertIsDisplayed()
     }
