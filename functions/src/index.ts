@@ -1128,7 +1128,10 @@ async function fetchMarketauxNews(
 }
 
 function marketauxApiKeyValue(): string {
-  return marketauxApiKey.value() || process.env.MARKETAUX_API_KEY || "";
+  const value = marketauxApiKey.value() || process.env.MARKETAUX_API_KEY || "";
+  // Secret Manager cannot hold an empty value; "unset" is the documented placeholder that
+  // keeps deploys working while the Marketaux key is not configured (news falls back to GDELT).
+  return value === "unset" ? "" : value;
 }
 
 function marketauxSearchQuery(currencies: string[]): string {

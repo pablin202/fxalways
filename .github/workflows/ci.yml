@@ -11,8 +11,8 @@ permissions:
   id-token: write
 
 env:
-  FIREBASE_TEST_LAB_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT || 'moneytrackerpro-8ff64' }}
-  FIREBASE_TEST_LAB_RESULTS_BUCKET: ${{ vars.FIREBASE_TEST_LAB_RESULTS_BUCKET || 'moneytrackerpro-8ff64-test-lab-results' }}
+  FIREBASE_TEST_LAB_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT || 'fx-always' }}
+  FIREBASE_TEST_LAB_RESULTS_BUCKET: ${{ vars.FIREBASE_TEST_LAB_RESULTS_BUCKET || 'fx-always-test-lab-results' }}
 
 jobs:
   android:

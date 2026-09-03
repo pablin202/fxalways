@@ -4,7 +4,7 @@ Use this as the release checklist. Mark items only after Android device testing 
 
 ## Current Release Status
 
-- [x] Firebase backend URL points to `moneytrackerpro-8ff64`.
+- [x] Firebase backend URL points to `fx-always`.
 - [x] Firebase Functions are deployed for latest rates, historical rates, supported currencies, news and crypto markets.
 - [x] Crypto backend uses CoinPaprika, returns up to 200 assets and refreshes cache every 10 minutes.
 - [x] App consumes HTTPS Functions instead of direct client Firestore reads.
@@ -409,7 +409,7 @@ Closed testing evidence:
 
 ## Release Hardening Evidence
 
-- [x] 2026-05-22: Firebase `evaluateServerAlerts` scheduled function deployed in `moneytrackerpro-8ff64`.
+- [x] 2026-05-22: Firebase `evaluateServerAlerts` scheduled function deployed in `fx-always`.
 - [x] 2026-05-22: Firebase `providerQuotes` and `refreshProviderQuoteCache` deployed with provider quote cache `v6`.
 - [x] 2026-05-22: Firebase `evaluateServerAlerts` redeployed with FCM push fanout for server alert events.
 - [x] 2026-05-22: S25 reinstall verified Android FCM token registration via `FxPushToken`.

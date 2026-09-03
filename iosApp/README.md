@@ -90,7 +90,7 @@ Install and launch on a simulator:
 Expected launch behavior:
 
 - onboarding renders without crash
-- after onboarding, Rates loads from `https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net`
+- after onboarding, Rates loads from `https://us-central1-fx-always.cloudfunctions.net`
 - `latestRates`, `historicalRates`, and `newsFeed` return `200 OK`
 - foreground auto-refresh runs every 60 seconds
 
@@ -100,7 +100,7 @@ iOS currently creates a stable local anonymous id in `NSUserDefaults` so Revenue
 
 Production still needs:
 
-1. Add the iOS app to Firebase project `moneytrackerpro-8ff64`.
+1. Add the iOS app to Firebase project `fx-always`.
 2. Add `GoogleService-Info.plist` to `iosApp/iosApp`.
 3. Enable Sign in with Apple in Apple Developer and Firebase Auth.
 4. Replace the iOS local guest implementation with Firebase Auth anonymous sign-in and Apple account linking.

@@ -349,7 +349,7 @@
 					"$(PROJECT_DIR)/composeApp/build/xcode-frameworks/$(CONFIGURATION)",
 					"\"composeApp/build/xcode-frameworks/$(CONFIGURATION)\"",
 				);
-				FX_BACKEND_URL = "https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net";
+				FX_BACKEND_URL = "https://us-central1-fx-always.cloudfunctions.net";
 				FX_IS_DEBUG = YES;
 				FX_REVENUECAT_API_KEY = test_aDOfCCMYLDGOStPsXdDkPJFanUC;
 				INFOPLIST_FILE = iosApp/iosApp/Info.plist;
@@ -380,7 +380,7 @@
 					"$(PROJECT_DIR)/composeApp/build/xcode-frameworks/$(CONFIGURATION)",
 					"\"composeApp/build/xcode-frameworks/$(CONFIGURATION)\"",
 				);
-				FX_BACKEND_URL = "https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net";
+				FX_BACKEND_URL = "https://us-central1-fx-always.cloudfunctions.net";
 				FX_IS_DEBUG = NO;
 				FX_REVENUECAT_API_KEY = "";
 				INFOPLIST_FILE = iosApp/iosApp/Info.plist;

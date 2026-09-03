@@ -5,7 +5,7 @@ import platform.Foundation.NSBundle
 actual object PlatformConfig {
     actual val backendBaseUrl: String = infoString(
         key = "FXAlwaysBackendUrl",
-        fallback = "https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net",
+        fallback = "https://us-central1-fx-always.cloudfunctions.net",
     )
     actual val revenueCatApiKey: String = infoString("FXAlwaysRevenueCatApiKey")
     actual val platform: Platform = Platform.Ios
