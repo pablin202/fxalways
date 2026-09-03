@@ -190,8 +190,8 @@ fun CompareScreen(
             }
             if (!subscriptionState.isPremium) {
                 ProUpsellCard(
-                    title = ui("Compare every tracked currency"),
-                    subtitle = "${ui("Free compares")} ${access.compareLimit}; ${ui("Pro unlocks the full board and advanced overlays.")}",
+                    title = ui("Unlock the full crypto catalog"),
+                    subtitle = ui("Free compares every fiat currency and core crypto; Pro adds up to 200 crypto assets and advanced overlays."),
                     onClick = onOpenPaywall,
                 )
             }

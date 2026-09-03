@@ -44,7 +44,7 @@ class ConverterScreenTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun freeUserSeesMidMarketCustomAndTwoSelectedProviderQuotes() {
+    fun freeUserSeesMidMarketCustomAndThreeSelectedProviderQuotes() {
         val harness = renderConverter(isPremium = false)
 
         compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
@@ -88,7 +88,8 @@ class ConverterScreenTest {
         compose.onNodeWithTag("fee_quote_Wise").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_source_Wise").assertIsDisplayed()
         compose.onNodeWithTag("fee_quote_Revolut").performScrollTo().assertIsDisplayed()
-        compose.onAllNodesWithTag("fee_quote_Card payment").assertCountEquals(0)
+        // Free includes three quote providers; the fourth and beyond stay behind Pro.
+        compose.onNodeWithTag("fee_quote_Card payment").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithTag("fee_quote_ATM cash").assertCountEquals(0)
         compose.onAllNodesWithTag("fee_quote_Bank transfer").assertCountEquals(0)
         compose.onAllNodesWithTag("fee_quote_Airport exchange").assertCountEquals(0)
@@ -401,7 +402,7 @@ class ConverterScreenTest {
     }
 
     @Test
-    fun freeEditListShowsOnlyCoreCryptoAndLocksWhenLimitIsFull() {
+    fun freeEditListShowsOnlyCoreCryptoAndAddsItWithoutPaywall() {
         val harness = renderConverter(isPremium = false, selectedCodes = listOf("EUR", "GBP", "JPY", "CHF"))
 
         compose.onNodeWithTag("converter_edit_list").performScrollTo().performClick()
@@ -409,10 +410,15 @@ class ConverterScreenTest {
 
         compose.onAllNodesWithTag("currency_list_SOL").assertCountEquals(0)
 
+        // Free has no currency cap any more: core crypto is added, expanded crypto stays Pro.
         compose.onNodeWithTag("currency_list_search").performTextReplacement("BTC")
         compose.onNodeWithTag("currency_list_BTC").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("currency_list_scroll").performTouchInput { swipeDown() }
 
-        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+        compose.runOnIdle {
+            assertEquals(0, harness.paywallClicks)
+            assertTrue("BTC" in harness.selectedCodes)
+        }
     }
 
     @Test

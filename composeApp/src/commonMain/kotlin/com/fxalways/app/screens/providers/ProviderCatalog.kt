@@ -1,6 +1,6 @@
 package com.fxalways.app.screens.providers
 
-internal const val FreeQuoteProviderLimit = 2
+internal const val FreeQuoteProviderLimit = com.fxalways.app.subscription.FREE_QUOTE_PROVIDER_LIMIT
 internal val FreeFeeProviderIds = setOf("mid_market", "custom")
 
 internal data class ProviderOption(

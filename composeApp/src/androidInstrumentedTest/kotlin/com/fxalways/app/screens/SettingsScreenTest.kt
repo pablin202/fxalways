@@ -326,14 +326,15 @@ class SettingsScreenTest {
         )
 
         compose.onNodeWithTag("settings_provider_preferences").performScrollTo().assertIsDisplayed()
+        // Free includes three quote providers: MoneyGram is the third and is added without a paywall.
         compose.onNodeWithTag("settings_provider_moneygram").performScrollTo().performClick()
         compose.onNodeWithTag("settings_provider_other_mercado_pago").performScrollTo().performClick()
         compose.onNodeWithTag("settings_provider_select_all").performScrollTo().performClick()
 
         compose.runOnIdle {
-            assertEquals(2, harness.paywallClicks)
-            assertEquals(true, harness.providerPreferenceChanges.single().contains("mercado_pago"))
-            assertEquals(false, harness.providerPreferenceChanges.single().contains("moneygram"))
+            assertEquals(1, harness.paywallClicks)
+            assertEquals(true, harness.providerPreferenceChanges.any { it.contains("mercado_pago") })
+            assertEquals(true, harness.providerPreferenceChanges.any { it.contains("moneygram") })
         }
     }
 
