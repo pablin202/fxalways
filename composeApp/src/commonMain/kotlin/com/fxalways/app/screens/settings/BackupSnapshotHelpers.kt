@@ -3,6 +3,7 @@ package com.fxalways.app.screens.settings
 import com.fxalways.app.screens.*
 import com.fxalways.app.AppSettingsPrefs
 import com.fxalways.app.BackupSettings
+import com.fxalways.app.Corridor
 import com.fxalways.app.DeviceLocale
 import com.fxalways.app.ThemeMode
 import com.fxalways.app.UserBackupSnapshot
@@ -39,6 +40,7 @@ internal fun buildUserBackupSnapshot(
             compareCurrencyCodes = compareCurrencyCodes,
             providerPreferenceCodes = providerPreferenceCodes,
             userProfile = userProfile.name,
+            corridor = AppSettingsPrefs.corridor()?.encode().orEmpty(),
         ),
         alerts = alertsState.alerts,
         watchlist = watchlistState.watchlist,
@@ -69,6 +71,7 @@ internal fun applyUserBackupSnapshot(
     AppSettingsPrefs.setCompareCurrencyCodes(snapshot.settings.compareCurrencyCodes)
     AppSettingsPrefs.setProviderPreferenceCodes(snapshot.settings.providerPreferenceCodes)
     AppSettingsPrefs.setUserProfile(profile)
+    Corridor.decode(snapshot.settings.corridor)?.let { AppSettingsPrefs.setCorridor(it) }
     liveStore.setBaseCurrency(snapshot.settings.baseCurrency)
     onLanguage(language)
     onConverterCurrencyCodes(snapshot.settings.converterCurrencyCodes)

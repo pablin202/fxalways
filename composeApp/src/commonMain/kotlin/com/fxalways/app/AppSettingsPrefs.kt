@@ -33,6 +33,8 @@ expect object AppSettingsPrefs {
     fun setCompareCurrencyCodes(codes: List<String>)
     fun providerPreferenceCodes(): List<String>
     fun setProviderPreferenceCodes(codes: List<String>)
+    fun corridor(): Corridor?
+    fun setCorridor(corridor: Corridor)
     fun userProfile(): UserProfile
     fun setUserProfile(profile: UserProfile)
     fun firstConversionTracked(): Boolean

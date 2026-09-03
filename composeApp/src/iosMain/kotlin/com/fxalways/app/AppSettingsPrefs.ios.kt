@@ -13,6 +13,7 @@ actual object AppSettingsPrefs {
     private const val KEY_COMPARE_CURRENCY_CODES = "compare_currency_codes"
     private const val KEY_PROVIDER_PREFERENCE_CODES = "provider_preference_codes"
     private const val KEY_USER_PROFILE = "user_profile"
+    private const val KEY_CORRIDOR = "corridor"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
     private const val KEY_FIRST_CONVERSION_TRACKED = "first_conversion_tracked"
     private const val KEY_SESSION_COUNT = "session_count"
@@ -95,6 +96,12 @@ actual object AppSettingsPrefs {
 
     actual fun setProviderPreferenceCodes(codes: List<String>) {
         NSUserDefaults.standardUserDefaults.setObject(codes.distinct().joinToString(","), KEY_PROVIDER_PREFERENCE_CODES)
+    }
+
+    actual fun corridor(): Corridor? = Corridor.decode(NSUserDefaults.standardUserDefaults.stringForKey(KEY_CORRIDOR))
+
+    actual fun setCorridor(corridor: Corridor) {
+        NSUserDefaults.standardUserDefaults.setObject(corridor.encode(), KEY_CORRIDOR)
     }
 
     actual fun userProfile(): UserProfile {

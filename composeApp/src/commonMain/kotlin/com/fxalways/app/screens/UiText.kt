@@ -9,6 +9,7 @@ import com.fxalways.app.screens.i18n.uiP9ClosedTestTranslations
 import com.fxalways.app.screens.i18n.uiRateFreshnessTranslations
 import com.fxalways.app.screens.i18n.uiSupplementalTranslations
 import com.fxalways.app.screens.i18n.uiLaunchLanguageTranslations
+import com.fxalways.app.screens.i18n.uiOnboardingTranslations
 import com.fxalways.app.screens.i18n.uiTranslations
 
 internal val LocalAppLanguage = staticCompositionLocalOf { "en" }
@@ -26,6 +27,7 @@ internal fun localizedUiText(language: String, text: String): String {
         ?: localizedProviderCatalogText(normalized, text)
         ?: uiProviderQuoteTranslations[normalized]?.get(text)
         ?: uiLaunchLanguageTranslations[normalized]?.get(text)
+        ?: uiOnboardingTranslations[normalized]?.get(text)
         ?: uiTranslations["en"]?.get(text)
         ?: text
 }
