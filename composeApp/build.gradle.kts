@@ -140,7 +140,7 @@ android {
         versionName = androidVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val backendUrl = projectPropertyOrLocal("FX_BACKEND_URL", "https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net")
+        val backendUrl = projectPropertyOrLocal("FX_BACKEND_URL", "https://us-central1-fx-always.cloudfunctions.net")
         val revenueCatKey = projectPropertyOrLocal("REVENUECAT_API_KEY", projectPropertyOrLocal("REVENUECAT_ANDROID_KEY", ""))
         buildConfigField("String", "FX_BACKEND_URL", "\"$backendUrl\"")
         buildConfigField("String", "REVENUECAT_API_KEY", "\"$revenueCatKey\"")

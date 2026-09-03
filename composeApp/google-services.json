@@ -1,132 +1,33 @@
 {
   "project_info": {
-    "project_number": "411691527155",
-    "firebase_url": "https://moneytrackerpro-8ff64-default-rtdb.firebaseio.com",
-    "project_id": "moneytrackerpro-8ff64",
-    "storage_bucket": "moneytrackerpro-8ff64.firebasestorage.app"
+    "project_number": "75079929673",
+    "project_id": "fx-always",
+    "storage_bucket": "fx-always.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:411691527155:android:9b50274960cf35a6c58086",
+        "mobilesdk_app_id": "1:75079929673:android:cf08a86ba9fd516221d498",
         "android_client_info": {
           "package_name": "com.fxalways.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "411691527155-nsk1emrmikmssv0frkp6sep6gk155dpp.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.fxalways.app",
-            "certificate_hash": "1076d382c95b1aeaccb157ff628600204f08abb8"
-          }
-        },
-        {
-          "client_id": "411691527155-r4ggl4fpreg29a3beme8p640knm0eqqm.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.fxalways.app",
-            "certificate_hash": "3bae0f562e92b3d736ed23dfe97907d02c7e2fe4"
-          }
-        },
-        {
-          "client_id": "411691527155-uglmhml2ilpdgdd54t6g7t44gb1esqfl.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.fxalways.app",
-            "certificate_hash": "1e3fa15fb537ca5080b584ef9ca1566d82f7dedf"
-          }
-        },
-        {
-          "client_id": "411691527155-1r6cha8vvj3c44t03tupb30q0cvh20li.apps.googleusercontent.com",
+          "client_id": "75079929673-5l8oubf1n9jdetn9s86qhc81c3l47nrr.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDEslfjSQPKv3ylWx7IaIGjrLRT7Px7G9g"
+          "current_key": "AIzaSyBYQvIaDO4TCXc9CsvRBvJGMOa05QC0qPU"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "411691527155-1r6cha8vvj3c44t03tupb30q0cvh20li.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:411691527155:android:a11e40b1e9a86fe0c58086",
-        "android_client_info": {
-          "package_name": "com.vylofinance.app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "411691527155-r91i4gahqd3clj4repuqcs2e0286tcgf.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.vylofinance.app",
-            "certificate_hash": "e30ae2a2d10b451d7723bc7056760f139fe136aa"
-          }
-        },
-        {
-          "client_id": "411691527155-1r6cha8vvj3c44t03tupb30q0cvh20li.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDEslfjSQPKv3ylWx7IaIGjrLRT7Px7G9g"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "411691527155-1r6cha8vvj3c44t03tupb30q0cvh20li.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:411691527155:android:74da93268d2b7d98c58086",
-        "android_client_info": {
-          "package_name": "com.vylofinance.app.debug"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "411691527155-v2hp66qkqmqu912ar884rl2ht1kilvr5.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.vylofinance.app.debug",
-            "certificate_hash": "3bae0f562e92b3d736ed23dfe97907d02c7e2fe4"
-          }
-        },
-        {
-          "client_id": "411691527155-1r6cha8vvj3c44t03tupb30q0cvh20li.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDEslfjSQPKv3ylWx7IaIGjrLRT7Px7G9g"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "411691527155-1r6cha8vvj3c44t03tupb30q0cvh20li.apps.googleusercontent.com",
+              "client_id": "75079929673-5l8oubf1n9jdetn9s86qhc81c3l47nrr.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

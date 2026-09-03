@@ -123,7 +123,7 @@ Para usar el emulador Firebase local:
 Para usar Firebase deployado:
 
 ```bash
-./gradlew :composeApp:assembleDebug -PFX_BACKEND_URL=https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net
+./gradlew :composeApp:assembleDebug -PFX_BACKEND_URL=https://us-central1-fx-always.cloudfunctions.net
 ```
 
 ## Android release para Play
@@ -203,8 +203,8 @@ Cada push a `main` ejecuta todos los UI tests Android en Firebase Test Lab. El w
 
 Configuracion requerida en GitHub:
 
-- Repository variable `FIREBASE_TEST_LAB_PROJECT`: Firebase/GCP project id. Default actual: `moneytrackerpro-8ff64`.
-- Repository variable `FIREBASE_TEST_LAB_RESULTS_BUCKET`: Cloud Storage bucket para resultados. Default actual: `moneytrackerpro-8ff64-test-lab-results`.
+- Repository variable `FIREBASE_TEST_LAB_PROJECT`: Firebase/GCP project id. Default actual: `fx-always`.
+- Repository variable `FIREBASE_TEST_LAB_RESULTS_BUCKET`: Cloud Storage bucket para resultados. Default actual: `fx-always-test-lab-results`.
 - Repository secret `GCP_WORKLOAD_IDENTITY_PROVIDER`: provider de Workload Identity Federation para GitHub Actions.
 - Repository secret `GCP_SERVICE_ACCOUNT`: service account usado por el workflow.
 
@@ -288,12 +288,22 @@ Server-side alert evaluation runs as the scheduled `evaluateServerAlerts` Fireba
 
 ## Deploy Firebase
 
+Production project: `fx-always` (project number `75079929673`, Firestore in `nam5`, Functions in `us-central1`). Migrated from the shared `moneytrackerpro-8ff64` project on 2026-09-03 (issue #23).
+
 ```bash
-firebase use moneytrackerpro-8ff64
+firebase use fx-always
 cd functions
 npm install
 npm run deploy
 ```
+
+Secrets: `MARKETAUX_API_KEY` must exist in Secret Manager for the deploy to succeed. The literal value `unset` is a documented placeholder: `newsFeed` then falls back to GDELT. Set the real key with:
+
+```bash
+printf '%s' "$MARKETAUX_KEY" | firebase functions:secrets:set MARKETAUX_API_KEY --project fx-always --data-file=-
+```
+
+CI (Firebase Test Lab) authenticates through Workload Identity Federation: pool `github-pool`, provider `github-provider`, service account `github-ci@fx-always.iam.gserviceaccount.com`, results bucket `gs://fx-always-test-lab-results`. The GitHub secrets `GCP_WORKLOAD_IDENTITY_PROVIDER` / `GCP_SERVICE_ACCOUNT` and variables `FIREBASE_TEST_LAB_PROJECT` / `FIREBASE_TEST_LAB_RESULTS_BUCKET` point there.
 
 ## iOS
 

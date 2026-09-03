@@ -43,6 +43,6 @@ GitHub Actions passes `github.run_number` as `ANDROID_VERSION_CODE`, so CI relea
 
 ## Production config reminders
 
-- `FX_BACKEND_URL` defaults to `https://us-central1-moneytrackerpro-8ff64.cloudfunctions.net`.
+- `FX_BACKEND_URL` defaults to `https://us-central1-fx-always.cloudfunctions.net`.
 - `REVENUECAT_API_KEY` or `REVENUECAT_ANDROID_KEY` must be supplied for live purchases.
-- `composeApp/google-services.json` currently targets Firebase project `moneytrackerpro-8ff64`.
+- `composeApp/google-services.json` currently targets Firebase project `fx-always`.
