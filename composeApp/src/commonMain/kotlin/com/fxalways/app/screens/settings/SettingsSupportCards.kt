@@ -42,19 +42,23 @@ internal fun StoreListingKitCard(
     val clipboard = LocalClipboardManager.current
     var copied by remember(appLanguage, subscriptionState.isPremium) { mutableStateOf(false) }
     val planLabel = if (subscriptionState.isPremium) "Pro" else "Free"
-    val listingTitle = "FX Always"
-    val shortDescription = ui("Currency converter, real transfer costs, rate alerts and travel tools.")
-    val keywords = ui("currency converter, exchange rates, travel money, rate alerts")
+    // Listing copy lives in StoreListingCopy.kt (issue #14): title with an intent keyword, wedge-first description.
+    val listing = remember(appLanguage) { storeListingFor(appLanguage) }
+    val listingTitle = listing.title
+    val shortDescription = listing.shortDescription
+    val keywords = listing.keywords
     val disclaimer = ui("Rates are indicative and may differ from provider, card or cash exchange rates.")
-    val listingText = remember(appLanguage, planLabel, shortDescription, keywords, disclaimer) {
+    val listingText = remember(appLanguage, planLabel, listing, disclaimer) {
         buildString {
             append("FX Always store listing kit\n")
-            append("Language: $appLanguage\n")
+            append("Locale: ${listing.locale} (app language $appLanguage)\n")
             append("Plan context: $planLabel\n")
-            append("Title: $listingTitle\n")
-            append("Short description: $shortDescription\n")
-            append("Keywords: $keywords\n")
-            append("Disclaimer: $disclaimer")
+            append("Title (${listing.title.length}/30): ${listing.title}\n")
+            append("Short description (${listing.shortDescription.length}/80): ${listing.shortDescription}\n")
+            append("Keywords: ${listing.keywords}\n")
+            append("Disclaimer: $disclaimer\n\n")
+            append("Full description:\n")
+            append(listing.longDescription)
         }
     }
     BentoCard(Modifier.testTag("settings_store_listing_kit"), padding = 12.dp) {
@@ -62,7 +66,7 @@ internal fun StoreListingKitCard(
             KeyValueRow(
                 ui("Listing draft"),
                 listingTitle,
-                "$appLanguage · $planLabel",
+                "${listing.locale} · $planLabel",
                 modifier = Modifier.testTag("store_listing_title"),
             )
             KeyValueRow(
