@@ -10,7 +10,7 @@ Firebase Analytics on Android and is a no-op on iOS until the SDK is wired. User
 | Step | Event | Params | Where |
 |---|---|---|---|
 | 1 | `onboarding_complete` | `profile` | Onboarding finish |
-| 2 | `first_conversion` (once per install) | `base`, `target`, `amount_bucket` | Converter, first non-zero amount typed (`trackFirstConversion`) |
+| 2 | `first_conversion` (once per install) | `base`, `target` | Converter, first non-zero amount typed (`trackFirstConversion`) |
 | 3 | `send_decision_viewed` | `base`, `target`, `signal` (`strong_rate` / `good_time` / `wait`), `plan` | `ConversionDecisionCard` shown or pair/signal changes |
 | 4 | `provider_compare_viewed` | `base`, `target`, `amount_bucket`, `plan` | `ProviderMatrixCard` with at least one quote |
 | 5 | `alert_created` | pair / type | Alert saved |

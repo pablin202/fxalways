@@ -445,13 +445,17 @@ fun ConverterScreen(
 
 private const val EstimatedFeeQuoteCount = 8
 
-/** Emits `first_conversion` exactly once per install: the first time the user types a non-zero amount. */
+/**
+ * Emits `first_conversion` exactly once per install: the first time the user types a non-zero amount.
+ * No amount bucket here on purpose (the first keystroke is a partial amount); `provider_compare_viewed`
+ * carries the bucket once the amount settles.
+ */
 internal fun trackFirstConversion(amountText: String, base: String, target: String) {
     if (AppSettingsPrefs.firstConversionTracked()) return
     val amount = amountText.replace(",", ".").toDoubleOrNull() ?: return
     if (amount <= 0.0) return
     AppSettingsPrefs.setFirstConversionTracked()
-    Observability.event("first_conversion", mapOf("base" to base, "target" to target, "amount_bucket" to amountBucket(amount)))
+    Observability.event("first_conversion", mapOf("base" to base, "target" to target))
 }
 
 /** Coarse amount bucket so the funnel can segment small vs. remittance-sized conversions without logging exact amounts. */
