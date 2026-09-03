@@ -46,9 +46,10 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
-      - name: Compile Android and Test Lab artifacts
+      - name: Run unit tests and compile Android + Test Lab artifacts
         run: >
           ./gradlew
+          :composeApp:testDebugUnitTest
           :composeApp:compileDebugKotlinAndroid
           :composeApp:compileDebugAndroidTestKotlinAndroid
           :composeApp:assembleDebug

@@ -57,6 +57,13 @@ La fuente de verdad es `composeApp/src/commonMain/kotlin/com/fxalways/app/subscr
 
 Free es generoso en acceso para que la app sea útil antes de pedir Pro. Pro vende profundidad y automatización, no acceso básico.
 
+## Tests unitarios (commonTest)
+
+`./gradlew :composeApp:testDebugUnitTest` corre la lógica de negocio sin dispositivo: `SmartTimingTest`,
+`FeeQuotesTest`, `PortfolioCsvTest`, `BackupMergeTest`, `MoneyFormattingTest`, `FeatureAccessPolicyTest`,
+`ReviewPromptPolicyTest`, `LocalizationTest`, `AmountBucketTest`. CI los ejecuta antes de compilar los
+artefactos de Test Lab. Los tests instrumentados (`connectedDebugAndroidTest`) quedan para UI.
+
 ## Release build (R8)
 
 `release` builds run R8 with `isMinifyEnabled` + `isShrinkResources` and the rules in
