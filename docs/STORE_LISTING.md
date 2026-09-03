@@ -1,4 +1,5 @@
 # Play Store listing (issue #14)
+
 Copy from `composeApp/src/commonMain/kotlin/com/fxalways/app/screens/settings/StoreListingCopy.kt` (also copyable from Settings → Store listing kit in the app). Paste into Play Console → Main store listing and the es-419 / pt-BR translations (#16).
 
 ## en-US
@@ -39,7 +40,7 @@ FX Always does not move money. Rates are indicative and may differ from provider
 
 **Title (30/30):** FX Always: Enviar dinero mejor
 
-**Short description (83/80):** Compará el costo real de enviar, recibí alertas de tipo de cambio y enviá a tiempo.
+**Short description (75/80):** Compará el costo real de enviar, alertas de cambio y enviá cuando conviene.
 
 **Full description:**
 
@@ -71,7 +72,7 @@ FX Always no mueve dinero. Las cotizaciones son indicativas y pueden diferir de 
 
 ## pt-BR
 
-**Title (33/30):** FX Always: Enviar dinheiro melhor
+**Title (30/30):** FX Always: Remessa inteligente
 
 **Short description (79/80):** Compare o custo real de enviar, receba alertas de câmbio e envie na hora certa.
 
@@ -123,7 +124,7 @@ Search each term in Play (device in the listing's locale) or use AppTweak free a
 | pt-BR | conversor de moedas | | |
 
 ## Notes
-- Title includes an intent keyword ("Send Money Smarter") and stays under 30 characters in all three locales.
+- Title includes an intent keyword and stays within 30 characters in all three locales.
 - The first paragraph carries the wedge (what arrives after fees, when to send) and the category keywords (exchange rate alerts, currency converter).
 - Keep the closing disclaimer: FX Always does not move money.
 - The 4-language claim (en/es/pt/hi) replaces the old 13-language line (#7).

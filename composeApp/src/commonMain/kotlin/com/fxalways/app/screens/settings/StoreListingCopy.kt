@@ -53,7 +53,7 @@ FX Always does not move money. Rates are indicative and may differ from provider
 internal val StoreListingES = StoreListing(
     locale = "es-419",
     title = "FX Always: Enviar dinero mejor",
-    shortDescription = "Compará el costo real de enviar, recibí alertas de tipo de cambio y enviá a tiempo.",
+    shortDescription = "Compará el costo real de enviar, alertas de cambio y enviá cuando conviene.",
     longDescription = """
 FX Always te muestra cuánto recibe de verdad tu familia después de comisiones y spread con Wise, Revolut, Western Union y billeteras locales, y te avisa cuando el tipo de cambio juega a tu favor. Alertas de tipo de cambio, comparación de costos de envío y una decisión diaria para tu corredor.
 
@@ -82,7 +82,7 @@ FX Always no mueve dinero. Las cotizaciones son indicativas y pueden diferir de 
 
 internal val StoreListingPT = StoreListing(
     locale = "pt-BR",
-    title = "FX Always: Enviar dinheiro melhor",
+    title = "FX Always: Remessa inteligente",
     shortDescription = "Compare o custo real de enviar, receba alertas de câmbio e envie na hora certa.",
     longDescription = """
 O FX Always mostra quanto sua família realmente recebe depois das taxas e do spread com Wise, Revolut, Western Union e carteiras locais, e avisa quando a taxa de câmbio está a seu favor. Alertas de câmbio, comparação de custo de remessa e uma decisão diária para o seu corredor.

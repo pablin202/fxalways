@@ -296,6 +296,9 @@ class SettingsScreenTest {
         compose.onNodeWithTag("settings_profile_Remittances").performScrollTo().performClick()
         compose.onNodeWithText("More").performScrollTo().performClick()
 
+        // Remittances Home leads with Today's decision (#11); the profile cards sit behind "More on Home".
+        compose.onNodeWithTag("dashboard_today_decision").assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_more_toggle").performScrollTo().performClick()
         compose.onNodeWithTag("dashboard_profile_priority").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("dashboard_profile_priority_title").assertTextContains("Review transfer cost")
     }
