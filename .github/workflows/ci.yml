@@ -39,6 +39,10 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: i18n audit (warning only)
+        continue-on-error: true
+        run: python3 scripts/i18n-audit.py --main-flow --fail-on-missing
+
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 

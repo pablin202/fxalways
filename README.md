@@ -34,7 +34,7 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 - Rate trust en Home, Convert y Detail: fuente, estado Live/Cache/Preview y hora de actualizacion.
 - Loading skeletons para estados lentos de rates, converter y news.
 - Analytics basicos: seleccion de plan, compra exitosa, currency agregada y uso de widgets.
-- Localizacion in-app con selector para 13 idiomas: English, Español, Português, 中文, हिन्दी, Français, العربية, বাংলা, Русский, اردو, Indonesia, Deutsch, 日本語.
+- Localizacion in-app con selector para 4 idiomas: English, Español, Português, हिन्दी (los diccionarios de otros 9 idiomas quedan detrás de `EXTENDED_LANGUAGES = false`; `python3 scripts/i18n-audit.py` lista las claves sin traducir).
 - Cache server-side por base currency e historico por par.
 - Scheduled refresh cada 60 minutos.
 - Firestore cerrado al cliente; la app consume solo HTTPS Functions.

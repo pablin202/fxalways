@@ -22,6 +22,7 @@ import com.fxalways.app.subscription.createSubscriptionGateway
 import com.fxalways.app.screens.profile.preset
 import com.fxalways.app.screens.providers.defaultProviderPreferenceCodes
 import com.fxalways.designsystem.components.FxRate
+import com.fxalways.app.ui.supportedLanguageOrDefault
 import com.fxalways.observability.Observability
 
 @Composable
@@ -35,7 +36,7 @@ fun FxAppShell() {
     var showPaywall by remember { mutableStateOf(false) }
     var subscriptionActionInProgress by remember { mutableStateOf(false) }
     var themeMode by remember { mutableStateOf(AppSettingsPrefs.themeMode()) }
-    var appLanguage by remember { mutableStateOf(AppSettingsPrefs.language()) }
+    var appLanguage by remember { mutableStateOf(supportedLanguageOrDefault(AppSettingsPrefs.language())) }
     var baseCurrency by remember { mutableStateOf(AppSettingsPrefs.baseCurrency()) }
     var travelerCurrency by remember { mutableStateOf(AppSettingsPrefs.travelerCurrency()) }
     var travelerBudgetBase by remember { mutableStateOf(AppSettingsPrefs.travelerBudgetBase()) }
