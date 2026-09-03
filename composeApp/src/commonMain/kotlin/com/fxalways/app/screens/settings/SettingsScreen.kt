@@ -52,6 +52,7 @@ fun SettingsScreen(
     onSyncNow: () -> Unit,
     onLinkGoogle: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit = {},
     onDevPremiumChange: (Boolean) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onLanguageChange: (String) -> Unit,
@@ -108,6 +109,7 @@ fun SettingsScreen(
                 onLinkGoogle()
             },
             onSignOut = onSignOut,
+            onDeleteAccount = onDeleteAccount,
         )
 
         SubscriptionSettingsSection(

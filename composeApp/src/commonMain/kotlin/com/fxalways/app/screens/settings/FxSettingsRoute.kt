@@ -8,6 +8,8 @@ import com.fxalways.app.ExternalUrlOpener
 import com.fxalways.app.Platform
 import com.fxalways.app.PlatformConfig
 import com.fxalways.app.ThemeMode
+import com.fxalways.app.AccountLifecycle
+import com.fxalways.app.LocalDataReset
 import com.fxalways.app.UserBackupGateway
 import com.fxalways.app.UserBackupState
 import com.fxalways.app.UserProfile
@@ -200,6 +202,25 @@ internal fun FxSettingsRoute(
                     onBackupReadyChange(backupState.isAvailable)
                 }
                 onBackupSyncingChange(false)
+            }
+        },
+        onDeleteAccount = {
+            scope.launch {
+                onBackupSyncingChange(true)
+                Observability.event("account_delete_confirmed", mapOf("anonymous" to backupState.isAnonymous.toString()))
+                runCatching {
+                    UserBackupGateway.deleteAccount()
+                    subscriptionGateway.onAccountDeleted()
+                    LocalDataReset.clearAll()
+                }.onSuccess {
+                    Observability.event("account_deleted")
+                    Observability.setUserId(null)
+                    AccountLifecycle.signalReset()
+                }.onFailure { error ->
+                    Observability.recordException(error, mapOf("flow" to "account_delete"))
+                    onBackupStateChange(backupState.copy(errorMessage = error.message ?: "Account deletion failed"))
+                    onBackupSyncingChange(false)
+                }
             }
         },
         onDevPremiumChange = { enabled ->

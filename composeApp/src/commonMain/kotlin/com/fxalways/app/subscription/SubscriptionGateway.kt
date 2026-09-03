@@ -7,6 +7,7 @@ import com.revenuecat.purchases.kmp.Purchases
 import com.revenuecat.purchases.kmp.configure
 import com.revenuecat.purchases.kmp.ktx.awaitCustomerInfo
 import com.revenuecat.purchases.kmp.ktx.awaitLogIn
+import com.revenuecat.purchases.kmp.ktx.awaitLogOut
 import com.revenuecat.purchases.kmp.ktx.awaitOfferings
 import com.revenuecat.purchases.kmp.ktx.awaitPurchase
 import com.revenuecat.purchases.kmp.ktx.awaitRestore
@@ -47,6 +48,9 @@ interface SubscriptionGateway {
     suspend fun purchasePlan(kind: SubscriptionPlanKind): SubscriptionState
     suspend fun restore(): SubscriptionState
     suspend fun setDevPremium(enabled: Boolean): SubscriptionState
+
+    /** Called after the Firebase account was deleted; drops any store identity tied to it. */
+    suspend fun onAccountDeleted() = Unit
 }
 
 class PlaceholderSubscriptionGateway : SubscriptionGateway {
@@ -142,6 +146,12 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
         fallback.setDevPremium(enabled).copy(
             statusMessage = if (hasApiKey()) "Dev override only affects local debug gating." else null,
         )
+
+    override suspend fun onAccountDeleted() {
+        if (!Purchases.isConfigured) return
+        runCatching { Purchases.sharedInstance.awaitLogOut() }
+        configuredUserId = null
+    }
 
     private suspend fun ensureConfigured(): Purchases {
         val account = UserBackupGateway.ensureUser()

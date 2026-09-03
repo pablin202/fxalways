@@ -1,7 +1,10 @@
 package com.fxalways.app
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -13,6 +16,11 @@ import com.fxalways.observability.Observability
 @Composable
 fun App() {
     var onboardingComplete by remember { mutableStateOf(OnboardingPrefs.hasSeenOnboarding()) }
+    val resetGeneration by AccountLifecycle.resetGeneration.collectAsState()
+    LaunchedEffect(resetGeneration) {
+        if (resetGeneration > 0) onboardingComplete = OnboardingPrefs.hasSeenOnboarding()
+    }
+    key(resetGeneration) {
     if (onboardingComplete) {
         FxAppShell()
     } else {
@@ -26,5 +34,6 @@ fun App() {
                 },
             )
         }
+    }
     }
 }

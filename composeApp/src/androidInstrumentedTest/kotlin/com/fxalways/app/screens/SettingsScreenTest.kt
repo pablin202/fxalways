@@ -5,11 +5,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -350,6 +352,21 @@ class SettingsScreenTest {
         compose.onAllNodesWithText("Proveedor de envio", substring = true).onFirst().performScrollTo().assertIsDisplayed()
     }
 
+    @Test
+    fun deleteAccountAsksForConfirmationBeforeCallingBack() {
+        val harness = renderSettings()
+
+        compose.onNodeWithTag("settings_delete_account").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_delete_account_dialog").assertIsDisplayed()
+        compose.onNodeWithTag("settings_delete_account_cancel").performClick()
+        compose.runOnIdle { assertEquals(0, harness.deleteAccountClicks) }
+
+        compose.onNodeWithTag("settings_delete_account").performScrollTo().performClick()
+        compose.onNodeWithTag("settings_delete_account_confirm").performClick()
+        compose.runOnIdle { assertEquals(1, harness.deleteAccountClicks) }
+        compose.onAllNodesWithTag("settings_delete_account_dialog").assertCountEquals(0)
+    }
+
     private fun renderSettings(
         subscriptionState: SubscriptionState = SubscriptionState(isPremium = false),
         backupState: UserBackupState = UserBackupState(uid = "anon", isAnonymous = true, isAvailable = true),
@@ -384,6 +401,7 @@ class SettingsScreenTest {
                     onSyncNow = { harness.syncClicks += 1 },
                     onLinkGoogle = { harness.linkClicks += 1 },
                     onSignOut = { harness.signOutClicks += 1 },
+                    onDeleteAccount = { harness.deleteAccountClicks += 1 },
                     onDevPremiumChange = { harness.devPremiumChanges += it },
                     onThemeModeChange = {
                         themeMode = it
@@ -449,6 +467,7 @@ class SettingsScreenTest {
         var syncClicks = 0
         var linkClicks = 0
         var signOutClicks = 0
+        var deleteAccountClicks = 0
         var paywallClicks = 0
         var restoreClicks = 0
         var themeMode = ThemeMode.System
