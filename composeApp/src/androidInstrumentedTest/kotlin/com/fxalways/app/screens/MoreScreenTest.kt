@@ -43,14 +43,14 @@ class MoreScreenTest {
             }
         }
 
-        compose.onNodeWithTag("more_traveler").assertIsDisplayed().performClick()
-        compose.onNodeWithTag("more_news").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("more_traveler").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("more_news").performScrollTo().assertIsDisplayed().performClick()
         compose.onNodeWithTag("more_compare").performScrollTo().assertIsDisplayed().performClick()
         compose.onNodeWithTag("more_crypto").performScrollTo().assertIsDisplayed().performClick()
-        compose.onNodeWithTag("more_alerts").assertIsDisplayed().performClick()
-        compose.onNodeWithTag("more_watchlist").assertIsDisplayed().performClick()
-        compose.onNodeWithTag("more_settings").assertIsDisplayed().performClick()
-        compose.onNodeWithTag("more_pro").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("more_alerts").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("more_watchlist").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("more_settings").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("more_pro").performScrollTo().assertIsDisplayed().performClick()
 
         compose.runOnIdle {
             assertEquals(1, harness.traveler)
