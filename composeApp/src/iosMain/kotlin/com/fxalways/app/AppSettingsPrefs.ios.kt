@@ -14,6 +14,7 @@ actual object AppSettingsPrefs {
     private const val KEY_PROVIDER_PREFERENCE_CODES = "provider_preference_codes"
     private const val KEY_USER_PROFILE = "user_profile"
     private const val KEY_CACHED_PREMIUM = "cached_premium"
+    private const val KEY_FIRST_CONVERSION_TRACKED = "first_conversion_tracked"
 
     actual fun themeMode(): ThemeMode {
         val raw = NSUserDefaults.standardUserDefaults.stringForKey(KEY_THEME_MODE)
@@ -101,6 +102,13 @@ actual object AppSettingsPrefs {
 
     actual fun setUserProfile(profile: UserProfile) {
         NSUserDefaults.standardUserDefaults.setObject(profile.name, KEY_USER_PROFILE)
+    }
+
+    actual fun firstConversionTracked(): Boolean =
+        NSUserDefaults.standardUserDefaults.boolForKey(KEY_FIRST_CONVERSION_TRACKED)
+
+    actual fun setFirstConversionTracked() {
+        NSUserDefaults.standardUserDefaults.setBool(true, KEY_FIRST_CONVERSION_TRACKED)
     }
 
     actual fun cachedPremium(): Boolean? =

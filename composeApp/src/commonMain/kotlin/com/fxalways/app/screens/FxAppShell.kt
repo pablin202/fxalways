@@ -110,7 +110,7 @@ fun FxAppShell() {
         baseCurrency = baseCurrency,
         appLanguage = appLanguage,
     )
-    FxAppUserTrackingEffect(subscriptionState, backupState)
+    FxAppUserTrackingEffect(subscriptionState, backupState, userProfile, baseCurrency)
     FxAppRateRefreshEffect(liveStore)
     FxAppNewsCurrencyEffect(startupReady, baseCurrency, newsStore)
     FxAppStartupBackupEffect(

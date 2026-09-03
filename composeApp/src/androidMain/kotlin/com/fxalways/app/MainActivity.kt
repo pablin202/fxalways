@@ -16,6 +16,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         installFirebaseObservability(this)
         intent?.trackWidgetOpen()
+        intent?.trackAlertOpen()
         AndroidAppContext.init(this)
         registerPushToken()
         AndroidAlertScheduler.schedule(this)
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.trackWidgetOpen()
+        intent.trackAlertOpen()
     }
 
     @Deprecated("Used by GoogleSignInClient until Credential Manager is wired.")
@@ -46,6 +48,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun Intent.trackAlertOpen() {
+        getStringExtra(EXTRA_ALERT_SOURCE)?.let { source ->
+            Observability.event("alert_triggered_opened", mapOf("source" to source))
+            removeExtra(EXTRA_ALERT_SOURCE)
+        }
+    }
+
     private fun registerPushToken() {
         lifecycleScope.launch {
             val userState = UserBackupGateway.ensureUser()
@@ -55,5 +64,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_WIDGET_SOURCE = "com.fxalways.app.extra.WIDGET_SOURCE"
+        const val EXTRA_ALERT_SOURCE = "com.fxalways.app.extra.ALERT_SOURCE"
     }
 }

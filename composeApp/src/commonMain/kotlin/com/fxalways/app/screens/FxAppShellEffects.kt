@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import com.fxalways.app.PlatformBackHandler
 import com.fxalways.app.UserBackupState
 import com.fxalways.app.subscription.SubscriptionState
+import com.fxalways.app.UserProfile
 import com.fxalways.observability.Observability
 
 @Composable
@@ -40,10 +41,18 @@ internal fun FxAppScreenTrackingEffect(
 }
 
 @Composable
-internal fun FxAppUserTrackingEffect(subscriptionState: SubscriptionState, backupState: UserBackupState) {
-    LaunchedEffect(subscriptionState.isPremium, backupState.uid) {
+internal fun FxAppUserTrackingEffect(
+    subscriptionState: SubscriptionState,
+    backupState: UserBackupState,
+    userProfile: UserProfile,
+    baseCurrency: String,
+) {
+    LaunchedEffect(subscriptionState.isPremium, backupState.uid, userProfile, baseCurrency) {
         Observability.setUserId(backupState.uid)
         Observability.setUserProperty("premium", subscriptionState.isPremium.toString())
+        Observability.setUserProperty("plan", if (subscriptionState.isPremium) "pro" else "free")
+        Observability.setUserProperty("profile", userProfile.name.lowercase())
+        Observability.setUserProperty("base_currency", baseCurrency)
     }
 }
 

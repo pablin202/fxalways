@@ -293,8 +293,20 @@ internal fun ProviderMatrixCard(
     errorMessage: String?,
     isPremium: Boolean,
     onOpenPaywall: () -> Unit,
+    base: String = "",
+    target: String = "",
+    amountValue: Double = 0.0,
 ) {
     val visibleQuotes = quotes.take(if (isPremium) 6 else 2)
+    val hasQuotes = visibleQuotes.isNotEmpty()
+    LaunchedEffect(base, target, hasQuotes) {
+        if (hasQuotes && base.isNotBlank() && target.isNotBlank()) {
+            Observability.event(
+                "provider_compare_viewed",
+                mapOf("base" to base, "target" to target, "amount_bucket" to amountBucket(amountValue), "plan" to if (isPremium) "pro" else "free"),
+            )
+        }
+    }
     BentoCard(Modifier.testTag("converter_provider_matrix"), padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             when {

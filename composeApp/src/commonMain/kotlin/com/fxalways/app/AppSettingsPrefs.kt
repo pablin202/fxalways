@@ -35,6 +35,8 @@ expect object AppSettingsPrefs {
     fun setProviderPreferenceCodes(codes: List<String>)
     fun userProfile(): UserProfile
     fun setUserProfile(profile: UserProfile)
+    fun firstConversionTracked(): Boolean
+    fun setFirstConversionTracked()
     fun cachedPremium(): Boolean?
     fun setCachedPremium(enabled: Boolean)
 }

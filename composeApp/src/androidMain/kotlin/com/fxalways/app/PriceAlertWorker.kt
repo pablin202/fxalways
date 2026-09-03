@@ -95,6 +95,7 @@ class PriceAlertWorker(
         ensureChannel()
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(MainActivity.EXTRA_ALERT_SOURCE, "local")
         }
         val pendingIntent = PendingIntent.getActivity(
             applicationContext,

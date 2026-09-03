@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.fxalways.observability.Observability
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -32,6 +34,12 @@ internal fun ConversionDecisionCard(
     onCompareProviders: () -> Unit,
     onOpenPaywall: () -> Unit,
 ) {
+    LaunchedEffect(sourceRate.code, targetRate.code, timingInsight.signal) {
+        Observability.event(
+            "send_decision_viewed",
+            mapOf("base" to sourceRate.code, "target" to targetRate.code, "signal" to timingInsight.signal.lowercase().replace(' ', '_'), "plan" to if (isPremium) "pro" else "free"),
+        )
+    }
     val primaryAction = when {
         amountValue <= 0.0 -> "Enter an amount"
         timingInsight.signal == "Wait" -> "Wait or set an alert"
