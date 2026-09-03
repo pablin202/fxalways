@@ -57,6 +57,18 @@ La fuente de verdad es `composeApp/src/commonMain/kotlin/com/fxalways/app/subscr
 
 Free es generoso en acceso para que la app sea útil antes de pedir Pro. Pro vende profundidad y automatización, no acceso básico.
 
+## Release build (R8)
+
+`release` builds run R8 with `isMinifyEnabled` + `isShrinkResources` and the rules in
+`composeApp/proguard-rules.pro` (kotlinx.serialization models, manifest components, enums persisted by
+name, Firestore reflection, ML Kit / CameraX, RevenueCat, Ktor). The Crashlytics Gradle plugin uploads
+`mapping.txt` on every release build and CI also attaches it as the `android-release-mapping-<versionCode>`
+artifact; the AAB carries the deobfuscation file for Play automatically.
+
+Without a release keystore the release build type is signed with the debug key so a minified APK can be
+installed locally: `./gradlew :composeApp:assembleRelease` then `adb install -r composeApp/build/outputs/apk/release/composeApp-release.apk`.
+When adding a new `@Serializable` model or a class reached via reflection, smoke-test the release build on a device.
+
 ## Borrado de cuenta
 
 Settings → Backup → **Delete account** (disponible también para invitados). Tras confirmar, la app borra en Firestore `users/{uid}` con sus subcolecciones (`backups`, `push_tokens`, `server_alert_events`), elimina el usuario de Firebase Auth (reautenticando con Google si hace falta), cierra la sesión de RevenueCat, limpia todas las preferencias locales y vuelve al onboarding. Las compras quedan en la cuenta de Google. La URL de borrado declarada en Play Console debe apuntar a una página de fxalways.com que describa estos pasos.

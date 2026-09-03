@@ -179,6 +179,13 @@ jobs:
             -PANDROID_KEY_PASSWORD="${{ secrets.ANDROID_KEY_PASSWORD }}" \
             -PREVENUECAT_API_KEY="${{ secrets.REVENUECAT_API_KEY }}"
 
+      - name: Upload R8 mapping (deobfuscation file)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-mapping-${{ env.RELEASE_VERSION_CODE }}
+          path: composeApp/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+
       - name: Prepare release assets
         run: |
           set -euo pipefail
