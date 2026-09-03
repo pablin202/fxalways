@@ -1,7 +1,10 @@
 package com.fxalways.app
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -131,6 +134,41 @@ actual object UserBackupGateway {
         pushSnapshot(localSnapshot)
         PushTokenGateway.registerForUser(user.uid)
         return AccountLinkResult(state = state, snapshot = localSnapshot)
+    }
+
+    actual suspend fun deleteAccount() {
+        val auth = FirebaseAuth.getInstance()
+        val user = auth.currentUser ?: return
+        val uid = user.uid
+        PushTokenGateway.unregisterForUser(uid, reason = "account_deleted")
+        deleteUserDocuments(uid)
+        try {
+            user.delete().await()
+        } catch (recentLoginRequired: FirebaseAuthRecentLoginRequiredException) {
+            reauthenticateWithGoogle(user)
+            user.delete().await()
+        }
+        GoogleSignInBridge.signOut()
+        auth.signOut()
+        Log.i("UserBackupGateway", "Account deleted for user ${uid.take(8)}")
+    }
+
+    /** Firestore rules let the signed-in user delete anything under users/{uid}, so this runs client-side. */
+    private suspend fun deleteUserDocuments(uid: String) {
+        val firestore = FirebaseFirestore.getInstance()
+        val userDoc = firestore.collection(COLLECTION_USERS).document(uid)
+        listOf(COLLECTION_BACKUPS, "push_tokens", "server_alert_events").forEach { collection ->
+            userDoc.collection(collection).get().await().documents.forEach { document ->
+                document.reference.delete().await()
+            }
+        }
+        userDoc.delete().await()
+    }
+
+    private suspend fun reauthenticateWithGoogle(user: FirebaseUser) {
+        val account = GoogleSignInBridge.requestAccount()
+        val idToken = account.idToken ?: error("Google did not return an ID token")
+        user.reauthenticate(GoogleAuthProvider.getCredential(idToken, null)).await()
     }
 
     private suspend fun requireUid(): String {

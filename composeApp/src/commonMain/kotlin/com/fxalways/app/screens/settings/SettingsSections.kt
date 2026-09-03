@@ -22,6 +22,16 @@ import com.fxalways.app.screens.shared.termsOfUseUrl
 import com.fxalways.designsystem.components.BentoCard
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.components.SectionLabel
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.fxalways.designsystem.theme.FxTheme
+import com.fxalways.app.screens.ui
 
 @Composable
 internal fun BackupSettingsSection(
@@ -33,7 +43,18 @@ internal fun BackupSettingsSection(
     onSyncNow: () -> Unit,
     onLinkAccount: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit = {},
 ) {
+    var confirmDelete by remember { mutableStateOf(false) }
+    if (confirmDelete) {
+        DeleteAccountDialog(
+            onConfirm = {
+                confirmDelete = false
+                onDeleteAccount()
+            },
+            onDismiss = { confirmDelete = false },
+        )
+    }
     SectionLabel(copy.backup)
     BentoCard(padding = 8.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -82,8 +103,58 @@ internal fun BackupSettingsSection(
                     onClick = onSignOut,
                 )
             }
+            // Play's account-deletion policy: the flow must exist in-app, for guests too.
+            SettingChoiceRow(
+                title = ui("Delete account"),
+                subtitle = ui("Removes your backup, alerts, watchlist and push registrations from our servers and this device."),
+                selected = false,
+                actionLabel = ui("delete"),
+                modifier = Modifier.testTag("settings_delete_account"),
+                enabled = !backupSyncing,
+                onClick = { confirmDelete = true },
+            )
         }
     }
+}
+
+@Composable
+private fun DeleteAccountDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("settings_delete_account_dialog"),
+        containerColor = FxTheme.colors.surface2,
+        titleContentColor = FxTheme.colors.text,
+        textContentColor = FxTheme.colors.textDim,
+        title = { Text(ui("Delete your account?"), style = FxTheme.typography.bodyStrong) },
+        text = {
+            Text(
+                ui("This deletes your account, cloud backup, alerts, watchlist and push registrations. Purchases stay with your Google account. This can't be undone."),
+                style = FxTheme.typography.caption,
+            )
+        },
+        confirmButton = {
+            Text(
+                ui("Delete everything"),
+                style = FxTheme.typography.bodyStrong,
+                color = FxTheme.colors.down,
+                modifier = Modifier
+                    .testTag("settings_delete_account_confirm")
+                    .clickable(onClick = onConfirm)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        },
+        dismissButton = {
+            Text(
+                ui("Cancel"),
+                style = FxTheme.typography.bodyStrong,
+                color = FxTheme.colors.textDim,
+                modifier = Modifier
+                    .testTag("settings_delete_account_cancel")
+                    .clickable(onClick = onDismiss)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        },
+    )
 }
 
 @Composable

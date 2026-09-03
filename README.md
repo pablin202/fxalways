@@ -57,6 +57,10 @@ La fuente de verdad es `composeApp/src/commonMain/kotlin/com/fxalways/app/subscr
 
 Free es generoso en acceso para que la app sea útil antes de pedir Pro. Pro vende profundidad y automatización, no acceso básico.
 
+## Borrado de cuenta
+
+Settings → Backup → **Delete account** (disponible también para invitados). Tras confirmar, la app borra en Firestore `users/{uid}` con sus subcolecciones (`backups`, `push_tokens`, `server_alert_events`), elimina el usuario de Firebase Auth (reautenticando con Google si hace falta), cierra la sesión de RevenueCat, limpia todas las preferencias locales y vuelve al onboarding. Las compras quedan en la cuenta de Google. La URL de borrado declarada en Play Console debe apuntar a una página de fxalways.com que describa estos pasos.
+
 ## Roadmap competitivo
 
 Benchmark detallado y roadmap por mercado: [PRODUCT_BENCHMARK_ROADMAP.md](PRODUCT_BENCHMARK_ROADMAP.md).

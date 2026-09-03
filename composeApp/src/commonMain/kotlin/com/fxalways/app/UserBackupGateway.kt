@@ -65,6 +65,14 @@ expect object UserBackupGateway {
     suspend fun linkWithGoogle(localSnapshot: UserBackupSnapshot): AccountLinkResult
     suspend fun linkWithApple(localSnapshot: UserBackupSnapshot): AccountLinkResult
     suspend fun signOutToAnonymous(localSnapshot: UserBackupSnapshot): AccountLinkResult
+
+    /**
+     * Permanently deletes the signed-in identity and everything stored under it on the
+     * server (backup, push registrations, server alert events) and then the auth user.
+     * Throws when the deletion could not be completed; local data is left untouched so
+     * the caller can decide what to do.
+     */
+    suspend fun deleteAccount()
 }
 
 fun mergeBackupSnapshots(local: UserBackupSnapshot, remote: UserBackupSnapshot?): UserBackupSnapshot {

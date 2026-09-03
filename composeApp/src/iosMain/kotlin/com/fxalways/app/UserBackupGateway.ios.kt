@@ -36,6 +36,10 @@ actual object UserBackupGateway {
             snapshot = localSnapshot,
         )
 
+    actual suspend fun deleteAccount() {
+        NSUserDefaults.standardUserDefaults.removeObjectForKey(KEY_ANONYMOUS_UID)
+    }
+
     private fun anonymousUid(): String {
         val defaults = NSUserDefaults.standardUserDefaults
         val existing = defaults.stringForKey(KEY_ANONYMOUS_UID)
