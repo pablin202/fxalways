@@ -51,11 +51,11 @@ class AlertsScreenTest {
     }
 
     @Test
-    fun freeUserCreatesOneAlertThenNewAlertsOpenPaywall() {
+    fun freeUserCreatesTwoAlertsThenNewAlertsOpenPaywall() {
         val harness = renderAlerts(isPremium = false)
 
         compose.runOnIdle { assertEquals(0, harness.notificationPermissionRequests) }
-        compose.onNodeWithText("0/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithText("0/2 alerts · USD base").assertIsDisplayed()
         compose.onNodeWithTag("alerts_monitoring_status").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Server checks").assertIsDisplayed()
         compose.onNodeWithText("Local fallback").assertIsDisplayed()
@@ -66,20 +66,26 @@ class AlertsScreenTest {
 
         compose.onNodeWithTag("alert_feedback").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("alert_card_manual_0").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Create unlimited alerts").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Create unlimited alerts").assertDoesNotExist()
         compose.runOnIdle { assertEquals(1, harness.notificationPermissionRequests) }
 
-        compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("0.96")
-        compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
-        compose.runOnIdle {
-            assertEquals(1, harness.paywallClicks)
-            assertEquals(1, harness.notificationPermissionRequests)
-        }
-
+        // Free includes two alerts: the second one is created without a paywall.
         compose.onNodeWithTag("alert_quick_GBP").performScrollTo().performClick()
+        compose.onNodeWithTag("alert_card_quick_1").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("2/2 alerts · USD base").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Create unlimited alerts").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertEquals(0, harness.paywallClicks) }
+
+        // Third alert: custom builder and quick chip both open the paywall.
+        compose.onNodeWithTag("alert_target_input").performScrollTo().performTextReplacement("0.97")
+        compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+
+        compose.onNodeWithTag("alert_quick_JPY").performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(2, harness.paywallClicks)
-            assertEquals(1, harness.notificationPermissionRequests)
+            // Both real creations asked for notification permission; the blocked ones did not.
+            assertEquals(2, harness.notificationPermissionRequests)
         }
     }
 
@@ -214,6 +220,7 @@ class AlertsScreenTest {
         renderAlerts(
             isPremium = false,
             initialAlerts = listOf(
+                freeSlotFillerAlert(),
                 PriceAlert(
                     id = "eur_quick",
                     base = "USD",
@@ -227,11 +234,11 @@ class AlertsScreenTest {
             ),
         )
 
-        compose.onNodeWithText("1/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithText("2/2 alerts · USD base").assertIsDisplayed()
         compose.onNodeWithTag("alert_quick_EUR").performScrollTo().performClick()
 
         compose.onNodeWithTag("alert_card_eur_quick").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("on").assertIsDisplayed()
+        compose.onAllNodesWithText("on").assertCountEquals(2)
     }
 
     @Test
@@ -239,6 +246,7 @@ class AlertsScreenTest {
         val harness = renderAlerts(
             isPremium = false,
             initialAlerts = listOf(
+                freeSlotFillerAlert(),
                 PriceAlert(
                     id = "eur_custom",
                     base = "USD",
@@ -252,7 +260,7 @@ class AlertsScreenTest {
             ),
         )
 
-        compose.onNodeWithText("1/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithText("2/2 alerts · USD base").assertIsDisplayed()
         compose.onNodeWithTag("alert_currency_EUR").performScrollTo().performClick()
         compose.onNodeWithText("Reactivate existing alert").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("alert_create_button").performScrollTo().performClick()
@@ -263,7 +271,7 @@ class AlertsScreenTest {
         }
         compose.onNodeWithTag("alert_card_eur_custom").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Existing alert reactivated USD/EUR.").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("on").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("on").assertCountEquals(2)
     }
 
     @Test
@@ -305,6 +313,7 @@ class AlertsScreenTest {
             isPremium = false,
             liveState = smartAlertLiveRatesState(),
             initialAlerts = listOf(
+                freeSlotFillerAlert(),
                 PriceAlert(
                     id = "existing_limit",
                     base = "USD",
@@ -318,7 +327,7 @@ class AlertsScreenTest {
             ),
         )
 
-        compose.onNodeWithText("1/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithText("2/2 alerts · USD base").assertIsDisplayed()
         compose.onNodeWithTag("alert_smart_EUR").performScrollTo().performClick()
 
         compose.runOnIdle {
@@ -363,6 +372,7 @@ class AlertsScreenTest {
             isPremium = false,
             liveState = smartAlertLiveRatesState(),
             initialAlerts = listOf(
+                freeSlotFillerAlert(),
                 PriceAlert(
                     id = "eur_smart",
                     base = "USD",
@@ -376,7 +386,7 @@ class AlertsScreenTest {
             ),
         )
 
-        compose.onNodeWithText("1/1 alerts · USD base").assertIsDisplayed()
+        compose.onNodeWithText("2/2 alerts · USD base").assertIsDisplayed()
         compose.onNodeWithTag("alert_smart_EUR").performScrollTo().performClick()
 
         compose.runOnIdle {
@@ -384,7 +394,7 @@ class AlertsScreenTest {
             assertEquals(0, harness.manualCreateCalls)
         }
         compose.onNodeWithTag("alert_card_eur_smart").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("on").assertIsDisplayed()
+        compose.onAllNodesWithText("on").assertCountEquals(2)
     }
 
     @Test
@@ -464,6 +474,18 @@ class AlertsScreenTest {
         compose.onNodeWithText("No alert hits yet").assertIsDisplayed()
         compose.onNodeWithText("Triggered alerts will appear here after Android checks rates.").assertIsDisplayed()
     }
+
+    /** Occupies one of Free's two alert slots so the "at limit" tests stay meaningful. */
+    private fun freeSlotFillerAlert() = PriceAlert(
+        id = "free_slot_filler",
+        base = "USD",
+        quote = "GBP",
+        target = 0.7,
+        direction = AlertDirection.Above,
+        kind = AlertKind.Target,
+        enabled = true,
+        createdAtMillis = 2L,
+    )
 
     private fun renderAlerts(
         isPremium: Boolean,

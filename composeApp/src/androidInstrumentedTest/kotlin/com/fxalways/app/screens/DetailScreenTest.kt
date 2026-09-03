@@ -64,11 +64,17 @@ class DetailScreenTest {
         compose.onNodeWithTag("detail_story_ECBsecondEURevent").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithText("ECB third EUR event").assertCountEquals(0)
 
+        // One year is part of Free; only all-time history is Pro.
         compose.onNodeWithTag("period_OneYear").performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(1, harness.paywallClicks)
+            assertEquals(listOf(Period.OneMonth, Period.OneYear), harness.loadedPeriods)
+        }
 
+        compose.onNodeWithTag("period_All").performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(2, harness.paywallClicks)
-            assertEquals(listOf(Period.OneMonth), harness.loadedPeriods)
+            assertEquals(listOf(Period.OneMonth, Period.OneYear), harness.loadedPeriods)
         }
     }
 
@@ -148,7 +154,7 @@ class DetailScreenTest {
             ),
         )
 
-        compose.onAllNodesWithText("1/1 active", substring = true).assertCountEquals(1)
+        compose.onAllNodesWithText("1/2 active", substring = true).assertCountEquals(1)
         compose.onNodeWithTag("detail_alert_cta").performScrollTo().performClick()
 
         compose.runOnIdle { assertEquals(listOf("EUR"), harness.createdAlertCodes) }

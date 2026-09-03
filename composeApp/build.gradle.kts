@@ -97,6 +97,9 @@ kotlin {
         matching { it.name.lowercase().startsWith("ios") }.configureEach {
             languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
         commonMain.dependencies {
             implementation(project(":design-system"))
             implementation(compose.runtime)

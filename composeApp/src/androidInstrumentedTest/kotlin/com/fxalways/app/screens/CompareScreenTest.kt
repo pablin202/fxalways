@@ -41,7 +41,7 @@ class CompareScreenTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun freeUserSeesLimitedBoardAndUpsell() {
+    fun freeUserSeesEveryFiatAndCoreCryptoWithCatalogUpsell() {
         renderCompare(isPremium = false, selectedCodes = listOf("EUR", "GBP", "JPY", "CHF", "MXN", "BTC"))
 
         compose.onNodeWithTag("compare_board").assertIsDisplayed()
@@ -49,9 +49,9 @@ class CompareScreenTest {
         compose.onAllNodesWithTag("compare_tile_GBP").assertCountEquals(1)
         compose.onAllNodesWithTag("compare_tile_JPY").assertCountEquals(1)
         compose.onAllNodesWithTag("compare_tile_CHF").assertCountEquals(1)
-        compose.onAllNodesWithTag("compare_tile_MXN").assertCountEquals(0)
-        compose.onAllNodesWithTag("compare_tile_BTC").assertCountEquals(0)
-        compose.onNodeWithText("Compare every tracked currency").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithTag("compare_tile_MXN").assertCountEquals(1)
+        compose.onAllNodesWithTag("compare_tile_BTC").assertCountEquals(1)
+        compose.onNodeWithText("Unlock the full crypto catalog").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -93,14 +93,20 @@ class CompareScreenTest {
     }
 
     @Test
-    fun freeEditSheetLocksAdditionalCurrenciesAndOpensPaywall() {
+    fun freeEditSheetTogglesCurrenciesWithoutPaywall() {
         val harness = renderCompare(isPremium = false, selectedCodes = listOf("EUR", "GBP", "JPY", "CHF"))
 
         compose.onNodeWithTag("compare_edit_button").performScrollTo().performClick()
         compose.onNodeWithText("Edit comparison").assertIsDisplayed()
+        // With no Free cap the board already holds every popular fiat, so tapping MXN removes it.
         compose.onNodeWithTag("currency_list_MXN").performScrollTo().performClick()
+        compose.onNodeWithTag("currency_list_apply").assertIsDisplayed().performClick()
 
-        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
+        compose.runOnIdle {
+            assertEquals(0, harness.paywallClicks)
+            assertTrue("MXN" !in harness.selectedCodes)
+            assertTrue("EUR" in harness.selectedCodes)
+        }
     }
 
     @Test

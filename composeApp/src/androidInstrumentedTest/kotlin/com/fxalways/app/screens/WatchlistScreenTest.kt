@@ -24,6 +24,7 @@ import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.data.importPortfolioCsv
 import com.fxalways.app.screens.watchlist.WatchlistScreen
 import com.fxalways.app.subscription.SubscriptionState
+import com.fxalways.app.subscription.featureAccess
 import com.fxalways.designsystem.components.CurrencyKind
 import com.fxalways.designsystem.components.FxRate
 import com.fxalways.designsystem.theme.FxTheme
@@ -39,10 +40,10 @@ class WatchlistScreenTest {
     val compose = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun freeUserCanTrackUntilLimitThenLockedRowsOpenPaywall() {
+    fun freeUserTracksAnyNumberOfCurrenciesWithoutPaywall() {
         val harness = renderWatchlist(isPremium = false, initialWatchlist = Watchlist(codes = listOf("EUR", "GBP", "JPY")))
 
-        compose.onNodeWithText("3/4 currencies · USD base").assertIsDisplayed()
+        compose.onNodeWithText("Unlimited currencies · USD base").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_groups").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("watchlist_group_tracking_only").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_group_fiat").assertIsDisplayed()
@@ -50,22 +51,22 @@ class WatchlistScreenTest {
         compose.onNodeWithText("Reason: travel, income or savings", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("watchlist_currency_CHF").performScrollTo().performClick()
         compose.onNodeWithTag("watchlist_holding_CHF").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Track unlimited currencies").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Track unlimited currencies").assertDoesNotExist()
 
         compose.onNodeWithTag("watchlist_currency_MXN").performScrollTo().performClick()
-        compose.runOnIdle { assertEquals(1, harness.paywallClicks) }
-        compose.onAllNodesWithTag("watchlist_holding_MXN").assertCountEquals(0)
+        compose.runOnIdle { assertEquals(0, harness.paywallClicks) }
+        compose.onNodeWithTag("watchlist_holding_MXN").performScrollTo().assertIsDisplayed()
     }
 
     @Test
-    fun freeUserCanRemoveTrackedCurrencyEvenAtLimit() {
+    fun freeUserCanRemoveTrackedCurrency() {
         renderWatchlist(isPremium = false, initialWatchlist = Watchlist(codes = listOf("EUR", "GBP", "JPY", "CHF")))
 
-        compose.onNodeWithText("4/4 currencies · USD base").assertIsDisplayed()
+        compose.onNodeWithText("Unlimited currencies · USD base").assertIsDisplayed()
         compose.onNodeWithTag("watchlist_currency_GBP").performScrollTo().performClick()
 
         compose.onAllNodesWithTag("watchlist_holding_GBP").assertCountEquals(0)
-        compose.onNodeWithText("3/4 currencies · USD base").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Unlimited currencies · USD base").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -350,7 +351,7 @@ class WatchlistScreenTest {
         compose.onNodeWithTag("watchlist_currency_EUR").performScrollTo().performClick()
 
         compose.onNodeWithTag("watchlist_holding_EUR").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("1/4 currencies · USD base").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Unlimited currencies · USD base").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -455,7 +456,8 @@ class WatchlistScreenTest {
                     onOpenPaywall = { harness.paywallClicks += 1 },
                     onToggleCurrency = { code ->
                         val selected = code in watchlist.codes
-                        val canAdd = selected || isPremium || watchlist.codes.size < 4
+                        val access = SubscriptionState(isPremium = isPremium).featureAccess()
+                        val canAdd = selected || access.hasUnlimitedWatchlistCurrencies || watchlist.codes.size < access.watchlistCurrencyLimit
                         if (!selected && !canAdd) {
                             harness.paywallClicks += 1
                         } else {

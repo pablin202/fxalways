@@ -199,7 +199,7 @@ fun DetailScreen(
     }
     val stats = remember(visibleChartData) { visibleChartData.toDetailStats() }
     val effectivePremium = subscriptionState.isPremium || !subscriptionReady
-    val periodIsPro = period == Period.OneYear || period == Period.All
+    val periodIsPro = period == Period.All
     val historyCaption = if (detailMatches && detailState.points.isNotEmpty()) {
         "${detailState.provider} · ${detailState.points.size} pts · ${localizedRuntimeLabel(detailState.updatedLabel)}"
     } else {
@@ -267,7 +267,7 @@ fun DetailScreen(
                 SegmentedPeriods(
                     period,
                     { next ->
-                        if (!effectivePremium && (next == Period.OneYear || next == Period.All)) {
+                        if (!effectivePremium && next == Period.All) {
                             onOpenPaywall()
                         } else {
                             period = next
@@ -283,7 +283,7 @@ fun DetailScreen(
         if (periodIsPro && !effectivePremium) {
             ProUpsellCard(
                 title = ui("Unlock long-range history"),
-                subtitle = ui("Pro adds 1Y and all-time detail, full event context and deeper market overlays."),
+                subtitle = ui("Free covers 1 year; Pro adds 5 years of history, full event context and deeper market overlays."),
                 modifier = Modifier.testTag("detail_history_upsell"),
                 onClick = onOpenPaywall,
             )

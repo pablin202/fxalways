@@ -42,23 +42,20 @@ Kotlin Multiplatform + Compose app para currency exchange con rates actuales, hi
 
 ## Free vs Pro
 
-Free esta pensado para validar valor diario sin bloquear lo esencial:
+La fuente de verdad es `composeApp/src/commonMain/kotlin/com/fxalways/app/subscription/FeatureAccessPolicy.kt`. Landing, ficha de Play y paywall copian esta tabla; si cambia una, cambian todas.
 
-- Core FX/crypto inicial.
-- Conversor, Home, traveler basics y alertas basicas.
-- Comparacion de hasta 2 proveedores seleccionados y estimaciones transparentes.
-- Crypto core: BTC, ETH, USDT y USDC.
-- Historial corto y previews Pro donde corresponde.
+| Capacidad | Free | Pro (US$2.99/mes · US$19.99/año) |
+|---|---|---|
+| Conversor, favoritos, comparador | Monedas ilimitadas | Igual |
+| Costo real por proveedor | Tu corredor, 3 proveedores | Todos los proveedores + historial de quién fue más barato |
+| Alertas de tasa | 2 activas | Ilimitadas + "mejor momento" y "proveedor más barato hoy" |
+| Historial | 1 año | 5 años (all-time) donde exista |
+| Cripto | BTC, ETH, USDT, USDC | Catálogo expandido (hasta 200) |
+| Portfolio | Holdings básicos | Costo promedio, P&L realizado/no realizado, transacciones, CSV |
+| Viajero | 1 destino, reglas locales básicas | Todos los destinos, packs offline, OCR de precios |
+| Noticias | Top 3 | Stream completo por región |
 
-Pro aumenta profundidad y retencion:
-
-- Catalogo crypto expandido.
-- Portfolio completo con holdings, average cost, P&L y transacciones.
-- Historial largo.
-- Import/export CSV.
-- Alertas avanzadas.
-- Comparaciones de proveedores completas, estado de quote, perfiles de destinatario completos, OCR scanner y sugerencias mas completas.
-- Mas personalizacion por perfil.
+Free es generoso en acceso para que la app sea útil antes de pedir Pro. Pro vende profundidad y automatización, no acceso básico.
 
 ## Roadmap competitivo
 

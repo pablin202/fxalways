@@ -295,8 +295,8 @@ fun DashboardScreen(
                 }
                 if (!subscriptionState.isPremium) {
                     ProUpsellCard(
-                        title = ui("Unlock full watchlists"),
-                        subtitle = ui("Pro adds more favorites, extended history, alerts and complete fee comparison."),
+                        title = ui("Unlock Pro"),
+                        subtitle = ui("Pro adds every provider, unlimited alerts, portfolio P&L and 5 years of history."),
                         onClick = onOpenPaywall,
                     )
                 }

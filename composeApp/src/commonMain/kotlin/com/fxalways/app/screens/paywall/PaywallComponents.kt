@@ -121,21 +121,21 @@ fun PaywallScreen(
                 BenefitRow("TR", ui("Traveler mode"), ui("Auto-location, cheat sheets and offline rates."))
                 BenefitRow("%", ui("Fee comparison"), ui("Expanded provider estimates by amount and currency pair."))
                 BenefitRow("OCR", ui("OCR price scanner"), ui("Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices."))
-                BenefitRow("WL", ui("Bigger watchlists"), ui("Track more currencies across converter, compare and portfolio."))
-                BenefitRow("1Y", ui("Long-range history"), ui("Unlock 1Y and all-time detail views where history is available."))
+                BenefitRow("P&L", ui("Portfolio depth"), ui("Average cost, realized and unrealized P&L, transactions and CSV."))
+                BenefitRow("5Y", ui("5 years of history"), ui("Free covers 1 year; Pro unlocks all-time detail where history is available."))
             }
         }
         SectionLabel(ui("FREE VS PRO"))
         BentoCard(Modifier.testTag("paywall_comparison"), padding = 12.dp) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PaywallComparisonRow("alerts", ui("Custom alerts"), ui("1 active alert"), ui("Unlimited pairs + ranges"))
-                PaywallComparisonRow("compare", ui("Compare board"), ui("4 currencies"), ui("Every tracked currency"))
+                PaywallComparisonRow("alerts", ui("Rate alerts"), ui("2 active alerts"), ui("Unlimited + best-moment and cheapest-provider alerts"))
+                PaywallComparisonRow("compare", ui("Real transfer cost"), ui("Your corridor, 3 providers"), ui("All providers + who was cheapest over time"))
                 PaywallComparisonRow("ocr", ui("OCR price scanner"), ui("Manual entry"), ui("Live camera OCR + currency detection"))
                 PaywallComparisonRow("crypto", ui("Crypto catalog"), ui("BTC, ETH, USDT, USDC"), ui("Search and add up to 200 crypto assets"))
                 PaywallComparisonRow("traveler", ui("Traveler"), ui("Focused destinations"), ui("All destinations + full cheat sheet"))
-                PaywallComparisonRow("watchlist", ui("Watchlist"), ui("4 tracked currencies"), ui("Unlimited portfolio tracking"))
+                PaywallComparisonRow("watchlist", ui("Watchlist"), ui("Unlimited currencies"), ui("Holdings, average cost and P&L"))
                 PaywallComparisonRow("news", ui("News"), ui("Top stories only"), ui("Full regional stream"))
-                PaywallComparisonRow("history", ui("History"), ui("30 days"), ui("1Y + all-time where available"))
+                PaywallComparisonRow("history", ui("History"), ui("1 year"), ui("5 years where available"))
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
