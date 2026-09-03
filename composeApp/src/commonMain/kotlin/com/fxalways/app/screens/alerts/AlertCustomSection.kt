@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.fxalways.app.data.AlertDirection
@@ -47,6 +48,7 @@ internal fun CustomAlertSection(
     onTargetTextChanged: (String) -> Unit,
     onCreateClick: () -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
     SectionLabel(ui("CUSTOM ALERT"))
     BentoCard(padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -121,7 +123,8 @@ internal fun CustomAlertSection(
                     else -> ui("Unlock custom alerts")
                 },
                 modifier = Modifier.fillMaxWidth().testTag("alert_create_button"),
-                onClick = onCreateClick,
+                // Dismiss the keyboard so the new card (and the paywall) are not hidden behind the IME on small phones.
+                onClick = { focusManager.clearFocus(); onCreateClick() },
             )
             customAlertError?.let { error ->
                 Text(
