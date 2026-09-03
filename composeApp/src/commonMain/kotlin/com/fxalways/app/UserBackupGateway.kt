@@ -16,6 +16,7 @@ data class BackupSettings(
     val compareCurrencyCodes: List<String> = emptyList(),
     val providerPreferenceCodes: List<String> = emptyList(),
     val userProfile: String = UserProfile.Traveler.name,
+    val corridor: String = "",
 )
 
 @Serializable
@@ -56,6 +57,7 @@ private fun BackupSettings.isDefaultLocalSettings(): Boolean =
         converterCurrencyCodes.isEmpty() &&
         compareCurrencyCodes.isEmpty() &&
         providerPreferenceCodes.isEmpty() &&
+        corridor.isEmpty() &&
         userProfile == UserProfile.Traveler.name
 
 expect object UserBackupGateway {
