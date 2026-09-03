@@ -35,6 +35,7 @@ fun FxAppShell() {
     var detailRate by remember { mutableStateOf<FxRate?>(null) }
     var detailNewsStory by remember { mutableStateOf<NewsStory?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
+    var paywallSource by remember { mutableStateOf("unknown") }
     var subscriptionActionInProgress by remember { mutableStateOf(false) }
     var themeMode by remember { mutableStateOf(AppSettingsPrefs.themeMode()) }
     var appLanguage by remember { mutableStateOf(supportedLanguageOrDefault(AppSettingsPrefs.language())) }
@@ -88,6 +89,7 @@ fun FxAppShell() {
     }
     fun openPaywall(source: String) {
         Observability.event("paywall_opened", mapOf("source" to source))
+        paywallSource = source
         showPaywall = true
     }
     fun openDetail(rate: FxRate, source: String) {
@@ -194,6 +196,7 @@ fun FxAppShell() {
     FxAppShellFrame(
         startupReady = startupReady,
         showPaywall = showPaywall,
+        paywallSource = paywallSource,
         detailNewsStory = detailNewsStory,
         detailRate = detailRate,
         selectedTab = selectedTab,

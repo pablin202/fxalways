@@ -24,6 +24,7 @@ internal fun FxPaywallRoute(
     onSubscriptionReadyChange: (Boolean) -> Unit,
     onActionInProgressChange: (Boolean) -> Unit,
     onPaywallVisibleChange: (Boolean) -> Unit,
+    source: String = "unknown",
 ) {
     val scope = rememberCoroutineScope()
 
@@ -36,14 +37,14 @@ internal fun FxPaywallRoute(
             scope.launch {
                 onActionInProgressChange(true)
                 try {
-                    Observability.event("purchase_started", mapOf("plan" to planKind.name))
+                    Observability.event("purchase_started", mapOf("plan" to planKind.name, "source" to source))
                     val updatedState = subscriptionGateway.purchasePlan(planKind)
                     onSubscriptionStateChange(updatedState)
                     AppSettingsPrefs.setCachedPremium(updatedState.isPremium)
                     onSubscriptionReadyChange(true)
                     onPaywallVisibleChange(!updatedState.isPremium)
                     if (updatedState.isPremium) {
-                        Observability.event("purchase_success", mapOf("plan" to planKind.name))
+                        Observability.event("purchase_success", mapOf("plan" to planKind.name, "source" to source))
                     }
                     Observability.event("purchase_finished", mapOf("premium" to updatedState.isPremium.toString()))
                 } catch (error: CancellationException) {
@@ -76,5 +77,22 @@ internal fun FxPaywallRoute(
             }
         },
         onOpenUrl = ExternalUrlOpener::open,
+        onRetryPrices = {
+            scope.launch {
+                onActionInProgressChange(true)
+                try {
+                    Observability.event("paywall_prices_retry", mapOf("source" to source))
+                    val refreshed = subscriptionGateway.currentState()
+                    onSubscriptionStateChange(refreshed)
+                    onSubscriptionReadyChange(true)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Observability.recordException(error, mapOf("flow" to "paywall_prices_retry"))
+                } finally {
+                    onActionInProgressChange(false)
+                }
+            }
+        },
     )
 }

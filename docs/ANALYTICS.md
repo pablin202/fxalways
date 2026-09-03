@@ -16,7 +16,7 @@ Firebase Analytics on Android and is a no-op on iOS until the SDK is wired. User
 | 4 | `provider_compare_viewed` | `base`, `target`, `amount_bucket`, `plan` | `ProviderMatrixCard` with at least one quote |
 | 5 | `alert_created` | pair / type | Alert saved |
 | 6 | `alert_triggered_opened` | `source` (`push` / `local`) | `MainActivity` when opened from an alert notification |
-| 7 | `paywall_opened` → `purchase_started` → `purchase_success` | `source`, `plan`/`product` | Paywall |
+| 7 | `paywall_opened` → `purchase_started` → `purchase_success` | `source` on all three (#13), `plan` | Paywall; `paywall_prices_retry{source}` when the store prices failed to load |
 
 `amount_bucket` values: `lt_100`, `100_1k`, `1k_10k`, `gte_10k`.
 

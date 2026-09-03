@@ -47,6 +47,7 @@ import com.fxalways.designsystem.theme.FxTheme
 internal fun FxShellContent(
     startupReady: Boolean,
     showPaywall: Boolean,
+    paywallSource: String = "unknown",
     detailNewsStory: NewsStory?,
     detailRate: FxRate?,
     selectedTab: FxTab,
@@ -122,6 +123,7 @@ internal fun FxShellContent(
                     onSubscriptionReadyChange = onSubscriptionReadyChange,
                     onActionInProgressChange = onSubscriptionActionInProgressChange,
                     onPaywallVisibleChange = onPaywallVisibleChange,
+                    source = paywallSource,
                 )
                 detailNewsStory != null -> NewsDetailScreen(
                     story = detailNewsStory,
