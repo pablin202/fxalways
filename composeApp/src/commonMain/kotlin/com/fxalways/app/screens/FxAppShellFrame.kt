@@ -26,6 +26,7 @@ import com.fxalways.designsystem.theme.FxTheme
 internal fun FxAppShellFrame(
     startupReady: Boolean,
     showPaywall: Boolean,
+    paywallSource: String = "unknown",
     detailNewsStory: NewsStory?,
     detailRate: FxRate?,
     selectedTab: FxTab,
@@ -87,6 +88,7 @@ internal fun FxAppShellFrame(
             FxShellContent(
                 startupReady = startupReady,
                 showPaywall = showPaywall,
+                paywallSource = paywallSource,
                 detailNewsStory = detailNewsStory,
                 detailRate = detailRate,
                 selectedTab = selectedTab,

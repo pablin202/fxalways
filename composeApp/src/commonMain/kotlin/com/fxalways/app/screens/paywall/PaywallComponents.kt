@@ -52,8 +52,10 @@ fun PaywallScreen(
     onStart: (SubscriptionPlanKind) -> Unit = {},
     onRestore: () -> Unit = {},
     onOpenUrl: (String) -> Unit = {},
+    onRetryPrices: () -> Unit = {},
 ) {
-    var selectedKind by remember { mutableStateOf(SubscriptionPlanKind.Monthly) }
+    // Yearly is the anchor (issue #13): it is preselected whenever the store offers it.
+    var selectedKind by remember { mutableStateOf(SubscriptionPlanKind.Yearly) }
     val selectedPlan = subscriptionState.plans.firstOrNull { it.kind == selectedKind && it.isAvailable }
         ?: subscriptionState.plans.firstOrNull { it.isAvailable }
         ?: subscriptionState.plans.first()
@@ -116,11 +118,10 @@ fun PaywallScreen(
         SectionLabel(ui("PRO UNLOCKS"))
         BentoCard(Modifier.testTag("paywall_benefits"), padding = 12.dp) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BenefitRow("FX", ui("Fresh market rates"), ui("Backend-backed mid-market rates with automatic refresh."))
                 BenefitRow("AL", ui("Unlimited alerts"), ui("Price, range, daily and weekly targets."))
-                BenefitRow("TR", ui("Traveler mode"), ui("Auto-location, cheat sheets and offline rates."))
                 BenefitRow("%", ui("Fee comparison"), ui("Expanded provider estimates by amount and currency pair."))
                 BenefitRow("OCR", ui("OCR price scanner"), ui("Camera scanner fills the hidden-cost check from shelf, receipt or cash-desk prices."))
+                BenefitRow("TR", ui("Traveler mode"), ui("Auto-location, cheat sheets and offline rates."))
                 BenefitRow("P&L", ui("Portfolio depth"), ui("Average cost, realized and unrealized P&L, transactions and CSV."))
                 BenefitRow("5Y", ui("5 years of history"), ui("Free covers 1 year; Pro unlocks all-time detail where history is available."))
             }
@@ -138,7 +139,17 @@ fun PaywallScreen(
                 PaywallComparisonRow("history", ui("History"), ui("1 year"), ui("5 years where available"))
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (!subscriptionState.pricesLoaded && !subscriptionState.isPremium) {
+            BentoCard(Modifier.testTag("paywall_prices_unavailable"), padding = 12.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Eyebrow(ui("PRICES"), color = FxTheme.colors.down)
+                    Text(ui("We couldn't load prices from the store."), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
+                    Text(ui("Check your connection and try again. We never show a made-up price."), style = FxTheme.typography.caption, color = FxTheme.colors.textDim)
+                    GhostButton(text = if (actionInProgress) ui("Processing...") else ui("Retry"), modifier = Modifier.fillMaxWidth().testTag("paywall_retry_prices"), onClick = { if (!actionInProgress) onRetryPrices() })
+                }
+            }
+        }
+        if (subscriptionState.pricesLoaded) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             subscriptionState.plans.forEach { plan ->
                 PlanOption(
                     plan = plan,
@@ -153,13 +164,23 @@ fun PaywallScreen(
                 )
             }
         }
-        BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card).testTag("paywall_selected_plan"), padding = 12.dp) {
+        if (subscriptionState.pricesLoaded) BentoCard(Modifier.border(1.dp, FxTheme.colors.accentLine, FxTheme.shapes.card).testTag("paywall_selected_plan"), padding = 12.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    selectedPlan.savingsPercent?.let { Pill("${ui("Save")} $it%", variant = PillVariant.Up, modifier = Modifier.testTag("paywall_savings")) }
+                    selectedPlan.trialLabel?.let { Pill("$it ${ui("free")}", variant = PillVariant.Accent) }
                     selectedPlan.badge?.let { Pill(ui(it), variant = PillVariant.Accent) }
                 }
                 Text(ui(selectedPlan.title), style = FxTheme.typography.bodyStrong, color = FxTheme.colors.text)
                 BigValueText(selectedPlan.priceLabel, ui(selectedPlan.cadenceLabel))
+                selectedPlan.monthlyEquivalentLabel?.let { monthly ->
+                    Text(
+                        "≈ $monthly / ${ui("month")} · ${ui("pays for itself with a single 1,000 transfer")}",
+                        style = FxTheme.typography.caption,
+                        color = FxTheme.colors.accent,
+                        modifier = Modifier.testTag("paywall_yearly_anchor"),
+                    )
+                }
                 Text(
                     ui("Recurring subscription billed through Google Play on Android and App Store on iOS."),
                     style = FxTheme.typography.caption,

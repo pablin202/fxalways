@@ -15,6 +15,9 @@ import com.fxalways.app.UserProfile
 import com.fxalways.app.screens.paywall.PaywallScreen
 import com.fxalways.app.subscription.SubscriptionPlanKind
 import com.fxalways.app.subscription.SubscriptionPlan
+import com.fxalways.app.subscription.unpricedSubscriptionPlans
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.onAllNodesWithTag
 import com.fxalways.app.subscription.SubscriptionState
 import com.fxalways.designsystem.theme.FxTheme
 import kotlin.test.Test
@@ -204,6 +207,46 @@ class PaywallScreenTest {
         compose.onNodeWithText("Wise first, compare bank transfer").assertIsDisplayed()
     }
 
+    @Test
+    fun missingStorePricesShowRetryAndNeverAnInventedPrice() {
+        val harness = renderPaywall(
+            SubscriptionState(isPremium = false, canPurchase = false, plans = unpricedSubscriptionPlans(), pricesLoaded = false, statusMessage = "RevenueCat unavailable."),
+        )
+
+        compose.onNodeWithTag("paywall_prices_unavailable").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("We couldn't load prices from the store.").assertIsDisplayed()
+        compose.onAllNodesWithText("$2.99").assertCountEquals(0)
+        compose.onAllNodesWithText("$29.99").assertCountEquals(0)
+        compose.onAllNodesWithTag("paywall_selected_plan").assertCountEquals(0)
+        compose.onNodeWithTag("paywall_retry_prices").performScrollTo().performClick()
+        compose.onNodeWithTag("paywall_start_button").performScrollTo().performClick()
+
+        compose.runOnIdle {
+            assertEquals(1, harness.retryClicks)
+            assertEquals(emptyList(), harness.startedPlans)
+        }
+    }
+
+    @Test
+    fun yearlyIsPreselectedWithMonthlyEquivalentAndSavings() {
+        val harness = renderPaywall(
+            SubscriptionState(
+                isPremium = false,
+                plans = listOf(
+                    SubscriptionPlan(SubscriptionPlanKind.Monthly, "Monthly", "US$2.99", "Paid every month"),
+                    SubscriptionPlan(SubscriptionPlanKind.Yearly, "Yearly", "US$19.99", "Best long-term value", badge = "BEST VALUE", monthlyEquivalentLabel = "USD 1.67", savingsPercent = 44),
+                ),
+            ),
+        )
+
+        compose.onNodeWithTag("paywall_selected_plan").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("paywall_yearly_anchor").assertTextContains("USD 1.67", substring = true)
+        compose.onNodeWithTag("paywall_savings").assertIsDisplayed()
+        compose.onNodeWithTag("paywall_start_button").performScrollTo().performClick()
+
+        compose.runOnIdle { assertEquals(listOf(SubscriptionPlanKind.Yearly), harness.startedPlans) }
+    }
+
     private fun renderPaywall(
         subscriptionState: SubscriptionState,
         actionInProgress: Boolean = false,
@@ -223,6 +266,7 @@ class PaywallScreenTest {
                     onStart = { harness.startedPlans += it },
                     onRestore = { harness.restoreClicks += 1 },
                     onOpenUrl = { harness.openedUrls += it },
+                    onRetryPrices = { harness.retryClicks += 1 },
                 )
             }
         }
@@ -230,6 +274,7 @@ class PaywallScreenTest {
     }
 
     private class PaywallHarness {
+        var retryClicks = 0
         var closeClicks = 0
         var restoreClicks = 0
         val startedPlans = mutableListOf<SubscriptionPlanKind>()

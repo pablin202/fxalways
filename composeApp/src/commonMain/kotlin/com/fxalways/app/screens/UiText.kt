@@ -10,6 +10,7 @@ import com.fxalways.app.screens.i18n.uiRateFreshnessTranslations
 import com.fxalways.app.screens.i18n.uiSupplementalTranslations
 import com.fxalways.app.screens.i18n.uiLaunchLanguageTranslations
 import com.fxalways.app.screens.i18n.uiOnboardingTranslations
+import com.fxalways.app.screens.i18n.uiPaywallTranslations
 import com.fxalways.app.screens.i18n.uiNavigationTranslations
 import com.fxalways.app.screens.i18n.uiTodayDecisionTranslations
 import com.fxalways.app.screens.i18n.uiTranslations
@@ -32,6 +33,7 @@ internal fun localizedUiText(language: String, text: String): String {
         ?: uiOnboardingTranslations[normalized]?.get(text)
         ?: uiTodayDecisionTranslations[normalized]?.get(text)
         ?: uiNavigationTranslations[normalized]?.get(text)
+        ?: uiPaywallTranslations[normalized]?.get(text)
         ?: uiTranslations["en"]?.get(text)
         ?: text
 }

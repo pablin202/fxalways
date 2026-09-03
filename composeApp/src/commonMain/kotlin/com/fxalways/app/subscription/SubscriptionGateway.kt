@@ -28,6 +28,12 @@ data class SubscriptionPlan(
     val cadenceLabel: String,
     val badge: String? = null,
     val isAvailable: Boolean = true,
+    /** Yearly only: the store price divided by 12, e.g. "US$1.67". */
+    val monthlyEquivalentLabel: String? = null,
+    /** Yearly only: % saved versus paying monthly for a year, when both prices are known. */
+    val savingsPercent: Int? = null,
+    /** Free-trial length reported by the store, e.g. "7 days". */
+    val trialLabel: String? = null,
 )
 
 data class SubscriptionState(
@@ -40,6 +46,11 @@ data class SubscriptionState(
     val paywallTitle: String = "FX Always Pro",
     val paywallSubtitle: String = "Extended history, advanced alerts and unlimited portfolios.",
     val statusMessage: String? = null,
+    /**
+     * False when [plans] are placeholders (store offerings not loaded): the paywall must show a
+     * retry state instead of any price (issue #13).
+     */
+    val pricesLoaded: Boolean = true,
 )
 
 interface SubscriptionGateway {
@@ -57,7 +68,7 @@ class PlaceholderSubscriptionGateway : SubscriptionGateway {
     private var devPremium = false
 
     override suspend fun currentState(): SubscriptionState =
-        SubscriptionState(isPremium = devPremium)
+        SubscriptionState(isPremium = devPremium, canPurchase = false, plans = unpricedSubscriptionPlans(), pricesLoaded = false)
 
     override suspend fun purchaseMonthly(): SubscriptionState =
         purchasePlan(SubscriptionPlanKind.Monthly)
@@ -188,6 +199,8 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
         fallback.currentState().copy(
             canPurchase = false,
             statusMessage = message,
+            plans = unpricedSubscriptionPlans(),
+            pricesLoaded = false,
         )
 
     private fun CustomerInfo.toSubscriptionState(
@@ -200,7 +213,7 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
         val activePlan = plans.firstOrNull { it.kind == activeKind }
         val price = selectedPlan?.storeProduct?.price?.formatted?.toReadablePrice()?.let {
             "$it / ${selectedKind.periodLabel}"
-        } ?: plans.firstOrNull { it.kind == SubscriptionPlanKind.Monthly }?.priceLabel ?: "$2.99 / month"
+        } ?: plans.firstOrNull { it.kind == SubscriptionPlanKind.Monthly && it.isAvailable }?.let { "${it.priceLabel} / month" } ?: "FX/ Pro"
         return SubscriptionState(
             isPremium = activeEntitlementId != null,
             canPurchase = plans.any { it.isAvailable },
@@ -213,6 +226,7 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
                 plans.none { it.isAvailable } -> "No offering packages are configured in RevenueCat."
                 else -> null
             },
+            pricesLoaded = plans.any { it.isAvailable },
         )
     }
 
@@ -239,14 +253,20 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
             annual?.let { put(SubscriptionPlanKind.Yearly, it) }
         }
 
-    private fun Map<SubscriptionPlanKind, Package>.toSubscriptionPlans(): List<SubscriptionPlan> =
-        defaultSubscriptionPlans().map { fallbackPlan ->
-            val packageForPlan = get(fallbackPlan.kind) ?: return@map fallbackPlan.copy(isAvailable = false)
+    private fun Map<SubscriptionPlanKind, Package>.toSubscriptionPlans(): List<SubscriptionPlan> {
+        val monthlyMicros = get(SubscriptionPlanKind.Monthly)?.storeProduct?.price?.amountMicros
+        return unpricedSubscriptionPlans().map { fallbackPlan ->
+            val packageForPlan = get(fallbackPlan.kind) ?: return@map fallbackPlan
+            val price = packageForPlan.storeProduct.price
+            val yearly = fallbackPlan.kind == SubscriptionPlanKind.Yearly
             fallbackPlan.copy(
-                priceLabel = packageForPlan.storeProduct.price.formatted.toReadablePrice(),
+                priceLabel = price.formatted.toReadablePrice(),
                 isAvailable = true,
+                monthlyEquivalentLabel = if (yearly) monthlyEquivalentLabel(price.amountMicros, price.currencyCode) else null,
+                savingsPercent = if (yearly) yearlySavingsPercent(price.amountMicros, monthlyMicros) else null,
             )
         }
+    }
 
     private companion object {
         const val PRO_OFFERING_ID = "pro"
@@ -255,6 +275,26 @@ private class RevenueCatSubscriptionGateway : SubscriptionGateway {
     }
 }
 
+/** Plans without a price: what the paywall gets until Google Play offerings load (issue #13). */
+fun unpricedSubscriptionPlans(): List<SubscriptionPlan> =
+    defaultSubscriptionPlans().map { it.copy(priceLabel = "", isAvailable = false) }
+
+/** "US$1.67" for a yearly price of 19.99 USD; currency symbol is the ISO code, prefixed like the store label. */
+fun monthlyEquivalentLabel(yearlyAmountMicros: Long, currencyCode: String): String {
+    val cents = (yearlyAmountMicros / 12.0 / 10_000.0).let { kotlin.math.round(it) }.toLong()
+    val whole = cents / 100
+    val fraction = (cents % 100).toString().padStart(2, '0')
+    return "$currencyCode $whole.$fraction"
+}
+
+fun yearlySavingsPercent(yearlyAmountMicros: Long, monthlyAmountMicros: Long?): Int? {
+    if (monthlyAmountMicros == null || monthlyAmountMicros <= 0L) return null
+    val yearOfMonthly = monthlyAmountMicros * 12.0
+    val saved = (1.0 - yearlyAmountMicros / yearOfMonthly) * 100.0
+    return saved.toInt().takeIf { it > 0 }
+}
+
+/** Placeholder prices for previews and tests only; production states come from the store (see [unpricedSubscriptionPlans]). */
 fun defaultSubscriptionPlans(): List<SubscriptionPlan> =
     listOf(
         SubscriptionPlan(
