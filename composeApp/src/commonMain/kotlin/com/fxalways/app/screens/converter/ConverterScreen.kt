@@ -232,6 +232,7 @@ fun ConverterScreen(
             onAmountChange = { raw ->
                 amountText = sanitizeAmountInput(raw)
                 AppSettingsPrefs.setConverterAmountText(amountText)
+                trackFirstConversion(amountText, sourceRate.code, targetRate.code)
             },
             onAmountFocusChange = { amountFocused = it },
             onDone = { focusManager.clearFocus() },
@@ -395,6 +396,9 @@ fun ConverterScreen(
             onOpenPaywall = { onOpenPaywallSource("provider_lock") },
         )
         ProviderMatrixCard(
+            base = sourceRate.code,
+            target = targetRate.code,
+            amountValue = amountValue,
             quotes = feeQuotes.filterNot { it.provider == "Mid-market" },
             isLoading = providerQuotesLoading,
             errorMessage = providerQuotesError,
@@ -440,3 +444,20 @@ fun ConverterScreen(
 }
 
 private const val EstimatedFeeQuoteCount = 8
+
+/** Emits `first_conversion` exactly once per install: the first time the user types a non-zero amount. */
+internal fun trackFirstConversion(amountText: String, base: String, target: String) {
+    if (AppSettingsPrefs.firstConversionTracked()) return
+    val amount = amountText.replace(",", ".").toDoubleOrNull() ?: return
+    if (amount <= 0.0) return
+    AppSettingsPrefs.setFirstConversionTracked()
+    Observability.event("first_conversion", mapOf("base" to base, "target" to target, "amount_bucket" to amountBucket(amount)))
+}
+
+/** Coarse amount bucket so the funnel can segment small vs. remittance-sized conversions without logging exact amounts. */
+internal fun amountBucket(amount: Double): String = when {
+    amount < 100 -> "lt_100"
+    amount < 1_000 -> "100_1k"
+    amount < 10_000 -> "1k_10k"
+    else -> "gte_10k"
+}
