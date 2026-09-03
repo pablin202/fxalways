@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
     private fun Intent.trackWidgetOpen() {
         getStringExtra(EXTRA_WIDGET_SOURCE)?.let { source ->
             Observability.event("widget_used", mapOf("source" to source))
+            PendingNavigation.request(source)
             removeExtra(EXTRA_WIDGET_SOURCE)
         }
     }

@@ -11,6 +11,16 @@ import com.fxalways.app.data.AlertsStore
 import com.fxalways.app.data.LiveRatesState
 import com.fxalways.app.data.LiveRatesStore
 import com.fxalways.app.data.NewsStore
+import com.fxalways.app.data.NewsUiState
+import com.fxalways.app.data.mock.NewsStory
+import com.fxalways.app.screens.compare.CompareScreen
+import com.fxalways.app.screens.news.NewsScreen
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.fxalways.app.data.WatchlistState
 import com.fxalways.app.data.WatchlistStore
 import com.fxalways.app.subscription.SubscriptionGateway
@@ -31,6 +41,8 @@ import com.fxalways.observability.Observability
 @Composable
 internal fun FxMoreRoute(
     moreRoute: MoreRoute,
+    newsState: NewsUiState,
+    alertsAsTab: Boolean = false,
     liveState: LiveRatesState,
     alertsState: AlertsState,
     watchlistState: WatchlistState,
@@ -56,6 +68,7 @@ internal fun FxMoreRoute(
     onOpenMoreRoute: (MoreRoute) -> Unit,
     onOpenPaywall: (String) -> Unit,
     onOpenDetail: (FxRate, String) -> Unit,
+    onOpenStory: (NewsStory, String) -> Unit = { _, _ -> },
     onMoreRouteChange: (MoreRoute) -> Unit,
     onCompareCurrencyCodesChange: (List<String>) -> Unit,
     onConverterCurrencyCodesChange: (List<String>) -> Unit,
@@ -78,18 +91,20 @@ internal fun FxMoreRoute(
             subscriptionState = subscriptionState,
             alertsCount = alertsState.activeCount,
             watchlistCount = watchlistState.watchlist.codes.size,
-            onOpenAlerts = { onOpenMoreRoute(MoreRoute.Alerts) },
+            onOpenAlerts = { onSelectTab(FxTab.Alerts) },
+            onOpenCompare = { onOpenMoreRoute(MoreRoute.Compare) },
+            onOpenCrypto = { onOpenMoreRoute(MoreRoute.Crypto) },
             onOpenWatchlist = { onOpenMoreRoute(MoreRoute.Watchlist) },
             onOpenTraveler = { onOpenMoreRoute(MoreRoute.Traveler) },
             onOpenSettings = { onOpenMoreRoute(MoreRoute.Settings) },
-            onOpenNews = { onSelectTab(FxTab.News) },
+            onOpenNews = { onOpenMoreRoute(MoreRoute.News) },
             onOpenPaywall = { onOpenPaywall("more") },
         )
         MoreRoute.Alerts -> AlertsScreen(
             liveState = liveState,
             alertsState = alertsState,
             subscriptionState = subscriptionState,
-            onBack = { onMoreRouteChange(MoreRoute.Menu) },
+            onBack = if (alertsAsTab) null else { { onMoreRouteChange(MoreRoute.Menu) } },
             onOpenPaywall = { onOpenPaywall("alerts") },
             onCreateAlert = { rate ->
                 if (
@@ -163,6 +178,38 @@ internal fun FxMoreRoute(
             onOpenPaywall = { onOpenPaywall("traveler") },
             onOpenPaywallSource = onOpenPaywall,
         )
+        MoreRoute.Compare, MoreRoute.Crypto -> MoreSubScreen(onBack = { onMoreRouteChange(MoreRoute.Menu) }) {
+            val cryptoCodes = liveState.crypto.map { it.code }
+            CompareScreen(
+                liveState = liveState,
+                subscriptionState = subscriptionState,
+                selectedCurrencyCodes = if (moreRoute == MoreRoute.Crypto) compareCurrencyCodes.filter { it in cryptoCodes }.ifEmpty { cryptoCodes.take(4) } else compareCurrencyCodes,
+                onCurrencyCodesChange = { codes ->
+                    Observability.event("compare_currencies_changed", mapOf("count" to codes.size.toString()))
+                    (codes - compareCurrencyCodes.toSet()).forEach { code ->
+                        Observability.event("currency_added", mapOf("surface" to "compare", "currency" to code))
+                    }
+                    onCompareCurrencyCodesChange(codes)
+                    AppSettingsPrefs.setCompareCurrencyCodes(codes)
+                },
+                onOpenPaywall = { onOpenPaywall("compare") },
+                onOpenDetail = { onOpenDetail(it, "compare") },
+            )
+        }
+        MoreRoute.News -> MoreSubScreen(onBack = { onMoreRouteChange(MoreRoute.Menu) }) {
+            NewsScreen(
+                newsState = newsState,
+                subscriptionState = subscriptionState,
+                onRefresh = {
+                    Observability.event("news_refresh")
+                    newsStore.refresh()
+                },
+                onRegionSelected = newsStore::setRegion,
+                onCurrencySelected = newsStore::setCurrency,
+                onOpenStory = { onOpenStory(it, "news") },
+                onOpenPaywall = { onOpenPaywall("news") },
+            )
+        }
         MoreRoute.Settings -> FxSettingsRoute(
             themeMode = themeMode,
             appLanguage = appLanguage,
@@ -203,5 +250,14 @@ internal fun FxMoreRoute(
             onBackupSyncingChange = onBackupSyncingChange,
             onLastSyncedAtMillisChange = onLastSyncedAtMillisChange,
         )
+    }
+}
+
+/** Back affordance for screens that moved under More (Compare, News, Crypto). */
+@Composable
+private fun MoreSubScreen(onBack: () -> Unit, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.padding(start = 18.dp)) { BackNavButton(label = ui("More"), onClick = onBack) }
+        Box(Modifier.fillMaxSize()) { content() }
     }
 }

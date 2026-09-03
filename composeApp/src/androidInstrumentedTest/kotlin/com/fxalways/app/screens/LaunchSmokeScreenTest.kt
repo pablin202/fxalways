@@ -60,6 +60,13 @@ class LaunchSmokeScreenTest {
                         selectedCurrencyCodes = listOf("EUR", "GBP", "BTC"),
                         onOpenPaywall = {},
                     )
+                    SmokeRoute.Send -> ConverterScreen(
+                        liveState = smokeLiveRatesState(),
+                        subscriptionState = SubscriptionState(isPremium = false),
+                        selectedCurrencyCodes = listOf("EUR", "GBP", "BTC"),
+                        onOpenPaywall = {},
+                        sendMode = true,
+                    )
                     SmokeRoute.Compare -> CompareScreen(
                         liveState = smokeLiveRatesState(),
                         subscriptionState = SubscriptionState(isPremium = false),
@@ -90,12 +97,16 @@ class LaunchSmokeScreenTest {
             }
         }
 
-        compose.onNodeWithText("Rates").assertIsDisplayed()
+        compose.onNodeWithText("Today").assertIsDisplayed()
         compose.onNodeWithTag("dashboard_rate_trust").performScrollTo().assertIsDisplayed()
 
         compose.runOnIdle { route = SmokeRoute.Convert }
         compose.onNodeWithText("Convert").assertIsDisplayed()
         compose.onNodeWithTag("converter_rate_trust").performScrollTo().assertIsDisplayed()
+
+        compose.runOnIdle { route = SmokeRoute.Send }
+        compose.onNodeWithText("Send").assertIsDisplayed()
+        compose.onNodeWithTag("converter_provider_recommendation").performScrollTo().assertIsDisplayed()
 
         compose.runOnIdle { route = SmokeRoute.Compare }
         compose.onNodeWithText("Compare").assertIsDisplayed()
@@ -164,6 +175,7 @@ class LaunchSmokeScreenTest {
     private enum class SmokeRoute {
         Home,
         Convert,
+        Send,
         Compare,
         Alerts,
         More,

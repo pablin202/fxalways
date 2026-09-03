@@ -115,7 +115,7 @@ internal fun UserProfile.preset(): ProfilePreset =
             suggestedHolding = "BTC, ETH and stablecoins",
         )
         UserProfile.Remittances -> ProfilePreset(
-            initialTab = FxTab.Convert,
+            initialTab = FxTab.Today,
             converterCodes = listOf("MXN", "EUR", "GBP", "BRL"),
             compareCodes = listOf("MXN", "EUR", "GBP", "BRL"),
             watchlistCodes = listOf("MXN", "EUR", "GBP", "BRL"),
@@ -127,7 +127,7 @@ internal fun UserProfile.preset(): ProfilePreset =
             suggestedHolding = "Receiver currency balance",
         )
         UserProfile.Freelancer -> ProfilePreset(
-            initialTab = FxTab.Convert,
+            initialTab = FxTab.Today,
             converterCodes = listOf("EUR", "GBP", "AUD", "CAD"),
             compareCodes = listOf("EUR", "GBP", "AUD", "CAD"),
             watchlistCodes = listOf("EUR", "GBP", "AUD", "CAD"),

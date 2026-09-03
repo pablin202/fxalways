@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fxalways.app.AndroidAppContext
 import com.fxalways.app.screens.more.MoreScreen
@@ -36,12 +37,16 @@ class MoreScreenTest {
                     onOpenSettings = { harness.settings += 1 },
                     onOpenNews = { harness.news += 1 },
                     onOpenPaywall = { harness.paywall += 1 },
+                    onOpenCompare = { harness.compare += 1 },
+                    onOpenCrypto = { harness.crypto += 1 },
                 )
             }
         }
 
         compose.onNodeWithTag("more_traveler").assertIsDisplayed().performClick()
         compose.onNodeWithTag("more_news").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("more_compare").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("more_crypto").performScrollTo().assertIsDisplayed().performClick()
         compose.onNodeWithTag("more_alerts").assertIsDisplayed().performClick()
         compose.onNodeWithTag("more_watchlist").assertIsDisplayed().performClick()
         compose.onNodeWithTag("more_settings").assertIsDisplayed().performClick()
@@ -54,10 +59,14 @@ class MoreScreenTest {
             assertEquals(1, harness.watchlist)
             assertEquals(1, harness.settings)
             assertEquals(1, harness.paywall)
+            assertEquals(1, harness.compare)
+            assertEquals(1, harness.crypto)
         }
     }
 
     private class MoreHarness {
+        var compare = 0
+        var crypto = 0
         var traveler = 0
         var news = 0
         var alerts = 0

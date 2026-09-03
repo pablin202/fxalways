@@ -94,7 +94,7 @@ These items should move FX Always from a polished converter into a product that 
 5. Android widget expansion - implemented and parser-tested
    - Keep current traveler/rate widgets.
    - Add cached-age status to the rates widget.
-   - Add separate widget intents for Rates, Convert and Watchlist entry points.
+   - Widget intents deep-link into Today, Convert, Send, Alerts, Watchlist and Traveler (issue #12).
    - Later: iOS widget extension.
 
 ## Rate Freshness Policy (issue #3, 2026-09-03)
