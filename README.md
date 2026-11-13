@@ -1,68 +1,68 @@
 # FX Always
 
-Kotlin Multiplatform + Compose app para currency exchange con rates actuales, historicos, watchlist global, crypto, portfolio, alertas, traveler mode y suscripciones Pro con RevenueCat.
+A Kotlin Multiplatform app built with Compose for currency exchange, with current and historical rates, a global watchlist, crypto, a portfolio, alerts, traveler mode, and Pro subscriptions through RevenueCat.
 
-## Arquitectura
+## Architecture
 
-- `composeApp`: UI compartida Compose para Android/iOS.
-- `functions`: Firebase Cloud Functions TypeScript.
-- Firestore: cache backend de `latest` y `history` para evitar miles de llamadas al proveedor FX.
-- Proveedor FX inicial: Frankfurter API, basada en datos del European Central Bank.
-- Premium: `SubscriptionGateway` conectado a RevenueCat KMP para Android/iOS.
-- Android release: AAB firmado para Google Play Internal Testing y versionCode automatizable por CI.
+- `composeApp`: Shared Compose UI for Android and iOS.
+- `functions`: Firebase Cloud Functions written in TypeScript.
+- Firestore: Backend cache for `latest` and `history` to avoid thousands of calls to the FX provider.
+- Initial FX provider: Frankfurter API, based on European Central Bank data.
+- Premium: `SubscriptionGateway` integrates with RevenueCat KMP for Android and iOS.
+- Android release: Signed AAB for Google Play Internal Testing, with a `versionCode` that CI can generate automatically.
 
-## Features incluidas
+## Features
 
-- Conversor multi-currency.
-- Watchlist con pares mayores.
-- Historico 12 meses gratis y 5 anos para Pro.
-- Sparkline por par.
-- Portfolio basico por watchlist: monto por moneda, valor total en moneda base, cambio diario estimado y peso porcentual.
-- Portfolio Pro con average cost, cost basis, P&L realizado/no realizado, allocation fiat/crypto, largest position, chart estimado y transaction history buy/sell.
-- Import/export CSV Pro de portfolio con holdings, average cost y transacciones.
-- Crypto live catalog con core crypto para Free y catalogo expandido para Pro.
-- Comparador de costos estimados por proveedor, monto y par: mejor proveedor, monto recibido, perdida vs mid-market y ahorro potencial.
-- Capa de decision comercial: Home recomienda la proxima accion, Convert resume timing + mejor ruta + alerta, y Provider Matrix separa quote live/comparacion/estimado/setup.
-- Alertas de tipo target rate y daily move.
-- Alertas server-side con FCM para Android y worker local como fallback.
-- OCR price scanner para Pro en Android, integrado al chequeo local-vs-live de precios.
-- Traveler mode con presupuesto local, cash buffer y cheat sheet de gasto.
-- Backup/sync de usuario en Android con Firebase.
-- Onboarding personalizado con perfiles Traveler, Crypto holder, Remittances, Freelancer y Savings; aplica pares, watchlist, destino traveler, monto inicial, Home y paywall segun perfil.
-- Paywall Pro con RevenueCat KMP, restore, Terms/Privacy y configuracion separada Android/iOS.
-- Suscripciones Pro recurrentes mensual/anual; no se expone compra lifetime.
-- Rate trust en Home, Convert y Detail: fuente, estado Live/Cache/Preview y hora de actualizacion.
-- Loading skeletons para estados lentos de rates, converter y news.
-- Analytics basicos: seleccion de plan, compra exitosa, currency agregada y uso de widgets.
-- Localizacion in-app con selector para 4 idiomas: English, Español, Português, हिन्दी (los diccionarios de otros 9 idiomas quedan detrás de `EXTENDED_LANGUAGES = false`; `python3 scripts/i18n-audit.py` lista las claves sin traducir).
-- Cache server-side por base currency e historico por par.
-- Scheduled refresh cada 60 minutos.
-- Firestore cerrado al cliente; la app consume solo HTTPS Functions.
-- Configuracion separada para Android/iOS.
+- Multi-currency converter.
+- Watchlist with major currency pairs.
+- 12 months of rate history for Free and 5 years for Pro.
+- Sparkline for each pair.
+- Basic portfolio based on the watchlist, with amounts by currency, total value in the base currency, estimated daily change, and percentage weights.
+- Pro portfolio with average cost, cost basis, realized and unrealized P&L, fiat and crypto allocation, largest position, an estimated portfolio value chart, and buy/sell transaction history.
+- Pro portfolio CSV import and export for holdings, average cost, and transactions.
+- Live crypto catalog with core assets for Free and an expanded catalog for Pro.
+- Estimated cost comparison by provider, amount, and currency pair, showing the best provider, amount received, loss relative to the mid-market rate, and potential savings.
+- Conversion decision support: Home recommends the next action, Convert summarizes timing, the best route, and an alert, and Provider Matrix distinguishes live quotes, comparisons, estimates, and setup.
+- Target rate and daily move alerts.
+- Server-side alerts via FCM for Android, with a local worker as a fallback.
+- OCR price scanner for Pro on Android, integrated into the local-versus-live price check.
+- Traveler mode with a local budget, cash buffer, and spending cheat sheet.
+- User backup and sync on Android with Firebase.
+- Personalized onboarding with Traveler, Crypto holder, Remittances, Freelancer, and Savings profiles. The selected profile sets the initial pairs, watchlist, travel destination, starting amount, Home screen, and paywall.
+- Pro paywall with RevenueCat KMP, purchase restoration, Terms and Privacy links, and separate Android and iOS configuration.
+- Recurring monthly and annual Pro subscriptions. There is no lifetime purchase option.
+- Rate trust indicators on Home, Convert, and Detail show the source, Live/Cache/Preview status, and last update time.
+- Loading skeletons when rates, the converter, or news are slow to load.
+- Basic analytics for plan selection, successful purchases, currencies added, and widget usage.
+- In-app language selector with four options: English, Español, Português, and हिन्दी. Dictionaries for nine additional languages are gated behind `EXTENDED_LANGUAGES = false`. Run `python3 scripts/i18n-audit.py` to list untranslated keys.
+- Server-side caching by base currency and historical caching by pair.
+- Scheduled refresh every 60 minutes.
+- Firestore is closed to direct client access. The app uses HTTPS Functions exclusively.
+- Separate Android and iOS configuration.
 
 ## Free vs Pro
 
-La fuente de verdad es `composeApp/src/commonMain/kotlin/com/fxalways/app/subscription/FeatureAccessPolicy.kt`. Landing, ficha de Play y paywall copian esta tabla; si cambia una, cambian todas.
+`composeApp/src/commonMain/kotlin/com/fxalways/app/subscription/FeatureAccessPolicy.kt` is the source of truth. The landing page, Play Store listing, and paywall mirror this table and must be updated together.
 
-| Capacidad | Free | Pro (US$2.99/mes · US$19.99/año) |
+| Capability | Free | Pro (US$2.99/month · US$19.99/year) |
 |---|---|---|
-| Conversor, favoritos, comparador | Monedas ilimitadas | Igual |
-| Costo real por proveedor | Tu corredor, 3 proveedores | Todos los proveedores + historial de quién fue más barato |
-| Alertas de tasa | 2 activas | Ilimitadas + "mejor momento" y "proveedor más barato hoy" |
-| Historial | 1 año | 5 años (all-time) donde exista |
-| Cripto | BTC, ETH, USDT, USDC | Catálogo expandido (hasta 200) |
-| Portfolio | Holdings básicos | Costo promedio, P&L realizado/no realizado, transacciones, CSV |
-| Viajero | 1 destino, reglas locales básicas | Todos los destinos, packs offline, OCR de precios |
-| Noticias | Top 3 | Stream completo por región |
+| Converter, favorites, comparison | Unlimited currencies | Same |
+| Real cost by provider | Your broker, 3 providers | All providers plus a history of which provider was cheapest |
+| Rate alerts | 2 active | Unlimited plus “best time” and “cheapest provider today” |
+| History | 1 year | 5 years (all-time) where available |
+| Crypto | BTC, ETH, USDT, USDC | Expanded catalog (up to 200) |
+| Portfolio | Basic holdings | Average cost, realized and unrealized P&L, transactions, CSV |
+| Traveler | 1 destination, basic local rules | All destinations, offline packs, OCR price scanning |
+| News | Top 3 | Full feed by region |
 
-Free es generoso en acceso para que la app sea útil antes de pedir Pro. Pro vende profundidad y automatización, no acceso básico.
+Free provides broad access so the app is useful before users upgrade. Pro adds deeper analysis and automation.
 
-## Tests unitarios (commonTest)
+## Unit tests (commonTest)
 
-`./gradlew :composeApp:testDebugUnitTest` corre la lógica de negocio sin dispositivo: `SmartTimingTest`,
+`./gradlew :composeApp:testDebugUnitTest` runs the business logic tests without a device: `SmartTimingTest`,
 `FeeQuotesTest`, `PortfolioCsvTest`, `BackupMergeTest`, `MoneyFormattingTest`, `FeatureAccessPolicyTest`,
-`ReviewPromptPolicyTest`, `LocalizationTest`, `AmountBucketTest`. CI los ejecuta antes de compilar los
-artefactos de Test Lab. Los tests instrumentados (`connectedDebugAndroidTest`) quedan para UI.
+`ReviewPromptPolicyTest`, `LocalizationTest`, and `AmountBucketTest`. CI runs them before building the
+Test Lab artifacts. Instrumented tests (`connectedDebugAndroidTest`) cover the UI.
 
 ## Release build (R8)
 
@@ -76,91 +76,91 @@ Without a release keystore the release build type is signed with the debug key s
 installed locally: `./gradlew :composeApp:assembleRelease` then `adb install -r composeApp/build/outputs/apk/release/composeApp-release.apk`.
 When adding a new `@Serializable` model or a class reached via reflection, smoke-test the release build on a device.
 
-## Borrado de cuenta
+## Account deletion
 
-Settings → Backup → **Delete account** (disponible también para invitados). Tras confirmar, la app borra en Firestore `users/{uid}` con sus subcolecciones (`backups`, `push_tokens`, `server_alert_events`), elimina el usuario de Firebase Auth (reautenticando con Google si hace falta), cierra la sesión de RevenueCat, limpia todas las preferencias locales y vuelve al onboarding. Las compras quedan en la cuenta de Google. La URL de borrado declarada en Play Console debe apuntar a una página de fxalways.com que describa estos pasos.
+Go to Settings → Backup → **Delete account**. Guest users can also delete their accounts. After confirmation, the app deletes `users/{uid}` and its subcollections (`backups`, `push_tokens`, `server_alert_events`) from Firestore, deletes the Firebase Auth user (reauthenticating with Google if needed), signs out of RevenueCat, clears all local preferences, and returns to onboarding. Purchases remain associated with the Google account. The account deletion URL declared in Play Console must point to a page on fxalways.com that describes these steps.
 
-## Roadmap competitivo
+## Competitive roadmap
 
-Benchmark detallado y roadmap por mercado: [PRODUCT_BENCHMARK_ROADMAP.md](PRODUCT_BENCHMARK_ROADMAP.md).
+For the detailed benchmark and market-specific roadmap, see [PRODUCT_BENCHMARK_ROADMAP.md](PRODUCT_BENCHMARK_ROADMAP.md).
 
-Para competir contra conversores FX, money transfer apps y trackers crypto modernos, FX Always debe priorizar features que aumenten retencion diaria y valor Pro:
+To compete with modern FX converters, money transfer apps, and crypto trackers, FX Always should prioritize features that improve daily retention and increase the value of Pro.
 
-Posicionamiento actual: FX Always es una decision layer de FX, no un money transmitter. La app muestra mid-market, fees/spread estimados, provider status, alertas y contexto para decidir mejor antes de convertir, pagar o enviar. Claims recomendados para screenshots de Play: "Know when to convert", "Compare real provider cost", "Scan prices abroad", "Get push alerts", "Track your multi-currency money".
+Current positioning: FX Always helps users make FX decisions and does not transmit money. The app shows mid-market rates, estimated fees and spreads, provider status, alerts, and context to help users decide before converting, paying, or sending money. Recommended Play Store screenshot copy: “Know when to convert”, “Compare real provider cost”, “Scan prices abroad”, “Get push alerts”, “Track your multi-currency money”.
 
-1. Portfolio Pro completo con P&L y allocation. Implementado en primera version.
-   - Cash por moneda, crypto holdings y stablecoins.
-   - Precio promedio de compra/cost basis.
-   - P&L diario, total, realizado/no realizado.
-   - Valor total en moneda base.
-   - Allocation por asset, tipo de asset y moneda.
-   - Grafico estimado de evolucion del patrimonio.
-   - Historial de transacciones buy/sell con realized P&L.
-2. Smart conversion timing. Implementado en primera version.
-   - Score por par: Good time, Wait, Strong rate.
-   - Comparacion contra rango 7d/30d/90d, tendencia y volatilidad.
-   - Recomendacion concreta para viajeros, ahorro y remesas.
-3. Widgets Android/iOS. Android implementado en primera version.
-   - Tasa favorita desde el cache live.
-   - BTC/ETH cuando estan disponibles en cache.
-   - Estado Live/Cache y deep link a la app.
-   - Pendiente iOS Widget Extension y portfolio total.
-4. Alertas inteligentes.
-   - Movimiento de portfolio por porcentaje o monto.
-   - Concentracion excesiva en un asset.
-   - Rate cerca de maximo/minimo de 30 dias.
-   - Mejor proveedor estimado para una conversion.
-5. Import/export y backup robusto. CSV portfolio implementado en primera version.
-   - CSV import/export de holdings y transacciones.
-   - Backup cloud multiplataforma.
-   - Historial editable de transacciones.
-6. Comparador de costos mas accionable. Resumen principal implementado.
-   - Recibiras aproximadamente X despues de fee/spread.
-   - Diferencia contra mid-market.
-   - Mejor proveedor estimado por monto y par.
-   - Ahorro potencial contra el peor proveedor visible.
-   - Pendiente: historial de proveedor mas conveniente.
-7. Onboarding personalizado. Implementado en primera version.
-   - Perfil: viajero, crypto holder, remesas, freelancer, ahorro.
-   - Home, pares iniciales, watchlist, destino traveler, monto sugerido, paywall y alertas sugeridas segun objetivo.
+1. Full Pro portfolio with P&L and allocation. Implemented in the initial version.
+   - Cash by currency, crypto holdings, and stablecoins.
+   - Average purchase price and cost basis.
+   - Daily, total, realized, and unrealized P&L.
+   - Total value in the base currency.
+   - Allocation by asset, asset type, and currency.
+   - Chart of estimated portfolio value over time.
+   - Buy/sell transaction history with realized P&L.
+2. Smart conversion timing. Implemented in the initial version.
+   - Rating by pair: Good time, Wait, Strong rate.
+   - Comparison against 7-day, 30-day, and 90-day ranges, trends, and volatility.
+   - Specific recommendations for travel, savings, and remittances.
+3. Android and iOS widgets. Android widgets were implemented in the initial version.
+   - Favorite rate from the live cache.
+   - BTC and ETH when available in the cache.
+   - Live/Cache status and a deep link to the app.
+   - The iOS Widget Extension and total portfolio value are pending.
+4. Smart alerts.
+   - Portfolio movement by percentage or amount.
+   - Excessive concentration in one asset.
+   - Exchange rate near its 30-day high or low.
+   - Best estimated provider for a conversion.
+5. Import, export, and robust backup. Portfolio CSV support was implemented in the initial version.
+   - CSV import and export of holdings and transactions.
+   - Cross-platform cloud backup.
+   - Editable transaction history.
+6. A more actionable cost comparison. The main summary is implemented.
+   - Approximate amount you will receive after fees and spreads.
+   - Difference from the mid-market rate.
+   - Best estimated provider by amount and currency pair.
+   - Potential savings compared with the worst provider shown.
+   - History of the cheapest provider is pending.
+7. Personalized onboarding. Implemented in the initial version.
+   - Profiles for travelers, crypto holders, remittances, freelancers, and savings.
+   - Home, initial pairs, watchlist, travel destination, suggested amount, paywall, and suggested alerts based on the user's goal.
 
-El bloque P0 quedo implementado y probado: fee/spread reality check, smart alerts con historial, travel offline pack, watchlist groups y expansion de widgets Android con estado de cache.
+The P0 items were implemented and tested: fee and spread reality check, smart alerts with history, offline travel pack, watchlist groups, and expanded Android widgets with cache status.
 
-## Ejecutar Android
+## Run on Android
 
-El backend publicado queda configurado por default:
+The deployed backend is configured by default.
 
 ```bash
 ./gradlew :composeApp:assembleDebug
 ```
 
-Para usar el emulador Firebase local:
+To use the local Firebase emulator:
 
 ```bash
 ./gradlew :composeApp:assembleDebug -PFX_BACKEND_URL=http://10.0.2.2:5001/demo-fx-always/us-central1
 ```
 
-Para usar Firebase deployado:
+To use the deployed Firebase backend:
 
 ```bash
 ./gradlew :composeApp:assembleDebug -PFX_BACKEND_URL=https://us-central1-fx-always.cloudfunctions.net
 ```
 
-## Android release para Play
+## Android release for Google Play
 
-El AAB de Play se genera desde:
+Build the Play Store AAB with:
 
 ```bash
 ./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=5 -PANDROID_VERSION_NAME=1.0.2
 ```
 
-Salida:
+Output:
 
 ```text
 composeApp/build/outputs/bundle/release/composeApp-release.aab
 ```
 
-Release signing se configura por `local.properties`, propiedades Gradle o environment variables:
+Configure release signing through `local.properties`, Gradle properties, or environment variables:
 
 ```properties
 ANDROID_KEYSTORE_PATH=/absolute/path/to/fxalways-upload.jks
@@ -170,24 +170,26 @@ ANDROID_KEY_PASSWORD=...
 REVENUECAT_API_KEY=goog_...
 ```
 
-No commitear keystores ni passwords. El repo ignora `*.jks`, `*.keystore`, `release-key.properties`, `keystore.properties` y `local.properties`.
+Do not commit keystores or passwords. The repository ignores `*.jks`, `*.keystore`, `release-key.properties`, `keystore.properties`, and `local.properties`.
 
-### Release automatico en GitHub
+### Automated GitHub release
 
-Cada push a `main` ejecuta:
+Every push to `main` runs the following steps:
 
-1. Build Android debug + APK de instrumented tests.
-2. Firebase Test Lab en SmallPhone, MediumPhone y MediumTablet.
-3. Si Test Lab pasa, build del AAB release firmado para Play.
-4. Publicacion del AAB y su `.sha256` en GitHub Releases.
+1. Build the Android debug APK and instrumented test APK.
+2. Run Firebase Test Lab on SmallPhone, MediumPhone, and MediumTablet.
+3. If Test Lab passes, build the signed release AAB for Google Play.
+4. Publish the AAB and its `.sha256` checksum to GitHub Releases.
 
-La version automatica usa:
+Automated versioning uses:
+
 
 - `versionCode = github.run_number`
 - `versionName = 1.0.<github.run_number>`
-- tag `android-v1.0.<github.run_number>`
+- Tag `android-v1.0.<github.run_number>`
 
-Secrets requeridos en GitHub:
+Required GitHub secrets:
+
 
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_KEYSTORE_PASSWORD`
@@ -195,97 +197,97 @@ Secrets requeridos en GitHub:
 - `ANDROID_KEY_PASSWORD`
 - `REVENUECAT_API_KEY`
 
-### VersionCode automatico
+### Automatic version code
 
-`composeApp/build.gradle.kts` lee:
+`composeApp/build.gradle.kts` reads:
 
 - `ANDROID_VERSION_CODE`
 - `ANDROID_VERSION_NAME`
 
-Prioridad: Gradle property, `local.properties`, environment variable, default del repo.
+Precedence: Gradle property, `local.properties`, environment variable, then the repository default.
 
-Ejemplo manual:
+Manual example:
 
 ```bash
 ./gradlew :composeApp:bundleRelease -PANDROID_VERSION_CODE=5 -PANDROID_VERSION_NAME=1.0.2
 ```
 
-GitHub Actions usa `github.run_number` como `ANDROID_VERSION_CODE`, por lo que los artefactos de CI tienen codigo creciente automaticamente.
+GitHub Actions uses `github.run_number` as `ANDROID_VERSION_CODE`, so CI artifacts automatically get increasing version codes.
 
-### Firebase Test Lab en CI
+### Firebase Test Lab in CI
 
-Cada push a `main` ejecuta todos los UI tests Android en Firebase Test Lab. El workflow:
+Every push to `main` runs all Android UI tests in Firebase Test Lab. The workflow:
 
-- Compila el APK debug y el APK `androidTest`.
-- Consulta el catalogo actual de Test Lab con `gcloud firebase test android models list`.
-- Selecciona 3 devices disponibles con distintas familias/resoluciones cuando existen en el catalogo.
-- Corre `gcloud firebase test android run` como instrumentation test, sin `test-targets`, para ejecutar toda la suite.
+- Builds the debug APK and the `androidTest` APK.
+- Queries the current Test Lab catalog with `gcloud firebase test android models list`.
+- Selects three available devices from different device families and screen resolutions when the catalog offers them.
+- Runs `gcloud firebase test android run` as an instrumentation test without `test-targets` to execute the full suite.
 
-Configuracion requerida en GitHub:
+Required GitHub configuration:
 
-- Repository variable `FIREBASE_TEST_LAB_PROJECT`: Firebase/GCP project id. Default actual: `fx-always`.
-- Repository variable `FIREBASE_TEST_LAB_RESULTS_BUCKET`: Cloud Storage bucket para resultados. Default actual: `fx-always-test-lab-results`.
-- Repository secret `GCP_WORKLOAD_IDENTITY_PROVIDER`: provider de Workload Identity Federation para GitHub Actions.
-- Repository secret `GCP_SERVICE_ACCOUNT`: service account usado por el workflow.
+- Repository variable `FIREBASE_TEST_LAB_PROJECT`: Firebase/GCP project ID. Current default: `fx-always`.
+- Repository variable `FIREBASE_TEST_LAB_RESULTS_BUCKET`: Cloud Storage bucket for results. Current default: `fx-always-test-lab-results`.
+- Repository secret `GCP_WORKLOAD_IDENTITY_PROVIDER`: Workload Identity Federation provider for GitHub Actions.
+- Repository secret `GCP_SERVICE_ACCOUNT`: Service account used by the workflow.
 
-El service account necesita permisos para ejecutar Firebase Test Lab y escribir resultados en Cloud Storage. En GCP, asignar permisos equivalentes a Firebase Test Lab Admin para el proyecto y Storage Object Admin sobre el bucket de resultados que use Test Lab. APIs requeridas: `testing.googleapis.com` y `toolresults.googleapis.com`.
+The service account needs permission to run Firebase Test Lab and write results to Cloud Storage. In GCP, grant permissions equivalent to Firebase Test Lab Admin on the project and Storage Object Admin on the results bucket used by Test Lab. Required APIs: `testing.googleapis.com` and `toolresults.googleapis.com`.
 
-### Advertencias de Play Console
+### Play Console warnings
 
-- `No hay archivo de desofuscacion`: normal mientras `isMinifyEnabled=false`. No hay `mapping.txt` porque no se usa R8/ProGuard en release.
-- `Codigo nativo sin simbolos`: la app incluye `.so` de dependencias. Release configura `ndk.debugSymbolLevel = "SYMBOL_TABLE"`, pero algunas dependencias pueden venir ya strippeadas. Es advertencia, no bloqueo para Internal Testing.
+- `No deobfuscation file`: Expected when `isMinifyEnabled=false`. There is no `mapping.txt` because that release does not use R8/ProGuard.
+- `Native code without debug symbols`: The app includes `.so` files from dependencies. Release builds set `ndk.debugSymbolLevel = "SYMBOL_TABLE"`, but some dependencies may already have their symbols stripped. This warning does not block Internal Testing.
 
-## RevenueCat y compras Android
+## RevenueCat and Android purchases
 
-Configuracion esperada en RevenueCat:
+Expected RevenueCat configuration:
 
 - Entitlement: `pro`.
-- Offering: `pro` recomendado. La app tambien acepta `default` o el current offering como fallback.
+- Offering: `pro` is recommended. The app also accepts `default` or the current offering as a fallback.
 - Packages:
   - `$rc_monthly` -> `fxalways_pro_monthly`
   - `$rc_annual` -> `fxalways_pro_annual`
 - Android SDK key: `goog_...`.
-- No usar lifetime package.
+- Do not use a lifetime package.
 
-Configuracion esperada en Google Play:
+Expected Google Play configuration:
 
 - App package: `com.fxalways.app`.
-- Subscriptions/product IDs exactos:
+- Exact subscription product IDs:
   - `fxalways_pro_monthly`
   - `fxalways_pro_annual`
-- Internal testing track con AAB firmado.
-- Tester agregado al track interno y tambien a license testing para compras sandbox.
+- Internal testing track with a signed AAB.
+- Add testers to both the internal track and license testing for sandbox purchases.
 
-Importante: compras reales/sandbox no se validan instalando por `adb` o `bundletool`. Si el dispositivo muestra `installerPackageName=null`, Google Billing puede responder como no disponible y el paywall puede mostrar `Purchases unavailable`. Para probar compras, instalar desde el opt-in link de Google Play Internal Testing; el installer debe ser `com.android.vending`.
+Installing with `adb` or `bundletool` does not validate real or sandbox purchases. If the device reports `installerPackageName=null`, Google Billing may be unavailable and the paywall may show `Purchases unavailable`. To test purchases, install from the Google Play Internal Testing opt-in link. The installer must be `com.android.vending`.
 
 ## Internal Testing checklist
 
-1. Generar AAB firmado con versionCode nuevo.
-2. Subirlo a Google Play Console -> Testing -> Internal testing.
-3. Completar los formularios obligatorios: store listing, data safety, app content, privacy policy, categoria y contacto.
-4. Confirmar productos de suscripcion activos en Play y conectados a RevenueCat.
-5. Agregar testers al track interno y a license testing.
-6. Instalar desde el link interno de Play.
-7. Probar:
-   - Onboarding completo.
-   - Home rates y crypto core.
-   - Paywall mensual/anual.
-   - Compra sandbox mensual.
-   - Restore.
-   - Free vs Pro gating.
-   - Links Terms/Privacy.
-   - Offline/cache states.
+1. Build a signed AAB with a new version code.
+2. Upload it to Google Play Console → Testing → Internal testing.
+3. Complete the required forms: store listing, data safety, app content, privacy policy, category, and contact details.
+4. Confirm that the subscription products are active in Play and linked to RevenueCat.
+5. Add testers to the internal track and to license testing.
+6. Install from the Play internal testing link.
+7. Test:
+   - Full onboarding.
+   - Home exchange rates and core crypto assets.
+   - Monthly and annual options on the paywall.
+   - Monthly sandbox purchase.
+   - Purchase restoration.
+   - Free and Pro feature access.
+   - Terms and Privacy links.
+   - Offline and cached states.
    - Widgets.
 
-## Troubleshooting rapido
+## Quick troubleshooting
 
-- `Todos los bundles subidos deben estar firmados`: falta `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` o `ANDROID_KEY_PASSWORD`.
-- `Version code already used`: subir `ANDROID_VERSION_CODE` y regenerar el AAB.
-- `Purchases unavailable` instalado localmente: esperado con `adb`; instalar desde Play Internal Testing.
-- Crash post-onboarding por compras: RevenueCat ya soporta arranque anonimo si Firebase UID todavia no esta disponible.
-- Crash al abrir Terms/Privacy: Android ahora captura `ActivityNotFoundException`; si no hay navegador muestra `No browser available`.
+- `All uploaded bundles must be signed`: One or more signing settings are missing: `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, or `ANDROID_KEY_PASSWORD`.
+- `Version code already used`: Increase `ANDROID_VERSION_CODE` and rebuild the AAB.
+- `Purchases unavailable` on a local install: Expected when installing with `adb`. Install from Play Internal Testing.
+- Purchase-related crash after onboarding: RevenueCat supports anonymous initialization if the Firebase UID is not yet available.
+- Crash when opening Terms or Privacy: Android now catches `ActivityNotFoundException` and shows `No browser available` if no browser is installed.
 
-## Ejecutar backend
+## Run the backend
 
 ```bash
 cd functions
@@ -325,22 +327,23 @@ printf '%s' "$MARKETAUX_KEY" | firebase functions:secrets:set MARKETAUX_API_KEY 
 
 CI (Firebase Test Lab) authenticates through Workload Identity Federation: pool `github-pool`, provider `github-provider`, service account `github-ci@fx-always.iam.gserviceaccount.com`, results bucket `gs://fx-always-test-lab-results`. The GitHub secrets `GCP_WORKLOAD_IDENTITY_PROVIDER` / `GCP_SERVICE_ACCOUNT` and variables `FIREBASE_TEST_LAB_PROJECT` / `FIREBASE_TEST_LAB_RESULTS_BUCKET` point there.
 
+
 ## iOS
 
-El proyecto iOS se genera con XcodeGen y compila el framework Compose correcto para device o simulador desde Xcode.
+The iOS project is generated with XcodeGen. Xcode builds the appropriate Compose framework for a device or simulator.
 
 ```bash
 ./scripts/ios-simulator-run.sh
 ./scripts/ios-device-run.sh
 ```
 
-Para produccion iOS todavia falta:
+Remaining iOS production setup:
 
-1. Crear la app iOS en Firebase y agregar `GoogleService-Info.plist`.
-2. Habilitar Sign in with Apple en Apple Developer y Firebase Auth.
-3. Cambiar la key RevenueCat Test Store por la public SDK key de App Store.
+1. Create the iOS app in Firebase and add `GoogleService-Info.plist`.
+2. Enable Sign in with Apple in Apple Developer and Firebase Auth.
+3. Replace the RevenueCat Test Store key with the public App Store SDK key.
 
-## Fuentes revisadas
+## References
 
 - Frankfurter API: https://frankfurter.dev/
 - Firebase scheduled functions: https://firebase.google.com/docs/functions/schedule-functions
